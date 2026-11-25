@@ -1,0 +1,181 @@
+<Window x:Class="LlmodelBox.SplashWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        WindowStartupLocation="CenterScreen"
+        WindowStyle="None" ResizeMode="NoResize" AllowsTransparency="True"
+        Background="Transparent" ShowInTaskbar="False"
+        Width="760" Height="430">
+    <Window.Resources>
+        <Storyboard x:Key="IntroStoryboard">
+            <!-- Left art fades in -->
+            <DoubleAnimation Storyboard.TargetName="LeftPanel" Storyboard.TargetProperty="Opacity"
+                             From="0" To="1" Duration="0:0:0.6"/>
+
+            <!-- Mark pops in -->
+            <DoubleAnimation Storyboard.TargetName="MarkScale" Storyboard.TargetProperty="ScaleX"
+                             From="0.55" To="1" Duration="0:0:0.6">
+                <DoubleAnimation.EasingFunction><BackEase EasingMode="EaseOut" Amplitude="0.5"/></DoubleAnimation.EasingFunction>
+            </DoubleAnimation>
+            <DoubleAnimation Storyboard.TargetName="MarkScale" Storyboard.TargetProperty="ScaleY"
+                             From="0.55" To="1" Duration="0:0:0.6">
+                <DoubleAnimation.EasingFunction><BackEase EasingMode="EaseOut" Amplitude="0.5"/></DoubleAnimation.EasingFunction>
+            </DoubleAnimation>
+
+            <!-- Gentle continuous pulse on the mark -->
+            <DoubleAnimation Storyboard.TargetName="MarkScale" Storyboard.TargetProperty="ScaleX"
+                             From="1" To="1.05" BeginTime="0:0:0.6" Duration="0:0:1.4"
+                             AutoReverse="True" RepeatBehavior="Forever"/>
+            <DoubleAnimation Storyboard.TargetName="MarkScale" Storyboard.TargetProperty="ScaleY"
+                             From="1" To="1.05" BeginTime="0:0:0.6" Duration="0:0:1.4"
+                             AutoReverse="True" RepeatBehavior="Forever"/>
+
+            <!-- Slow rotating glow ring behind the mark -->
+            <DoubleAnimation Storyboard.TargetName="RingRotate" Storyboard.TargetProperty="Angle"
+                             From="0" To="360" Duration="0:0:9" RepeatBehavior="Forever"/>
+
+            <!-- Inner diamond glyph slow counter-rotation -->
+            <DoubleAnimation Storyboard.TargetName="GlyphRotate" Storyboard.TargetProperty="Angle"
+                             From="0" To="-360" Duration="0:0:14" RepeatBehavior="Forever"/>
+
+            <!-- Right panel content slides up + fades -->
+            <DoubleAnimation Storyboard.TargetName="RightPanel" Storyboard.TargetProperty="Opacity"
+                             From="0" To="1" BeginTime="0:0:0.2" Duration="0:0:0.5"/>
+            <DoubleAnimation Storyboard.TargetName="RightTranslate" Storyboard.TargetProperty="Y"
+                             From="14" To="0" BeginTime="0:0:0.2" Duration="0:0:0.5">
+                <DoubleAnimation.EasingFunction><CubicEase EasingMode="EaseOut"/></DoubleAnimation.EasingFunction>
+            </DoubleAnimation>
+        </Storyboard>
+    </Window.Resources>
+
+    <Border CornerRadius="18" Background="#08080a" BorderBrush="#1f1f24" BorderThickness="1" ClipToBounds="True">
+        <Border.Effect>
+            <DropShadowEffect Color="#000000" BlurRadius="48" ShadowDepth="0" Opacity="0.75"/>
+        </Border.Effect>
+        <Grid>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="320"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- LEFT: abstract AI artwork panel -->
+            <Border x:Name="LeftPanel" Grid.Column="0" Opacity="0">
+                <Grid>
+                    <!-- Base layer: dark gradient (always present, vector fallback) -->
+                    <Grid.Background>
+                        <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                            <GradientStop Color="#0b1220" Offset="0"/>
+                            <GradientStop Color="#0a0e1a" Offset="0.5"/>
+                            <GradientStop Color="#08080a" Offset="1"/>
+                        </LinearGradientBrush>
+                    </Grid.Background>
+
+                    <!-- Optional real artwork overlay. Source is assigned in code-behind with a
+                         try/catch so a missing asset silently falls back to this vector layer.
+                         Drop the real art at: src/Assets/llmodelbox-splash-art.png -->
+                    <Image x:Name="ArtImage" Stretch="UniformToFill" Opacity="0"/>
+
+                    <!-- Vector AI motif: rotating gradient ring + app mark -->
+                    <Grid Width="150" Height="150" HorizontalAlignment="Center" VerticalAlignment="Center">
+                        <Border x:Name="RingBorder" Width="140" Height="140" CornerRadius="70"
+                                BorderThickness="2" RenderTransformOrigin="0.5,0.5">
+                            <Border.RenderTransform><RotateTransform x:Name="RingRotate"/></Border.RenderTransform>
+                            <Border.BorderBrush>
+                                <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                                    <GradientStop Color="#003b82f6" Offset="0"/>
+                                    <GradientStop Color="#3b82f6" Offset="0.5"/>
+                                    <GradientStop Color="#60a5fa" Offset="0.75"/>
+                                    <GradientStop Color="#003b82f6" Offset="1"/>
+                                </LinearGradientBrush>
+                            </Border.BorderBrush>
+                        </Border>
+
+                        <Border x:Name="MarkBorder" Width="88" Height="88" CornerRadius="24"
+                                HorizontalAlignment="Center" VerticalAlignment="Center" RenderTransformOrigin="0.5,0.5">
+                            <Border.RenderTransform><ScaleTransform x:Name="MarkScale"/></Border.RenderTransform>
+                            <Border.Effect>
+                                <DropShadowEffect Color="#3b82f6" BlurRadius="30" ShadowDepth="0" Opacity="0.65"/>
+                            </Border.Effect>
+                            <Border.Background>
+                                <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                                    <GradientStop Color="#3b82f6" Offset="0"/>
+                                    <GradientStop Color="#60a5fa" Offset="1"/>
+                                </LinearGradientBrush>
+                            </Border.Background>
+                            <Path Data="M 14,0 L 28,14 L 14,28 L 0,14 Z" Fill="#ffffff"
+                                  HorizontalAlignment="Center" VerticalAlignment="Center"
+                                  RenderTransformOrigin="0.5,0.5">
+                                <Path.RenderTransform><RotateTransform x:Name="GlyphRotate"/></Path.RenderTransform>
+                            </Path>
+                        </Border>
+                    </Grid>
+
+                    <!-- Thin accent divider on the right edge of the art panel -->
+                    <Border Width="1" HorizontalAlignment="Right" Background="#161620"/>
+                </Grid>
+            </Border>
+
+            <!-- RIGHT: brand + real startup progress -->
+            <Grid x:Name="RightPanel" Grid.Column="1" Opacity="0" Margin="34,32,34,30">
+                <Grid.RenderTransform><TranslateTransform x:Name="RightTranslate"/></Grid.RenderTransform>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <!-- Brand mark -->
+                <StackPanel Grid.Row="0">
+                    <TextBlock Text="LlmodelBox" FontSize="30" FontWeight="SemiBold" Foreground="#fafafa"/>
+                    <TextBlock Text="Unified AI model workspace" FontSize="13" Foreground="#71717a" Margin="0,4,0,0"/>
+                </StackPanel>
+
+                <!-- Startup step rows -->
+                <StackPanel x:Name="StepPanel" Grid.Row="1" VerticalAlignment="Center" Margin="0,18,0,0">
+                    <StackPanel Orientation="Horizontal" Margin="0,5,0,5">
+                        <Ellipse x:Name="StepDot0" Width="8" Height="8" Fill="#2a2a32" VerticalAlignment="Center"/>
+                        <TextBlock x:Name="StepText0" Text="Initializing shell" Foreground="#52525b" FontSize="13" Margin="12,0,0,0"/>
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" Margin="0,5,0,5">
+                        <Ellipse x:Name="StepDot1" Width="8" Height="8" Fill="#2a2a32" VerticalAlignment="Center"/>
+                        <TextBlock x:Name="StepText1" Text="Loading settings" Foreground="#52525b" FontSize="13" Margin="12,0,0,0"/>
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" Margin="0,5,0,5">
+                        <Ellipse x:Name="StepDot2" Width="8" Height="8" Fill="#2a2a32" VerticalAlignment="Center"/>
+                        <TextBlock x:Name="StepText2" Text="Opening workspaces" Foreground="#52525b" FontSize="13" Margin="12,0,0,0"/>
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" Margin="0,5,0,5">
+                        <Ellipse x:Name="StepDot3" Width="8" Height="8" Fill="#2a2a32" VerticalAlignment="Center"/>
+                        <TextBlock x:Name="StepText3" Text="Building model registry" Foreground="#52525b" FontSize="13" Margin="12,0,0,0"/>
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" Margin="0,5,0,5">
+                        <Ellipse x:Name="StepDot4" Width="8" Height="8" Fill="#2a2a32" VerticalAlignment="Center"/>
+                        <TextBlock x:Name="StepText4" Text="Connecting providers" Foreground="#52525b" FontSize="13" Margin="12,0,0,0"/>
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" Margin="0,5,0,5">
+                        <Ellipse x:Name="StepDot5" Width="8" Height="8" Fill="#2a2a32" VerticalAlignment="Center"/>
+                        <TextBlock x:Name="StepText5" Text="Preparing workspace" Foreground="#52525b" FontSize="13" Margin="12,0,0,0"/>
+                    </StackPanel>
+                </StackPanel>
+
+                <!-- Progress bar + status -->
+                <StackPanel Grid.Row="2">
+                    <Grid Margin="0,0,0,10">
+                        <TextBlock x:Name="StatusText" Text="Starting up" Foreground="#a1a1aa" FontSize="12" HorizontalAlignment="Left"/>
+                        <TextBlock x:Name="PercentText" Text="0%" Foreground="#71717a" FontSize="12" HorizontalAlignment="Right"/>
+                    </Grid>
+                    <Border x:Name="ProgressTrack" Height="4" CornerRadius="2" Background="#17171b"
+                            HorizontalAlignment="Stretch" ClipToBounds="True">
+                        <Border x:Name="ProgressFill" Width="0" HorizontalAlignment="Left" CornerRadius="2">
+                            <Border.Background>
+                                <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                                    <GradientStop Color="#3b82f6" Offset="0"/>
+                                    <GradientStop Color="#60a5fa" Offset="1"/>
+                                </LinearGradientBrush>
+                            </Border.Background>
+                        </Border>
+                    </Border>
+                </StackPanel>
+            </Grid>
+        </Grid>
+    </Border>
+</Window>

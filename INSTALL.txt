@@ -1,0 +1,16 @@
+LlmodelBox tested update
+
+1. Close LlmodelBox.
+2. Extract this ZIP to a separate folder (not over your installation).
+3. In PowerShell, from the extracted folder, run:
+   powershell -NoProfile -ExecutionPolicy Bypass -File .\Install-Update.ps1
+4. Start G:\tools\LlmodelBox\run.bat.
+
+The installer validates original source checksums and backs up existing changed files under the installation's backups folder. It installs the new release under app\improved, preserving your root executable and personal data. A conflicting source edit stops installation before copying.
+
+For another location, add: -Target 'D:\path\LlmodelBox'
+
+The improved release requires .NET 8 Windows Desktop Runtime.
+Rollback: close the app, copy backed-up files to their original locations, and launch the original root LlmodelBox.exe. new-files.json in the backup lists files added by the update.
+
+67 automated tests passed. Release compilation succeeded. Live provider and interactive UI checks were not performed. Installation has not been applied by Codex because G: write permission was not granted.

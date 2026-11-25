@@ -1,0 +1,6 @@
+<Project>
+  <PropertyGroup>
+    <!-- Allows building net8.0-windows WPF targets from Linux/macOS hosts via dotnet CLI -->
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+  </PropertyGroup>
+</Project>

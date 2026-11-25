@@ -1,0 +1,906 @@
+﻿<UserControl x:Class="LlmodelBox.Controls.WorkspaceControl"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:LlmodelBox"
+             xmlns:common="clr-namespace:LlmodelBox.Common"
+             mc:Ignorable="d"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006">
+    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/> <!-- Workspace Header -->
+                            <RowDefinition Height="*"/>    <!-- 3-Column IDE Workspace Grid -->
+                        </Grid.RowDefinitions>
+
+                        <!-- Workspace Header Bar -->
+                        <Border Grid.Row="0" Background="{DynamicResource BrushWindowBg}" BorderBrush="{DynamicResource BrushBorder}" BorderThickness="1" CornerRadius="8" Padding="14,8" Margin="0,0,0,10">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+
+                                <Button Grid.Column="0" Content="← Back to Projects" Style="{StaticResource BlackBoxActionBtn}" Click="BtnBackToProjects_Click" Margin="0,0,14,0"/>
+
+                                <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                        <TextBlock x:Name="TxtActiveProjectName" Text="Alpha-Project" FontWeight="Bold" Foreground="{DynamicResource BrushTextPrimary}" FontSize="14"/>
+                                        <Border Background="{DynamicResource BrushSuccessGlow}" BorderBrush="{DynamicResource BrushSuccess}" BorderThickness="1" CornerRadius="3" Margin="8,0,0,0" Padding="6,1">
+                                            <TextBlock Text="ACTIVE WORKSPACE" FontSize="9.5" FontWeight="Bold" Foreground="{DynamicResource BrushSuccess}"/>
+                                        </Border>
+                                        <Border Background="{DynamicResource BrushAccentGlow}" BorderBrush="{DynamicResource BrushAccent}" BorderThickness="1" CornerRadius="3" Margin="8,0,0,0" Padding="6,1">
+                                            <TextBlock x:Name="TxtTerminalActiveModel" Text="[API: GPT-4o]" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource BrushAccentLight}" FontFamily="Consolas"/>
+                                        </Border>
+                                    </StackPanel>
+                                    <TextBlock x:Name="TxtActiveProjectPath" Text="G:\tools\LlmodelBox\projects\Alpha" Foreground="{DynamicResource BrushTextDim}" FontSize="11" FontFamily="Consolas" Margin="0,2,0,0"/>
+                                </StackPanel>
+
+                                <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                                    <Button Style="{StaticResource PrimaryActionBtn}" Margin="0,0,6,0" Click="BtnSaveFile_Click" Padding="10,5" FontSize="11">
+                                        <StackPanel Orientation="Horizontal">
+                                            <Path Data="{StaticResource IconSave}" Fill="{DynamicResource BrushAccentText}" Stretch="Uniform" Width="14" Height="14" VerticalAlignment="Center" Margin="0,0,7,0"/>
+                                            <TextBlock Text="Save File" VerticalAlignment="Center"/>
+                                        </StackPanel>
+                                    </Button>
+                                    <Grid Margin="0,0,6,0">
+                                        <Button x:Name="BtnSwitchModel" Style="{StaticResource BlackBoxActionBtn}" Click="BtnSwitchModel_Click" Padding="10,5" FontSize="11">
+                                            <StackPanel Orientation="Horizontal">
+                                                <Path Data="{StaticResource IconSwap}" Fill="{DynamicResource BrushTextSecondary}" Stretch="Uniform" Width="14" Height="14" VerticalAlignment="Center" Margin="0,0,7,0"/>
+                                                <TextBlock Text="Switch Model" VerticalAlignment="Center"/>
+                                            </StackPanel>
+                                        </Button>
+                                        <Popup x:Name="ModelPickerPopup" PlacementTarget="{Binding ElementName=BtnSwitchModel}" Placement="Bottom" StaysOpen="False" AllowsTransparency="True" PopupAnimation="Slide" HorizontalOffset="0" VerticalOffset="4">
+                                            <Border Background="{DynamicResource BrushCardBg}" BorderBrush="{DynamicResource BrushBorder}" BorderThickness="1" CornerRadius="8" Padding="4" MinWidth="260" MaxHeight="360">
+                                                <Border.Effect>
+                                                    <DropShadowEffect BlurRadius="18" ShadowDepth="3" Opacity="0.45" Color="#000000"/>
+                                                </Border.Effect>
+                                                <DockPanel>
+                                                    <TextBlock DockPanel.Dock="Top" Text="SELECT MODEL" Foreground="{DynamicResource BrushTextDim}" FontSize="9.5" FontWeight="Bold" FontFamily="Consolas" Margin="8,6,8,6"/>
+                                                    <ListBox x:Name="ModelPickerList" Background="Transparent" BorderThickness="0" ScrollViewer.HorizontalScrollBarVisibility="Disabled" SelectionChanged="ModelPickerList_SelectionChanged">
+                                                        <ListBox.ItemContainerStyle>
+                                                            <Style TargetType="ListBoxItem">
+                                                                <Setter Property="Padding" Value="0"/>
+                                                                <Setter Property="Margin" Value="0,1"/>
+                                                                <Setter Property="Template">
+                                                                    <Setter.Value>
+                                                                        <ControlTemplate TargetType="ListBoxItem">
+                                                                            <Border x:Name="Bd" Background="Transparent" CornerRadius="5" Padding="8,6">
+                                                                                <ContentPresenter/>
+                                                                            </Border>
+                                                                            <ControlTemplate.Triggers>
+                                                                                <Trigger Property="IsMouseOver" Value="True">
+                                                                                    <Setter TargetName="Bd" Property="Background" Value="{DynamicResource BrushAccentGlow}"/>
+                                                                                </Trigger>
+                                                                            </ControlTemplate.Triggers>
+                                                                        </ControlTemplate>
+                                                                    </Setter.Value>
+                                                                </Setter>
+                                                            </Style>
+                                                        </ListBox.ItemContainerStyle>
+                                                        <ListBox.ItemTemplate>
+                                                            <DataTemplate>
+                                                                <StackPanel Orientation="Horizontal">
+                                                                    <Path Data="{StaticResource IconCube}" Fill="{DynamicResource BrushAccentText}" Stretch="Uniform" Width="13" Height="13" VerticalAlignment="Center" Margin="0,0,9,0"/>
+                                                                    <StackPanel>
+                                                                        <TextBlock Text="{Binding Name}" Foreground="{DynamicResource BrushTextPrimary}" FontSize="12" FontWeight="SemiBold"/>
+                                                                        <TextBlock Text="{Binding Provider}" Foreground="{DynamicResource BrushTextDim}" FontSize="10" FontFamily="Consolas"/>
+                                                                    </StackPanel>
+                                                                </StackPanel>
+                                                            </DataTemplate>
+                                                        </ListBox.ItemTemplate>
+                                                    </ListBox>
+                                                </DockPanel>
+                                            </Border>
+                                        </Popup>
+                                    </Grid>
+                                    <Button Style="{StaticResource BlackBoxActionBtn}" Margin="0,0,6,0" Click="BtnWorkspaceExplorer_Click" Padding="10,5" FontSize="11">
+                                        <StackPanel Orientation="Horizontal">
+                                            <Path Data="{StaticResource IconFolder}" Fill="{DynamicResource BrushTextSecondary}" Stretch="Uniform" Width="14" Height="14" VerticalAlignment="Center" Margin="0,0,7,0"/>
+                                            <TextBlock Text="Explorer" VerticalAlignment="Center"/>
+                                        </StackPanel>
+                                    </Button>
+                                    <Button Style="{StaticResource BlackBoxActionBtn}" Margin="0,0,6,0" Click="BtnSystemInstruction_Click" Padding="10,5" FontSize="11" ToolTip="Edit the system instruction sent on every request">
+                                        <StackPanel Orientation="Horizontal">
+                                            <Path Data="{StaticResource IconBolt}" Fill="{DynamicResource BrushTextSecondary}" Stretch="Uniform" Width="14" Height="14" VerticalAlignment="Center" Margin="0,0,7,0"/>
+                                            <TextBlock Text="System Prompt" VerticalAlignment="Center"/>
+                                        </StackPanel>
+                                    </Button>
+                                    <Button Style="{StaticResource BlackBoxActionBtn}" Click="BtnClearChat_Click" Padding="10,5" FontSize="11">
+                                        <StackPanel Orientation="Horizontal">
+                                            <Path Data="{StaticResource IconTrash}" Fill="{DynamicResource BrushTextSecondary}" Stretch="Uniform" Width="14" Height="14" VerticalAlignment="Center" Margin="0,0,7,0"/>
+                                            <TextBlock Text="Clear Chat" VerticalAlignment="Center"/>
+                                        </StackPanel>
+                                    </Button>
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+
+                        <!-- Main 3-Column Workspace Cockpit -->
+                        <Grid Grid.Row="1">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="220" MinWidth="180" MaxWidth="340"/>
+                                <ColumnDefinition Width="6"/>
+                                <ColumnDefinition Width="*" MinWidth="380"/>
+                                <ColumnDefinition Width="6"/>
+                                <ColumnDefinition Width="340" MinWidth="260" MaxWidth="480"/>
+                            </Grid.ColumnDefinitions>
+
+                            <!-- ================= COLUMN 0: LEFT FILE EXPLORER ================= -->
+                            <Border Grid.Column="0" Background="{DynamicResource BrushWindowBg}" BorderBrush="{DynamicResource BrushBorder}" BorderThickness="1" CornerRadius="8" ClipToBounds="True">
+                                <Grid>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="34"/> <!-- Title & quick buttons -->
+                                        <RowDefinition Height="*"/>  <!-- File list -->
+                                        <RowDefinition Height="26"/> <!-- Footer stats -->
+                                    </Grid.RowDefinitions>
+
+                                    <!-- Explorer Header -->
+                                    <Border Grid.Row="0" Background="{DynamicResource BrushCardBg}" BorderBrush="{DynamicResource BrushBorderSubtle}" BorderThickness="0,0,0,1" Padding="10,0">
+                                        <Grid VerticalAlignment="Center">
+                                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                <TextBlock Text="📁 EXPLORER" Foreground="{DynamicResource BrushTextMuted}" FontWeight="Bold" FontSize="11" FontFamily="Consolas"/>
+                                            </StackPanel>
+                                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                                                <Button Style="{StaticResource BlackBoxActionBtn}" Padding="5,2" Margin="0,0,3,0" FontSize="10" Click="BtnNewFile_Click" ToolTip="New file in the selected folder (or project root)">
+                                                    <StackPanel Orientation="Horizontal">
+                                                        <Path Data="{StaticResource IconPlus}" Fill="{DynamicResource BrushTextSecondary}" Stretch="Uniform" Width="10" Height="10" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                                                        <TextBlock Text="File" VerticalAlignment="Center"/>
+                                                    </StackPanel>
+                                                </Button>
+                                                <Button Style="{StaticResource BlackBoxActionBtn}" Padding="5,2" Margin="0,0,3,0" FontSize="10" Click="BtnNewFolder_Click" ToolTip="New folder in the selected folder (or project root)">
+                                                    <StackPanel Orientation="Horizontal">
+                                                        <Path Data="{StaticResource IconFolder}" Fill="{DynamicResource BrushTextSecondary}" Stretch="Uniform" Width="12" Height="12" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                                                        <TextBlock Text="Dir" VerticalAlignment="Center"/>
+                                                    </StackPanel>
+                                                </Button>
+                                                <Button Style="{StaticResource BlackBoxActionBtn}" Padding="5,2" FontSize="10" Click="BtnRefreshFiles_Click" ToolTip="Refresh file tree">
+                                                    <Path Data="{StaticResource IconRefresh}" Fill="{DynamicResource BrushTextSecondary}" Stretch="Uniform" Width="12" Height="12"/>
+                                                </Button>
+                                            </StackPanel>
+                                        </Grid>
+                                    </Border>
+
+                                    <!-- Explorer File Items -->
+                                    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                                        <ItemsControl x:Name="ProjectFilesList" Margin="4,4">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate>
+                                                    <Button Background="Transparent" BorderThickness="0" Padding="6,4" Margin="0,0.5" HorizontalContentAlignment="Stretch" Cursor="Hand" Click="BtnSelectFile_Click" Tag="{Binding}"
+                                                            AllowDrop="True" PreviewMouseLeftButtonDown="FileRow_PreviewMouseDown" PreviewMouseMove="FileRow_PreviewMouseMove" DragOver="FileRow_DragOver" Drop="FileRow_Drop">
+                                                        <Button.Template>
+                                                            <ControlTemplate TargetType="Button">
+                                                                <Border x:Name="fileRow" Background="{TemplateBinding Background}" CornerRadius="6" Padding="{TemplateBinding Padding}">
+                                                                    <Grid>
+                                                                        <Grid.ColumnDefinitions>
+                                                                            <ColumnDefinition Width="Auto"/>
+                                                                            <ColumnDefinition Width="*"/>
+                                                                        </Grid.ColumnDefinitions>
+                                                                        <Border x:Name="selBar" Grid.Column="0" Width="2.5" CornerRadius="1.5" Background="{DynamicResource BrushAccent}" Visibility="Collapsed" Margin="0,1,6,1"/>
+                                                                        <ContentPresenter Grid.Column="1"/>
+                                                                    </Grid>
+                                                                </Border>
+                                                                <ControlTemplate.Triggers>
+                                                                    <Trigger Property="IsMouseOver" Value="True">
+                                                                        <Setter TargetName="fileRow" Property="Background" Value="{DynamicResource BrushCardInnerBg}"/>
+                                                                    </Trigger>
+                                                                    <Trigger Property="IsPressed" Value="True">
+                                                                        <Setter TargetName="fileRow" Property="Background" Value="{DynamicResource BrushBorderSubtle}"/>
+                                                                    </Trigger>
+                                                                    <DataTrigger Binding="{Binding IsSelected}" Value="True">
+                                                                        <Setter TargetName="fileRow" Property="Background" Value="{DynamicResource BrushAccentGlow}"/>
+                                                                        <Setter TargetName="selBar" Property="Visibility" Value="Visible"/>
+                                                                    </DataTrigger>
+                                                                </ControlTemplate.Triggers>
+                                                            </ControlTemplate>
+                                                        </Button.Template>
+                                                        <Grid Margin="{Binding IndentThickness}">
+                                                            <Grid.ColumnDefinitions>
+                                                                <ColumnDefinition Width="14"/>
+                                                                <ColumnDefinition Width="Auto"/>
+                                                                <ColumnDefinition Width="*"/>
+                                                                <ColumnDefinition Width="Auto"/>
+                                                            </Grid.ColumnDefinitions>
+                                                            <TextBlock Grid.Column="0" Text="{Binding Chevron}" Foreground="{DynamicResource BrushTextMuted}" FontSize="9" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                                                            <TextBlock Grid.Column="1" Text="{Binding Icon}" Foreground="{Binding IconColor}" FontSize="12.5" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                                            <TextBlock Grid.Column="2" Text="{Binding Name}" Foreground="{DynamicResource BrushTextSecondary}" FontSize="11.5" FontFamily="Consolas, Segoe UI" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
+                                                            <StackPanel Grid.Column="3" Orientation="Horizontal" VerticalAlignment="Center">
+                                                                <TextBlock Text="{Binding SizeFormatted}" Foreground="{DynamicResource BrushTextDim}" FontSize="10" FontFamily="Consolas" VerticalAlignment="Center" Margin="4,0,2,0"/>
+                                                                <Button Content="⋮" ToolTip="Actions" Style="{StaticResource FileRowIconBtn}" FontSize="15" FontWeight="Bold" Click="BtnFileMenu_Click" Tag="{Binding}">
+                                                                    <Button.ContextMenu>
+                                                                        <ContextMenu>
+                                                                            <MenuItem Header="📄  New File here" Click="BtnNewFileHere_Click" Tag="{Binding}"/>
+                                                                            <MenuItem Header="📁  New Folder here" Click="BtnNewFolderHere_Click" Tag="{Binding}"/>
+                                                                            <Separator/>
+                                                                            <MenuItem Header="✎  Rename" Click="BtnRenameFile_Click" Tag="{Binding}"/>
+                                                                            <MenuItem Header="↪  Move to…" Click="BtnMoveFile_Click" Tag="{Binding}"/>
+                                                                            <MenuItem Header="🗑  Delete" Click="BtnDeleteFile_Click" Tag="{Binding}"/>
+                                                                        </ContextMenu>
+                                                                    </Button.ContextMenu>
+                                                                </Button>
+                                                            </StackPanel>
+                                                        </Grid>
+                                                        <Button.ContextMenu>
+                                                            <ContextMenu>
+                                                                <MenuItem Header="📄  New File here" Click="BtnNewFileHere_Click" Tag="{Binding}"/>
+                                                                <MenuItem Header="📁  New Folder here" Click="BtnNewFolderHere_Click" Tag="{Binding}"/>
+                                                                <Separator/>
+                                                                <MenuItem Header="Rename…" Click="BtnRenameFile_Click" Tag="{Binding}"/>
+                                                                <MenuItem Header="Move to…" Click="BtnMoveFile_Click" Tag="{Binding}"/>
+                                                                <MenuItem Header="Delete" Click="BtnDeleteFile_Click" Tag="{Binding}"/>
+                                                            </ContextMenu>
+                                                        </Button.ContextMenu>
+                                                    </Button>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </ScrollViewer>
+
+                                    <!-- Explorer Footer -->
+                                    <Border Grid.Row="2" Background="{DynamicResource BrushWindowBg}" BorderBrush="{DynamicResource BrushBorderSubtle}" BorderThickness="0,1,0,0" Padding="8,0">
+                                        <TextBlock x:Name="TxtExplorerStats" Text="0 items" Foreground="{DynamicResource BrushTextDim}" FontSize="10" FontFamily="Consolas" VerticalAlignment="Center"/>
+                                    </Border>
+                                </Grid>
+                            </Border>
+
+                            <!-- Splitter 1 -->
+                            <GridSplitter Grid.Column="1" Width="6" HorizontalAlignment="Center" Background="{DynamicResource BrushCardBg}" Cursor="SizeWE"/>
+
+                            <!-- ================= COLUMN 2: CENTER WORKSPACE (EDITOR + CHAT) ================= -->
+                            <Grid Grid.Column="2">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="*" MinHeight="160"/>
+                                    <RowDefinition Height="6"/>
+                                    <RowDefinition Height="290" MinHeight="180"/>
+                                </Grid.RowDefinitions>
+
+                                <!-- Row 0: Code Editor / File Viewer -->
+                                <Border Grid.Row="0" Background="{DynamicResource BrushWindowBg}" BorderBrush="{DynamicResource BrushBorder}" BorderThickness="1" CornerRadius="8" ClipToBounds="True">
+                                    <Grid>
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="34"/>
+                                            <RowDefinition Height="*"/>
+                                        </Grid.RowDefinitions>
+
+                                        <!-- Editor Tab Bar -->
+                                        <Border Grid.Row="0" Background="{DynamicResource BrushCardBg}" BorderBrush="{DynamicResource BrushBorderSubtle}" BorderThickness="0,0,0,1" Padding="10,0">
+                                            <Grid VerticalAlignment="Center">
+                                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                    <TextBlock x:Name="TxtEditorFileName" Text="📄 main.py" Foreground="{DynamicResource BrushTextPrimary}" FontWeight="Bold" FontSize="11.5" FontFamily="Consolas" VerticalAlignment="Center"/>
+                                                    <TextBlock x:Name="TxtEditorStatus" Text="✓ Saved" Foreground="{DynamicResource BrushSuccess}" FontSize="10" FontFamily="Consolas" VerticalAlignment="Center" Margin="10,0,0,0"/>
+                                                    <TextBlock x:Name="TxtEditorEncoding" Text="UTF-8" Foreground="{DynamicResource BrushTextDim}" FontSize="10" FontFamily="Consolas" VerticalAlignment="Center" Margin="8,0,0,0"/>
+                                                </StackPanel>
+
+                                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                                                    <Button Style="{StaticResource PrimaryActionBtn}" Padding="8,3" Margin="0,0,4,0" FontSize="10.5" Click="BtnSaveFile_Click">
+                                                        <StackPanel Orientation="Horizontal">
+                                                            <Path Data="{StaticResource IconSave}" Fill="{DynamicResource BrushAccentText}" Stretch="Uniform" Width="13" Height="13" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                                            <TextBlock Text="Save" VerticalAlignment="Center"/>
+                                                        </StackPanel>
+                                                    </Button>
+                                                    <Button Style="{StaticResource BlackBoxActionBtn}" Padding="8,3" Margin="0,0,4,0" FontSize="10.5" Click="BtnViewEditorDiff_Click" ToolTip="Review changes against saved file">
+                                                        <StackPanel Orientation="Horizontal">
+                                                            <Path Data="{StaticResource IconDiff}" Fill="{DynamicResource BrushTextSecondary}" Stretch="Uniform" Width="13" Height="13" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                                            <TextBlock Text="Diff" VerticalAlignment="Center"/>
+                                                        </StackPanel>
+                                                    </Button>
+                                                    <Button Style="{StaticResource BlackBoxActionBtn}" Padding="8,3" FontSize="10.5" Click="BtnCopyEditorCode_Click" ToolTip="Copy all code to clipboard">
+                                                        <StackPanel Orientation="Horizontal">
+                                                            <Path Data="{StaticResource IconCopy}" Fill="{DynamicResource BrushTextSecondary}" Stretch="Uniform" Width="13" Height="13" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                                            <TextBlock Text="Copy" VerticalAlignment="Center"/>
+                                                        </StackPanel>
+                                                    </Button>
+                                                </StackPanel>
+                                            </Grid>
+                                        </Border>
+
+                                        <!-- Editor Box -->
+                                        <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto" Padding="0">
+                                            <TextBox x:Name="TxtWorkspaceEditor"
+                                                     Background="{DynamicResource BrushWindowBg}"
+                                                     Foreground="{DynamicResource BrushTextPrimary}"
+                                                     CaretBrush="{DynamicResource BrushAccentLight}"
+                                                     BorderThickness="0" 
+                                                     FontFamily="Consolas, Cascadia Code, Courier New" 
+                                                     FontSize="12.5" 
+                                                     AcceptsReturn="True" 
+                                                     AcceptsTab="True" 
+                                                     TextWrapping="NoWrap" 
+                                                     Padding="12,10"
+                                                     TextChanged="TxtWorkspaceEditor_TextChanged"/>
+                                        </ScrollViewer>
+                                    </Grid>
+                                </Border>
+
+                                <!-- Horizontal Splitter -->
+                                <GridSplitter Grid.Row="1" Height="6" HorizontalAlignment="Stretch" VerticalAlignment="Center" Background="{DynamicResource BrushCardBg}" Cursor="SizeNS"/>
+
+                                <!-- Row 2: Center-Down Project AI Chat -->
+                                <Border Grid.Row="2" Background="{DynamicResource BrushWindowBg}" BorderBrush="{DynamicResource BrushBorder}" BorderThickness="1" CornerRadius="8" ClipToBounds="True">
+                                    <Grid>
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="32"/> <!-- Chat Header -->
+                                            <RowDefinition Height="*"/>  <!-- Messages Stream -->
+                                            <RowDefinition Height="Auto"/> <!-- Pending Images Bar -->
+                                            <RowDefinition Height="Auto"/> <!-- Prompt Composer -->
+                                        </Grid.RowDefinitions>
+
+                                        <!-- Chat Header -->
+                                        <Border Grid.Row="0" Background="{DynamicResource BrushCardBg}" BorderBrush="{DynamicResource BrushBorderSubtle}" BorderThickness="0,0,0,1" Padding="10,0">
+                                            <Grid VerticalAlignment="Center">
+                                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                    <TextBlock Text="💬 PROJECT AI CHAT" Foreground="{DynamicResource BrushAccentLight}" FontWeight="Bold" FontSize="11" FontFamily="Consolas" VerticalAlignment="Center"/>
+                                                    <Border Background="{DynamicResource BrushAccentGlow}" BorderBrush="{DynamicResource BrushAccent}" BorderThickness="1" CornerRadius="3" Margin="8,0,0,0" Padding="6,1">
+                                                        <TextBlock x:Name="TxtChatActiveModelBadge" Text="GPT-4o // Direct Cloud API" Foreground="{DynamicResource BrushAccentLight}" FontSize="9.5" FontWeight="Bold" FontFamily="Consolas"/>
+                                                    </Border>
+                                                </StackPanel>
+
+                                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                                                    <Button Content="🧹 Clear" Style="{StaticResource BlackBoxActionBtn}" Padding="6,2" FontSize="10" Click="BtnClearChat_Click"/>
+                                                </StackPanel>
+                                            </Grid>
+                                        </Border>
+
+                                        <!-- Messages Stream -->
+                                        <ScrollViewer Grid.Row="1" x:Name="ChatScrollViewer" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Padding="10,6">
+                                            <ItemsControl x:Name="ChatMessagesList">
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate>
+                                                        <Grid HorizontalAlignment="{Binding Alignment}" Margin="0,3,0,5" MaxWidth="620">
+                                                            <Border BorderThickness="1" CornerRadius="6" Padding="10,8">
+                                                                <Border.Style>
+                                                                    <Style TargetType="Border">
+                                                                        <Setter Property="Background" Value="{DynamicResource BrushCardBg}"/>
+                                                                        <Setter Property="BorderBrush" Value="{DynamicResource BrushBorder}"/>
+                                                                        <Style.Triggers>
+                                                                            <DataTrigger Binding="{Binding IsUser}" Value="True">
+                                                                                <Setter Property="Background" Value="{DynamicResource BrushAccentGlow}"/>
+                                                                                <Setter Property="BorderBrush" Value="{DynamicResource BrushAccentMuted}"/>
+                                                                            </DataTrigger>
+                                                                            <DataTrigger Binding="{Binding IsError}" Value="True">
+                                                                                <Setter Property="Background" Value="{DynamicResource BrushDangerGlow}"/>
+                                                                                <Setter Property="BorderBrush" Value="{DynamicResource BrushDanger}"/>
+                                                                            </DataTrigger>
+                                                                        </Style.Triggers>
+                                                                    </Style>
+                                                                </Border.Style>
+                                                                <StackPanel>
+                                                                    <!-- Header row -->
+                                                                    <Grid Margin="0,0,0,4">
+                                                                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                                            <Border Width="18" Height="18" Background="{Binding AvatarBackground}" CornerRadius="9" Margin="0,0,6,0">
+                                                                                <TextBlock Text="{Binding AvatarText}" Foreground="{DynamicResource BrushTextPrimary}" FontSize="8.5" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                                            </Border>
+                                                                            <TextBlock Text="{Binding RoleBadgeText}" Foreground="{Binding RoleColor}" FontWeight="Bold" FontSize="10" FontFamily="Consolas" VerticalAlignment="Center"/>
+                                                                            <TextBlock Text="{Binding Timestamp}" Foreground="{DynamicResource BrushTextDim}" FontSize="9.5" FontFamily="Consolas" VerticalAlignment="Center" Margin="8,0,0,0"/>
+                                                                        </StackPanel>
+                                                                        <Button Content="📋" Style="{StaticResource CaptionSysButtonStyle}" Width="20" Height="20" HorizontalAlignment="Right" Click="BtnCopyChatMessage_Click" Tag="{Binding}" ToolTip="Copy message"/>
+                                                                    </Grid>
+
+                                                                    <!-- Attached Images if present -->
+                                                                    <ItemsControl ItemsSource="{Binding ImageAttachments}" Visibility="{Binding ImagesVisibility}" Margin="0,2,0,4">
+                                                                        <ItemsControl.ItemsPanel>
+                                                                            <ItemsPanelTemplate>
+                                                                                <WrapPanel Orientation="Horizontal"/>
+                                                                            </ItemsPanelTemplate>
+                                                                        </ItemsControl.ItemsPanel>
+                                                                        <ItemsControl.ItemTemplate>
+                                                                            <DataTemplate>
+                                                                                <Border Width="56" Height="56" Margin="0,0,6,4" CornerRadius="4" BorderBrush="{DynamicResource BrushAccent}" BorderThickness="1" ClipToBounds="True">
+                                                                                    <Image Source="{Binding}" Stretch="UniformToFill"/>
+                                                                                </Border>
+                                                                            </DataTemplate>
+                                                                        </ItemsControl.ItemTemplate>
+                                                                    </ItemsControl>
+
+                                                                    <!-- Message Content (Markdown-rendered) -->
+                                                                    <RichTextBox common:MarkdownProps.Text="{Binding Content}"
+                                                                             Background="Transparent"
+                                                                             Foreground="{DynamicResource BrushTextPrimary}"
+                                                                             BorderThickness="0"
+                                                                             Padding="0"
+                                                                             IsReadOnly="True"
+                                                                             IsDocumentEnabled="True"
+                                                                             HorizontalScrollBarVisibility="Disabled"
+                                                                             VerticalScrollBarVisibility="Disabled"/>
+                                                                </StackPanel>
+                                                            </Border>
+                                                        </Grid>
+                                                    </DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                            </ItemsControl>
+                                        </ScrollViewer>
+
+                                        <!-- Pending Attached Images Bar -->
+                                        <Border Grid.Row="2" x:Name="PendingImagesBar" Visibility="Collapsed" Background="{DynamicResource BrushCardBg}" BorderBrush="{DynamicResource BrushBorder}" BorderThickness="0,1,0,0" Padding="8,4">
+                                            <ItemsControl x:Name="PendingImagesList">
+                                                <ItemsControl.ItemsPanel>
+                                                    <ItemsPanelTemplate>
+                                                        <WrapPanel Orientation="Horizontal"/>
+                                                    </ItemsPanelTemplate>
+                                                </ItemsControl.ItemsPanel>
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate>
+                                                        <Border Background="{DynamicResource BrushCardInnerBg}" BorderBrush="{DynamicResource BrushAccent}" BorderThickness="1" CornerRadius="4" Padding="6,2" Margin="0,0,6,0">
+                                                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                                <TextBlock Text="🖼️ " FontSize="11"/>
+                                                                <TextBlock Text="{Binding}" Foreground="{DynamicResource BrushTextSecondary}" FontSize="10.5" FontFamily="Consolas" MaxWidth="160" TextTrimming="CharacterEllipsis"/>
+                                                                <Button Content="✕" Foreground="{DynamicResource BrushDanger}" Background="Transparent" BorderThickness="0" Margin="6,0,0,0" Padding="2,0" Cursor="Hand" Click="BtnRemovePendingImage_Click" Tag="{Binding}"/>
+                                                            </StackPanel>
+                                                        </Border>
+                                                    </DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                            </ItemsControl>
+                                        </Border>
+
+                                        <!-- Prompt Composer -->
+                                        <Border Grid.Row="3" Background="{DynamicResource BrushCardBg}" BorderBrush="{DynamicResource BrushBorderSubtle}" BorderThickness="0,1,0,0" Padding="8,6">
+                                            <StackPanel>
+                                                <!-- Thinking indicator (animated while the model generates) -->
+                                                <Border x:Name="ThinkingIndicator" Visibility="Collapsed" Margin="0,0,0,6" Padding="10,6"
+                                                        Background="{DynamicResource BrushCardInnerBg}" BorderBrush="{DynamicResource BrushAccentMuted}" BorderThickness="1" CornerRadius="6" HorizontalAlignment="Left" MaxWidth="520">
+                                                    <StackPanel>
+                                                        <!-- Header row: click to expand/collapse the reasoning step log -->
+                                                        <StackPanel x:Name="ThinkingHeader" Orientation="Horizontal" VerticalAlignment="Center" Cursor="Hand" Background="Transparent" MouseLeftButtonUp="ThinkingHeader_Click">
+                                                            <Ellipse x:Name="ThinkDot1" Width="7" Height="7" Fill="{DynamicResource BrushAccentLight}" Margin="0,0,4,0"/>
+                                                            <Ellipse x:Name="ThinkDot2" Width="7" Height="7" Fill="{DynamicResource BrushAccentLight}" Margin="0,0,4,0"/>
+                                                            <Ellipse x:Name="ThinkDot3" Width="7" Height="7" Fill="{DynamicResource BrushAccentLight}" Margin="0,0,8,0"/>
+                                                            <TextBlock x:Name="TxtThinking" Text="Model is thinking…" FontSize="11.5" FontFamily="Consolas" Foreground="{DynamicResource BrushTextSecondary}" VerticalAlignment="Center"/>
+                                                            <TextBlock x:Name="TxtStepChevron" Text=" ▸" FontSize="11.5" Foreground="{DynamicResource BrushTextSecondary}" VerticalAlignment="Center" Margin="6,0,0,0"/>
+                                                        </StackPanel>
+                                                        <!-- Collapsible reasoning step log (accumulates this turn's steps) -->
+                                                        <ItemsControl x:Name="StepLog" Visibility="Collapsed" Margin="15,6,0,2" MaxHeight="180">
+                                                            <ItemsControl.Template>
+                                                                <ControlTemplate TargetType="ItemsControl">
+                                                                    <ScrollViewer VerticalScrollBarVisibility="Auto"><ItemsPresenter/></ScrollViewer>
+                                                                </ControlTemplate>
+                                                            </ItemsControl.Template>
+                                                            <ItemsControl.ItemTemplate>
+                                                                <DataTemplate>
+                                                                    <TextBlock Text="{Binding}" FontSize="11" FontFamily="Consolas" Foreground="{DynamicResource BrushTextSecondary}" TextWrapping="Wrap" Margin="0,1,0,1"/>
+                                                                </DataTemplate>
+                                                            </ItemsControl.ItemTemplate>
+                                                        </ItemsControl>
+                                                    </StackPanel>
+                                                </Border>
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                </Grid.ColumnDefinitions>
+
+                                                <!-- Chat Prompt Textbox -->
+                                                <Border Grid.Column="0" Background="{DynamicResource BrushCardBg}" BorderBrush="{DynamicResource BrushBorder}" BorderThickness="1" CornerRadius="6">
+                                                    <TextBox x:Name="TxtChatPromptInput"
+                                                             Background="Transparent"
+                                                             Foreground="{DynamicResource BrushTextPrimary}"
+                                                             CaretBrush="{DynamicResource BrushAccentLight}"
+                                                             BorderThickness="0" 
+                                                             FontSize="12" 
+                                                             FontFamily="Consolas, Segoe UI" 
+                                                             Padding="8,6" 
+                                                             AcceptsReturn="True" 
+                                                             TextWrapping="Wrap" 
+                                                             MinHeight="36" 
+                                                             MaxHeight="72" 
+                                                             KeyDown="TxtChatPromptInput_KeyDown"/>
+                                                </Border>
+
+                                                <!-- Action Buttons -->
+                                                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Bottom" Margin="6,0,0,0">
+                                                    <Button Content="📎" ToolTip="Attach Image or Asset to Chat" Style="{StaticResource BlackBoxActionBtn}" Padding="8,6" Margin="0,0,4,0" Click="BtnAttachImage_Click"/>
+                                                    <Button Content="⚡ Send" Style="{StaticResource PrimaryActionBtn}" Padding="12,6" Click="BtnSendChatMessage_Click"/>
+                                                </StackPanel>
+                                            </Grid>
+                                            </StackPanel>
+                                        </Border>
+                                    </Grid>
+                                </Border>
+                            </Grid>
+
+                            <!-- Splitter 2 -->
+                            <GridSplitter Grid.Column="3" Width="6" HorizontalAlignment="Center" Background="{DynamicResource BrushCardBg}" Cursor="SizeWE"/>
+
+                            <!-- ================= COLUMN 4: RIGHT INSPECTOR ================= -->
+                            <Border Grid.Column="4" Background="{DynamicResource BrushWindowBg}" BorderBrush="{DynamicResource BrushBorder}" BorderThickness="1" CornerRadius="8" ClipToBounds="True">
+                                <Grid>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="38"/> <!-- Tabs Bar -->
+                                        <RowDefinition Height="*"/>  <!-- Tab Contents -->
+                                    </Grid.RowDefinitions>
+
+                                    <!-- 4-Tab Navigation Header -->
+                                    <Border Grid.Row="0" Background="{DynamicResource BrushCardBg}" BorderBrush="{DynamicResource BrushBorderSubtle}" BorderThickness="0,0,0,1" Padding="4,4">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="*"/>
+                                            </Grid.ColumnDefinitions>
+
+                                            <Button Grid.Column="0" x:Name="BtnInspectorTabInfo" Style="{StaticResource SettingsTabBtnActive}" Padding="4,4" Margin="1,0" FontSize="10.5" Click="BtnInspectorTab_Click" Tag="0">
+                                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                                    <Path Data="{StaticResource IconInfo}" Fill="{DynamicResource BrushTextSecondary}" Stretch="Uniform" Width="12" Height="12" VerticalAlignment="Center" Margin="0,0,5,0"/>
+                                                    <TextBlock Text="Info" VerticalAlignment="Center"/>
+                                                </StackPanel>
+                                            </Button>
+                                            <Button Grid.Column="1" x:Name="BtnInspectorTabDiff" Style="{StaticResource SettingsTabBtn}" Padding="4,4" Margin="1,0" FontSize="10.5" Click="BtnInspectorTab_Click" Tag="1">
+                                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                                    <Path Data="{StaticResource IconDiff}" Fill="{DynamicResource BrushTextSecondary}" Stretch="Uniform" Width="12" Height="12" VerticalAlignment="Center" Margin="0,0,5,0"/>
+                                                    <TextBlock Text="Diff" VerticalAlignment="Center"/>
+                                                </StackPanel>
+                                            </Button>
+                                            <Button Grid.Column="2" x:Name="BtnInspectorTabCmd" Style="{StaticResource SettingsTabBtn}" Padding="4,4" Margin="1,0" FontSize="10.5" Click="BtnInspectorTab_Click" Tag="2">
+                                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                                    <Path Data="{StaticResource IconTerminal}" Fill="{DynamicResource BrushTextSecondary}" Stretch="Uniform" Width="12" Height="12" VerticalAlignment="Center" Margin="0,0,5,0"/>
+                                                    <TextBlock Text="Cmd" VerticalAlignment="Center"/>
+                                                </StackPanel>
+                                            </Button>
+                                            <Button Grid.Column="3" x:Name="BtnInspectorTabArtifacts" Style="{StaticResource SettingsTabBtn}" Padding="4,4" Margin="1,0" FontSize="10.5" Click="BtnInspectorTab_Click" Tag="3">
+                                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                                    <Path Data="{StaticResource IconImage}" Fill="{DynamicResource BrushTextSecondary}" Stretch="Uniform" Width="12" Height="12" VerticalAlignment="Center" Margin="0,0,5,0"/>
+                                                    <TextBlock Text="Media" VerticalAlignment="Center"/>
+                                                </StackPanel>
+                                            </Button>
+                                        </Grid>
+                                    </Border>
+
+                                    <!-- Tab 0: Project & Model Info -->
+                                    <ScrollViewer Grid.Row="1" x:Name="TabContentInfo" Visibility="Visible" VerticalScrollBarVisibility="Auto" Padding="10">
+                                        <StackPanel>
+                                            <!-- Card: Project Metadata -->
+                                            <Border Background="{DynamicResource BrushCardBg}" BorderBrush="{DynamicResource BrushBorder}" BorderThickness="1" CornerRadius="8" Padding="14,12" Margin="0,0,0,10">
+                                                <StackPanel>
+                                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                                                        <Border Width="3" Height="12" CornerRadius="1.5" Background="{DynamicResource BrushAccent}" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                                        <TextBlock Text="Project" Foreground="{DynamicResource BrushTextPrimary}" FontWeight="SemiBold" FontSize="12" VerticalAlignment="Center"/>
+                                                    </StackPanel>
+                                                    <Grid Margin="0,3">
+                                                        <TextBlock Text="Name" Foreground="{DynamicResource BrushTextMuted}" FontSize="11"/>
+                                                        <TextBlock x:Name="TxtInfoProjectName" Text="Alpha-Project" Foreground="{DynamicResource BrushTextPrimary}" FontWeight="SemiBold" FontSize="11.5" HorizontalAlignment="Right"/>
+                                                    </Grid>
+                                                    <Grid Margin="0,3">
+                                                        <TextBlock Text="Total Files" Foreground="{DynamicResource BrushTextMuted}" FontSize="11"/>
+                                                        <TextBlock x:Name="TxtInfoFilesCount" Text="3 files" Foreground="{DynamicResource BrushTextSecondary}" FontSize="11" FontFamily="Consolas" HorizontalAlignment="Right"/>
+                                                    </Grid>
+                                                    <Grid Margin="0,3">
+                                                        <TextBlock Text="Total Size" Foreground="{DynamicResource BrushTextMuted}" FontSize="11"/>
+                                                        <TextBlock x:Name="TxtInfoProjectSize" Text="4.2 KB" Foreground="{DynamicResource BrushTextSecondary}" FontSize="11" FontFamily="Consolas" HorizontalAlignment="Right"/>
+                                                    </Grid>
+                                                    <Border Height="1" Background="{DynamicResource BrushBorderSubtle}" Margin="0,9,0,8"/>
+                                                    <TextBlock Text="Location" Foreground="{DynamicResource BrushTextDim}" FontSize="10.5" Margin="0,0,0,2"/>
+                                                    <TextBlock x:Name="TxtInfoProjectPath" Text="G:\tools\LlmodelBox\projects\Alpha" Foreground="{DynamicResource BrushTextMuted}" FontSize="10" FontFamily="Consolas" TextWrapping="Wrap"/>
+                                                </StackPanel>
+                                            </Border>
+
+                                            <!-- Card: Active Model Telemetry -->
+                                            <Border Background="{DynamicResource BrushCardBg}" BorderBrush="{DynamicResource BrushBorder}" BorderThickness="1" CornerRadius="8" Padding="14,12" Margin="0,0,0,10">
+                                                <StackPanel>
+                                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                                                        <Border Width="3" Height="12" CornerRadius="1.5" Background="{DynamicResource BrushAccent}" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                                        <TextBlock Text="Active Model" Foreground="{DynamicResource BrushTextPrimary}" FontWeight="SemiBold" FontSize="12" VerticalAlignment="Center"/>
+                                                    </StackPanel>
+                                                    <Grid Margin="0,3">
+                                                        <TextBlock Text="Model" Foreground="{DynamicResource BrushTextMuted}" FontSize="11"/>
+                                                        <TextBlock x:Name="TxtInfoModelName" Text="GPT-4o" Foreground="{DynamicResource BrushTextPrimary}" FontWeight="SemiBold" FontSize="11.5" HorizontalAlignment="Right"/>
+                                                    </Grid>
+                                                    <Grid Margin="0,3">
+                                                        <TextBlock Text="Provider" Foreground="{DynamicResource BrushTextMuted}" FontSize="11"/>
+                                                        <TextBlock x:Name="TxtInfoModelProvider" Text="OpenAI" Foreground="{DynamicResource BrushAccentLight}" FontSize="11" HorizontalAlignment="Right"/>
+                                                    </Grid>
+                                                    <Grid Margin="0,3">
+                                                        <TextBlock Text="Model ID" Foreground="{DynamicResource BrushTextMuted}" FontSize="11"/>
+                                                        <TextBlock x:Name="TxtInfoModelId" Text="gpt-4o" Foreground="{DynamicResource BrushTextSecondary}" FontSize="10.5" FontFamily="Consolas" HorizontalAlignment="Right"/>
+                                                    </Grid>
+                                                    <Grid Margin="0,3">
+                                                        <TextBlock Text="Context Window" Foreground="{DynamicResource BrushTextMuted}" FontSize="11"/>
+                                                        <TextBlock x:Name="TxtInfoModelContext" Text="128k tokens" Foreground="{DynamicResource BrushTextSecondary}" FontSize="11" FontFamily="Consolas" HorizontalAlignment="Right"/>
+                                                    </Grid>
+                                                    <Grid Margin="0,3">
+                                                        <TextBlock Text="Pricing" Foreground="{DynamicResource BrushTextMuted}" FontSize="11"/>
+                                                        <TextBlock x:Name="TxtInfoModelPricing" Text="$0.005 / 1k" Foreground="{DynamicResource BrushTextSecondary}" FontSize="11" FontFamily="Consolas" HorizontalAlignment="Right"/>
+                                                    </Grid>
+                                                    <Border Height="1" Background="{DynamicResource BrushBorderSubtle}" Margin="0,9,0,8"/>
+                                                    <Grid>
+                                                        <TextBlock Text="API Key" Foreground="{DynamicResource BrushTextMuted}" FontSize="11" VerticalAlignment="Center"/>
+                                                        <TextBlock x:Name="TxtInfoModelKeyStatus" Text="VALIDATED ✓" Foreground="{DynamicResource BrushSuccess}" FontWeight="SemiBold" FontSize="10.5" FontFamily="Consolas" HorizontalAlignment="Right"/>
+                                                    </Grid>
+                                                </StackPanel>
+                                            </Border>
+
+                                            <!-- Card: Real-time Ping Latency -->
+                                            <Border Background="{DynamicResource BrushCardBg}" BorderBrush="{DynamicResource BrushBorder}" BorderThickness="1" CornerRadius="8" Padding="14,12" Margin="0,0,0,10">
+                                                <StackPanel>
+                                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                                                        <Border Width="3" Height="12" CornerRadius="1.5" Background="{DynamicResource BrushAccent}" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                                        <TextBlock Text="Endpoint Health" Foreground="{DynamicResource BrushTextPrimary}" FontWeight="SemiBold" FontSize="12" VerticalAlignment="Center"/>
+                                                    </StackPanel>
+                                                    <TextBlock x:Name="TxtInfoPingResult" Text="Ping latency: Ready — click below to test" Foreground="{DynamicResource BrushTextMuted}" FontSize="10.5" FontFamily="Consolas" TextWrapping="Wrap" Margin="0,0,0,10"/>
+                                                    <Button Content="Ping Active Model Endpoint" Style="{StaticResource PrimaryActionBtn}" HorizontalAlignment="Stretch" Padding="8,7" FontSize="11" Click="BtnPingActiveModel_Click"/>
+                                                </StackPanel>
+                                            </Border>
+
+                                            <!-- Card: Token & Context Analysis Engine -->
+                                            <Border Background="{DynamicResource BrushCardBg}" BorderBrush="{DynamicResource BrushBorder}" BorderThickness="1" CornerRadius="8" Padding="14,12">
+                                                <StackPanel>
+                                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                                                        <Border Width="3" Height="12" CornerRadius="1.5" Background="{DynamicResource BrushAccent}" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                                        <TextBlock Text="Token &amp; Context Analysis" Foreground="{DynamicResource BrushTextPrimary}" FontWeight="SemiBold" FontSize="12" VerticalAlignment="Center"/>
+                                                    </StackPanel>
+
+                                                    <!-- Context Window Gauge Header -->
+                                                    <Grid Margin="0,0,0,4">
+                                                        <TextBlock Text="Context Window Load" Foreground="{DynamicResource BrushTextMuted}" FontSize="10.5" FontFamily="Consolas"/>
+                                                        <TextBlock x:Name="TxtInfoContextGaugeText" Text="0 / 128,000 (0%)" Foreground="{DynamicResource BrushAccentLight}" FontSize="10.5" FontWeight="SemiBold" FontFamily="Consolas" HorizontalAlignment="Right"/>
+                                                    </Grid>
+                                                    <!-- Gauge ProgressBar -->
+                                                    <Border Height="6" Background="{DynamicResource BrushCardInnerBg}" BorderBrush="{DynamicResource BrushBorderSubtle}" BorderThickness="1" CornerRadius="3" Margin="0,0,0,10">
+                                                        <ProgressBar x:Name="PbContextGauge" Minimum="0" Maximum="100" Value="0" Height="4" BorderThickness="0" Background="Transparent" Foreground="{DynamicResource BrushAccent}"/>
+                                                    </Border>
+
+                                                    <Grid Margin="0,2.5">
+                                                        <TextBlock Text="Editor Buffer" Foreground="{DynamicResource BrushTextMuted}" FontSize="11"/>
+                                                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                                                            <TextBlock x:Name="TxtInfoEditorChars" Text="0 chars" Foreground="{DynamicResource BrushTextDim}" FontSize="10" FontFamily="Consolas" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                                                            <TextBlock x:Name="TxtInfoEditorTokens" Text="0 tokens" Foreground="{DynamicResource BrushTextSecondary}" FontSize="11" FontFamily="Consolas" VerticalAlignment="Center"/>
+                                                        </StackPanel>
+                                                    </Grid>
+                                                    <Grid Margin="0,2.5">
+                                                        <TextBlock Text="Chat History" Foreground="{DynamicResource BrushTextMuted}" FontSize="11"/>
+                                                        <TextBlock x:Name="TxtInfoChatTokens" Text="0 tokens" Foreground="{DynamicResource BrushTextSecondary}" FontSize="11" FontFamily="Consolas" HorizontalAlignment="Right"/>
+                                                    </Grid>
+                                                    <Grid Margin="0,2.5">
+                                                        <TextBlock Text="Chat Turns" Foreground="{DynamicResource BrushTextMuted}" FontSize="11"/>
+                                                        <TextBlock x:Name="TxtInfoChatTurns" Text="0 messages" Foreground="{DynamicResource BrushTextSecondary}" FontSize="11" FontFamily="Consolas" HorizontalAlignment="Right"/>
+                                                    </Grid>
+                                                    <Grid Margin="0,2.5">
+                                                        <TextBlock Text="Est. Query Cost" Foreground="{DynamicResource BrushTextMuted}" FontSize="11"/>
+                                                        <TextBlock x:Name="TxtInfoEstCost" Text="$0.0000" Foreground="{DynamicResource BrushWarning}" FontSize="11" FontWeight="SemiBold" FontFamily="Consolas" HorizontalAlignment="Right"/>
+                                                    </Grid>
+                                                    <Border Height="1" Background="{DynamicResource BrushBorderSubtle}" Margin="0,6,0,6"/>
+                                                    <Grid Margin="0,1">
+                                                        <TextBlock Text="Session Recorded" Foreground="{DynamicResource BrushTextMuted}" FontSize="10.5"/>
+                                                        <TextBlock x:Name="TxtInfoSessionTokens" Text="0 tokens" Foreground="{DynamicResource BrushSuccess}" FontSize="10.5" FontWeight="SemiBold" FontFamily="Consolas" HorizontalAlignment="Right"/>
+                                                    </Grid>
+                                                    <Grid Margin="0,1">
+                                                        <TextBlock Text="Avg Throughput" Foreground="{DynamicResource BrushTextMuted}" FontSize="10.5"/>
+                                                        <TextBlock x:Name="TxtInfoThroughput" Text="—" Foreground="{DynamicResource BrushSuccess}" FontSize="10.5" FontFamily="Consolas" HorizontalAlignment="Right"/>
+                                                    </Grid>
+                                                    <Border Height="1" Background="{DynamicResource BrushBorderSubtle}" Margin="0,6,0,6"/>
+                                                    <Grid Margin="0,1">
+                                                        <TextBlock Text="Live API Stream" Foreground="{DynamicResource BrushTextMuted}" FontSize="10.5"/>
+                                                        <Border Background="{DynamicResource BrushSuccessGlow}" CornerRadius="3" Padding="4,1" HorizontalAlignment="Right">
+                                                            <TextBlock Text="LIVE API VERIFIED ✓" Foreground="{DynamicResource BrushSuccess}" FontSize="9" FontWeight="Bold" FontFamily="Consolas"/>
+                                                        </Border>
+                                                    </Grid>
+                                                    <TextBlock x:Name="TxtInfoLastLiveResponse" Text="— Awaiting first live API call" Foreground="{DynamicResource BrushTextSecondary}" FontSize="10" FontFamily="Consolas" TextWrapping="Wrap" Margin="0,2,0,0"/>
+                                                </StackPanel>
+                                            </Border>
+                                        </StackPanel>
+                                    </ScrollViewer>
+
+                                    <!-- Tab 1: Review Diff -->
+                                    <Grid Grid.Row="1" x:Name="TabContentDiff" Visibility="Collapsed">
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="36"/>
+                                            <RowDefinition Height="*"/>
+                                        </Grid.RowDefinitions>
+
+                                        <!-- Diff Summary Bar -->
+                                        <Border Grid.Row="0" Background="{DynamicResource BrushCardBg}" BorderBrush="{DynamicResource BrushBorderSubtle}" BorderThickness="0,0,0,1" Padding="8,0">
+                                            <Grid VerticalAlignment="Center">
+                                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                    <TextBlock x:Name="TxtDiffFileName" Text="diff vs disk" Foreground="{DynamicResource BrushTextPrimary}" FontWeight="Bold" FontSize="10.5" FontFamily="Consolas" VerticalAlignment="Center"/>
+                                                    <Border Background="{DynamicResource BrushSuccessGlow}" CornerRadius="3" Margin="6,0,0,0" Padding="4,1">
+                                                        <TextBlock x:Name="TxtDiffAddedCount" Text="+0" Foreground="{DynamicResource BrushSuccess}" FontSize="10" FontWeight="Bold" FontFamily="Consolas"/>
+                                                    </Border>
+                                                    <Border Background="{DynamicResource BrushDangerGlow}" CornerRadius="3" Margin="4,0,0,0" Padding="4,1">
+                                                        <TextBlock x:Name="TxtDiffRemovedCount" Text="-0" Foreground="{DynamicResource BrushDanger}" FontSize="10" FontWeight="Bold" FontFamily="Consolas"/>
+                                                    </Border>
+                                                </StackPanel>
+
+                                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                                                    <Button Content="🔄" Style="{StaticResource BlackBoxActionBtn}" Padding="6,2" Margin="0,0,3,0" FontSize="10" Click="BtnRefreshDiff_Click" ToolTip="Refresh diff"/>
+                                                    <Button Content="💾 Save" Style="{StaticResource PrimaryActionBtn}" Padding="8,2" FontSize="10" Click="BtnSaveFile_Click" ToolTip="Save changes to disk"/>
+                                                </StackPanel>
+                                            </Grid>
+                                        </Border>
+
+                                        <!-- Diff Lines Items -->
+                                        <Grid Grid.Row="1">
+                                            <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
+                                                <ItemsControl x:Name="DiffLinesList">
+                                                    <ItemsControl.ItemTemplate>
+                                                        <DataTemplate>
+                                                            <Border x:Name="rowBdr" Background="Transparent">
+                                                                <Grid>
+                                                                    <Grid.ColumnDefinitions>
+                                                                        <ColumnDefinition Width="3"/>
+                                                                        <ColumnDefinition Width="34"/>
+                                                                        <ColumnDefinition Width="34"/>
+                                                                        <ColumnDefinition Width="16"/>
+                                                                        <ColumnDefinition Width="*"/>
+                                                                    </Grid.ColumnDefinitions>
+                                                                    <Border x:Name="gutter" Grid.Column="0" Background="Transparent"/>
+                                                                    <TextBlock Grid.Column="1" Text="{Binding DisplayOldLine}" Foreground="{DynamicResource BrushTextDim}" FontSize="10" FontFamily="Consolas" TextAlignment="Right" Padding="0,1,6,1"/>
+                                                                    <TextBlock Grid.Column="2" Text="{Binding DisplayNewLine}" Foreground="{DynamicResource BrushTextDim}" FontSize="10" FontFamily="Consolas" TextAlignment="Right" Padding="0,1,6,1"/>
+                                                                    <TextBlock x:Name="pfx" Grid.Column="3" Text="{Binding Prefix}" Foreground="{DynamicResource BrushTextDim}" FontSize="10.5" FontWeight="Bold" FontFamily="Consolas" TextAlignment="Center" Padding="0,1"/>
+                                                                    <TextBlock x:Name="txt" Grid.Column="4" Text="{Binding Content}" Foreground="{DynamicResource BrushTextMuted}" FontSize="11" FontFamily="Consolas" Padding="4,1,6,1" TextWrapping="Wrap"/>
+                                                                </Grid>
+                                                            </Border>
+                                                            <DataTemplate.Triggers>
+                                                                <DataTrigger Binding="{Binding Type}" Value="Added">
+                                                                    <Setter TargetName="rowBdr" Property="Background" Value="{DynamicResource BrushSuccessGlow}"/>
+                                                                    <Setter TargetName="gutter" Property="Background" Value="{DynamicResource BrushSuccess}"/>
+                                                                    <Setter TargetName="pfx" Property="Foreground" Value="{DynamicResource BrushSuccess}"/>
+                                                                    <Setter TargetName="txt" Property="Foreground" Value="{DynamicResource BrushTextPrimary}"/>
+                                                                </DataTrigger>
+                                                                <DataTrigger Binding="{Binding Type}" Value="Removed">
+                                                                    <Setter TargetName="rowBdr" Property="Background" Value="{DynamicResource BrushDangerGlow}"/>
+                                                                    <Setter TargetName="gutter" Property="Background" Value="{DynamicResource BrushDanger}"/>
+                                                                    <Setter TargetName="pfx" Property="Foreground" Value="{DynamicResource BrushDanger}"/>
+                                                                    <Setter TargetName="txt" Property="Foreground" Value="{DynamicResource BrushTextSecondary}"/>
+                                                                </DataTrigger>
+                                                                <DataTrigger Binding="{Binding Type}" Value="Header">
+                                                                    <Setter TargetName="rowBdr" Property="Background" Value="{DynamicResource BrushCardInnerBg}"/>
+                                                                    <Setter TargetName="txt" Property="Foreground" Value="{DynamicResource BrushAccentLight}"/>
+                                                                </DataTrigger>
+                                                            </DataTemplate.Triggers>
+                                                        </DataTemplate>
+                                                    </ItemsControl.ItemTemplate>
+                                                </ItemsControl>
+                                            </ScrollViewer>
+
+                                            <!-- Empty state: no changes vs disk -->
+                                            <StackPanel x:Name="DiffEmptyState" Visibility="Collapsed" VerticalAlignment="Center" HorizontalAlignment="Center">
+                                                <TextBlock Text="✓" Foreground="{DynamicResource BrushSuccess}" FontSize="28" HorizontalAlignment="Center" Margin="0,0,0,6"/>
+                                                <TextBlock Text="No changes vs disk" Foreground="{DynamicResource BrushTextSecondary}" FontSize="12" FontWeight="Medium" HorizontalAlignment="Center"/>
+                                                <TextBlock Text="Edit the file to see a line-by-line diff here." Foreground="{DynamicResource BrushTextMuted}" FontSize="10.5" HorizontalAlignment="Center" Margin="0,3,0,0"/>
+                                            </StackPanel>
+                                        </Grid>
+                                    </Grid>
+
+                                    <!-- Tab 2: Cmd Runs -->
+                                    <Grid Grid.Row="1" x:Name="TabContentCmd" Visibility="Collapsed">
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="Auto"/> <!-- Command Presets -->
+                                            <RowDefinition Height="Auto"/> <!-- Input Prompt -->
+                                            <RowDefinition Height="*"/>    <!-- Output Stream -->
+                                        </Grid.RowDefinitions>
+
+                                        <!-- Command Presets -->
+                                        <Border Grid.Row="0" Background="{DynamicResource BrushCardBg}" BorderBrush="{DynamicResource BrushBorderSubtle}" BorderThickness="0,0,0,1" Padding="8,6">
+                                            <WrapPanel>
+                                                <Button Content="python main.py" Style="{StaticResource BlackBoxActionBtn}" Padding="6,3" Margin="0,0,4,4" FontSize="10" FontFamily="Consolas" Click="BtnCmdPreset_Click" Tag="python main.py"/>
+                                                <Button Content="dotnet build" Style="{StaticResource BlackBoxActionBtn}" Padding="6,3" Margin="0,0,4,4" FontSize="10" FontFamily="Consolas" Click="BtnCmdPreset_Click" Tag="dotnet build"/>
+                                                <Button Content="dir" Style="{StaticResource BlackBoxActionBtn}" Padding="6,3" Margin="0,0,4,4" FontSize="10" FontFamily="Consolas" Click="BtnCmdPreset_Click" Tag="dir"/>
+                                                <Button Content="git status" Style="{StaticResource BlackBoxActionBtn}" Padding="6,3" Margin="0,0,4,4" FontSize="10" FontFamily="Consolas" Click="BtnCmdPreset_Click" Tag="git status"/>
+                                            </WrapPanel>
+                                        </Border>
+
+                                        <!-- Command Input Bar -->
+                                        <Border Grid.Row="1" Background="{DynamicResource BrushCardBg}" BorderBrush="{DynamicResource BrushBorderSubtle}" BorderThickness="0,0,0,1" Padding="8,6">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock Grid.Column="0" Text="&gt;" Foreground="{DynamicResource BrushAccent}" FontWeight="Bold" FontSize="13" FontFamily="Consolas" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                                <Border Grid.Column="1" Background="{DynamicResource BrushCardInnerBg}" BorderBrush="{DynamicResource BrushBorder}" BorderThickness="1" CornerRadius="6">
+                                                    <TextBox x:Name="TxtCliCommandInput"
+                                                             Background="Transparent"
+                                                             Foreground="{DynamicResource BrushTextPrimary}"
+                                                             CaretBrush="{DynamicResource BrushAccentLight}"
+                                                             BorderThickness="0" 
+                                                             FontSize="11.5" 
+                                                             FontFamily="Consolas" 
+                                                             Padding="6,4" 
+                                                             KeyDown="TxtCliCommandInput_KeyDown"/>
+                                                </Border>
+                                                <StackPanel Grid.Column="2" Orientation="Horizontal" Margin="6,0,0,0">
+                                                    <Button Content="▶ Run" Style="{StaticResource PrimaryActionBtn}" Padding="8,4" Margin="0,0,3,0" FontSize="10.5" Click="BtnRunCliCommand_Click"/>
+                                                    <Button Content="⏹" Style="{StaticResource BlackBoxActionBtn}" Padding="6,4" FontSize="10.5" Click="BtnStopCliCommand_Click" ToolTip="Stop command"/>
+                                                </StackPanel>
+                                            </Grid>
+                                        </Border>
+
+                                        <!-- CLI Terminal Output -->
+                                        <Grid Grid.Row="2" Background="{DynamicResource BrushCardInnerBg}">
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="26"/>
+                                                <RowDefinition Height="*"/>
+                                            </Grid.RowDefinitions>
+                                            <Border Grid.Row="0" Background="{DynamicResource BrushCardBg}" BorderBrush="{DynamicResource BrushBorderSubtle}" BorderThickness="0,0,0,1" Padding="8,0">
+                                                <Grid VerticalAlignment="Center">
+                                                    <TextBlock Text="CLI TERMINAL OUTPUT" Foreground="{DynamicResource BrushTextDim}" FontSize="9.5" FontWeight="Bold" FontFamily="Consolas" VerticalAlignment="Center"/>
+                                                    <Button Content="Clear" Style="{StaticResource CaptionSysButtonStyle}" Width="36" Height="22" HorizontalAlignment="Right" FontSize="9.5" Click="BtnClearCliOutput_Click"/>
+                                                </Grid>
+                                            </Border>
+                                            <ScrollViewer Grid.Row="1" x:Name="CliOutputScrollViewer" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto" Padding="8">
+                                                <TextBox x:Name="TxtCliOutput"
+                                                         Background="Transparent"
+                                                         Foreground="{DynamicResource BrushTextSecondary}"
+                                                         CaretBrush="{DynamicResource BrushAccentLight}"
+                                                         BorderThickness="0" 
+                                                         FontFamily="Consolas, Cascadia Code, Courier New" 
+                                                         FontSize="11.5" 
+                                                         IsReadOnly="True" 
+                                                         TextWrapping="Wrap" 
+                                                         AcceptsReturn="True"/>
+                                            </ScrollViewer>
+                                        </Grid>
+                                    </Grid>
+
+                                    <!-- Tab 3: Artifacts & Uploads -->
+                                    <Grid Grid.Row="1" x:Name="TabContentArtifacts" Visibility="Collapsed">
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="Auto"/> <!-- Upload Dropzone -->
+                                            <RowDefinition Height="28"/>   <!-- Section Header -->
+                                            <RowDefinition Height="*"/>    <!-- Gallery List -->
+                                        </Grid.RowDefinitions>
+
+                                        <!-- Upload Dropzone / Button -->
+                                        <Border Grid.Row="0" Background="{DynamicResource BrushCardBg}" BorderBrush="{DynamicResource BrushBorder}" BorderThickness="1" CornerRadius="8" Padding="14,12" Margin="10,10,10,6"
+                                                AllowDrop="True" Drop="ArtifactDropZone_Drop" DragOver="ArtifactDropZone_DragOver">
+                                            <StackPanel HorizontalAlignment="Center">
+                                                <TextBlock Text="Drop images or files here" Foreground="{DynamicResource BrushTextSecondary}" FontWeight="SemiBold" FontSize="11.5" HorizontalAlignment="Center"/>
+                                                <TextBlock Text="Images · Code · JSON · Logs · Docs" Foreground="{DynamicResource BrushTextDim}" FontSize="9.5" HorizontalAlignment="Center" Margin="0,3,0,10"/>
+                                                <Button Content="Browse Files…" Style="{StaticResource PrimaryActionBtn}" HorizontalAlignment="Center" Padding="14,6" FontSize="10.5" Click="BtnUploadArtifact_Click"/>
+                                            </StackPanel>
+                                        </Border>
+
+                                        <!-- Section Header -->
+                                        <Border Grid.Row="1" Background="{DynamicResource BrushCardBg}" BorderBrush="{DynamicResource BrushBorderSubtle}" BorderThickness="0,1,0,1" Padding="10,0">
+                                            <Grid VerticalAlignment="Center">
+                                                <TextBlock x:Name="TxtArtifactsCount" Text="PROJECT ARTIFACTS (0)" Foreground="{DynamicResource BrushTextMuted}" FontWeight="Bold" FontSize="10" FontFamily="Consolas" VerticalAlignment="Center"/>
+                                                <Button Content="🔄" Style="{StaticResource CaptionSysButtonStyle}" Width="24" Height="22" HorizontalAlignment="Right" Click="BtnRefreshArtifacts_Click" ToolTip="Refresh artifacts"/>
+                                            </Grid>
+                                        </Border>
+
+                                        <!-- Artifacts & Media Items -->
+                                        <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto" Padding="10,6">
+                                            <ItemsControl x:Name="ArtifactsList">
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate>
+                                                        <Border Background="{DynamicResource BrushCardBg}" BorderBrush="{DynamicResource BrushBorder}" BorderThickness="1" CornerRadius="7" Padding="9" Margin="0,0,0,7">
+                                                            <Grid>
+                                                                <Grid.ColumnDefinitions>
+                                                                    <ColumnDefinition Width="42"/>
+                                                                    <ColumnDefinition Width="*"/>
+                                                                    <ColumnDefinition Width="Auto"/>
+                                                                </Grid.ColumnDefinitions>
+
+                                                                <!-- Thumbnail / Icon -->
+                                                                <Border Grid.Column="0" Width="40" Height="40" Background="{DynamicResource BrushCardBg}" BorderBrush="{DynamicResource BrushBorder}" BorderThickness="1" CornerRadius="6" ClipToBounds="True">
+                                                                    <Grid>
+                                                                        <Image Source="{Binding ThumbnailUri}" Stretch="UniformToFill"/>
+                                                                        <TextBlock Text="{Binding Icon}" FontSize="18" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                                    </Grid>
+                                                                </Border>
+
+                                                                <!-- File Info -->
+                                                                <StackPanel Grid.Column="1" Margin="8,0,4,0" VerticalAlignment="Center">
+                                                                    <TextBlock Text="{Binding Name}" Foreground="{DynamicResource BrushTextPrimary}" FontWeight="SemiBold" FontSize="11" FontFamily="Consolas, Segoe UI" TextTrimming="CharacterEllipsis"/>
+                                                                    <TextBlock Text="{Binding SizeFormatted}" Foreground="{DynamicResource BrushTextDim}" FontSize="9.5" FontFamily="Consolas"/>
+                                                                    <TextBlock Text="{Binding RelativePath}" Foreground="{DynamicResource BrushTextDim}" FontSize="9" FontFamily="Consolas" TextTrimming="CharacterEllipsis"/>
+                                                                </StackPanel>
+
+                                                                <!-- Action Buttons -->
+                                                                <StackPanel Grid.Column="2" VerticalAlignment="Center">
+                                                                    <Button Content="📎 Attach" Style="{StaticResource PrimaryActionBtn}" Padding="6,2" Margin="0,0,0,3" FontSize="9.5" Click="BtnAttachArtifactToChat_Click" Tag="{Binding}" ToolTip="Attach to AI Chat"/>
+                                                                    <Button Content="👁 Open" Style="{StaticResource BlackBoxActionBtn}" Padding="6,2" FontSize="9.5" Click="BtnOpenArtifact_Click" Tag="{Binding}" ToolTip="Open file in editor or viewer"/>
+                                                                </StackPanel>
+                                                            </Grid>
+                                                        </Border>
+                                                    </DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                            </ItemsControl>
+                                        </ScrollViewer>
+                                    </Grid>
+                                </Grid>
+                            </Border>
+                        </Grid>
+    </Grid>
+</UserControl>

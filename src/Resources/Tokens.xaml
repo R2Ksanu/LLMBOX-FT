@@ -1,0 +1,23 @@
+<!--
+  Tokens.xaml — Non-color design tokens for LlmodelBox.
+  Color is owned exclusively by ThemeManager (runtime Brush* keys). This file
+  holds only geometry/spacing tokens consumed via StaticResource.
+-->
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:sys="clr-namespace:System;assembly=mscorlib">
+
+    <!-- ===== Corner radius tokens ===== -->
+    <CornerRadius x:Key="Radius.Sm">6</CornerRadius>
+    <CornerRadius x:Key="Radius.Md">10</CornerRadius>
+    <CornerRadius x:Key="Radius.Lg">14</CornerRadius>
+    <CornerRadius x:Key="Radius.Pill">999</CornerRadius>
+
+    <!-- ===== Spacing tokens ===== -->
+    <sys:Double x:Key="Space.Xs">4</sys:Double>
+    <sys:Double x:Key="Space.Sm">8</sys:Double>
+    <sys:Double x:Key="Space.Md">12</sys:Double>
+    <sys:Double x:Key="Space.Lg">16</sys:Double>
+    <sys:Double x:Key="Space.Xl">24</sys:Double>
+
+</ResourceDictionary>

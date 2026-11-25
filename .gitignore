@@ -1,0 +1,44 @@
+# .NET / WPF build, debug, and publish artifacts
+**/bin/
+**/obj/
+*.exe
+*.dll
+*.pdb
+*.deps.json
+*.runtimeconfig.json
+*.nupkg
+*.snupkg
+app/
+dist/
+
+# IDE and editor files
+.vs/
+.vscode/
+.idea/
+*.user
+*.suo
+*.sln.docstates
+
+# LlmodelBox runtime data, user state, and secrets (auto-created at runtime)
+settings.json
+token_usage.json
+projects.json
+chat/
+cache/
+projects/
+backups/
+
+# Logs and temporary files
+crash.log
+*.log
+*.tmp
+
+# Python tooling caches
+__pycache__/
+*.py[cod]
+.venv/
+
+# OS metadata
+.DS_Store
+Thumbs.db
+desktop.ini
