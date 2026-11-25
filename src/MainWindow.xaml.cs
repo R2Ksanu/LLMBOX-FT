@@ -26,6 +26,7 @@ namespace LlmodelBox
     public partial class MainWindow : Window
     {
         private static readonly HttpClient _httpClient = new HttpClient { Timeout = TimeSpan.FromSeconds(60) };
+        private readonly LlmodelBox.Presentation.AppServiceHost _services;
         private readonly ILogoService _logoService;
         private readonly ISettingsService _settingsService;
         private readonly IProjectService _projectService;
@@ -64,7 +65,7 @@ namespace LlmodelBox
         private readonly Dictionary<string, IdeWindow> _ideWindows = new(StringComparer.OrdinalIgnoreCase);
         // Shared tool registry: project-scoped file tools are (re)registered here by each open
         // WorkspaceControl as its project loads, so the runtime's agent loop can execute them.
-        private readonly LlmodelBox.Runtime.Tools.ToolRegistry _toolRegistry = new();
+        private readonly LlmodelBox.Runtime.Tools.ToolRegistry _toolRegistry;
         private readonly DiscordRichPresenceService _discord = new();
         private string _discordActivity = "idle";
 
@@ -84,27 +85,15 @@ namespace LlmodelBox
         public MainWindow()
         {
             InitializeComponent();
-            _logoService = new LogoService(_httpClient);
-            _settingsService = new SettingsService();
-            _projectService = new ProjectService();
-            _modelService = new ModelLibraryService();
-            _cloudApiService = new CloudApiService(_httpClient);
-            // Build the tool stack: a UI approver gates Sensitive/Dangerous tools behind a modal
-            // Yes/No prompt (marshalled to the UI thread); Safe tools auto-run; no approver would fail
-            // closed. The agent loop executes approved calls and feeds results back to the model.
-            var permissions = new LlmodelBox.Runtime.Tools.ToolPermissionEngine(ApproveToolCall);
-            var toolExecutor = new LlmodelBox.Runtime.Tools.ToolExecutor(_toolRegistry, permissions);
-            var agentLoop = new LlmodelBox.Runtime.Tools.AgentLoop(toolExecutor);
-            _aiRuntime = new LlmodelBox.Runtime.AiRuntime(
-                new LlmodelBox.Providers.ModelRouter(new LlmodelBox.Providers.IModelProvider[] { new LlmodelBox.Providers.CloudApiProvider(_cloudApiService) }),
-                new LlmodelBox.Runtime.Context.ContextEngine(),
-                new LlmodelBox.Runtime.Memory.MemoryEngine(),
-                _toolRegistry,
-                agentLoop,
-                new LlmodelBox.Runtime.Knowledge.KnowledgeEngine(),
-                new LlmodelBox.Runtime.Intent.IntentEngine(),
-                new LlmodelBox.Runtime.TaskManager());
-            _tokenUsageService = new TokenUsageService();
+            _services = new LlmodelBox.Presentation.AppServiceHost(_httpClient, ApproveToolCall);
+            _logoService = _services.Logos;
+            _settingsService = _services.Settings;
+            _projectService = _services.Projects;
+            _modelService = _services.ModelLibrary;
+            _cloudApiService = _services.CloudApi;
+            _tokenUsageService = _services.TokenUsage;
+            _toolRegistry = _services.ToolRegistry;
+            _aiRuntime = _services.Runtime;
             // Persist token usage from every successful call; refresh dashboard and inspector telemetry.
             _cloudApiService.UsageRecorded += record => _tokenUsageService.Record(record);
             _tokenUsageService.UsageRecorded += OnUsageRecorded;
