@@ -199,23 +199,95 @@ namespace LlmodelBox.Providers
         public async IAsyncEnumerable<AiEvent> StreamAsync(AiRequest request, [EnumeratorCancellation] CancellationToken ct)
         {
             yield return AiEvent.Start();
-            AiResponse resp;
-            bool cancelled = false;
-            try { resp = await GenerateAsync(request, ct).ConfigureAwait(false); }
-            catch (OperationCanceledException) { cancelled = true; resp = AiResponse.Error("cancelled"); }
-            if (cancelled) { yield return AiEvent.Fail("cancelled"); yield break; }
 
-            if (resp.IsError) { yield return AiEvent.Fail(resp.ErrorMessage ?? resp.Text); yield return AiEvent.Done(resp); yield break; }
-
-            if (!string.IsNullOrEmpty(resp.Reasoning)) yield return AiEvent.Reason(resp.Reasoning!);
-
-            const int chunk = 24;
-            for (int i = 0; i < resp.Text.Length; i += chunk)
+            if (request.Tools.Count > 0)
             {
-                ct.ThrowIfCancellationRequested();
-                yield return AiEvent.Delta(resp.Text.Substring(i, Math.Min(chunk, resp.Text.Length - i)));
+                AiResponse resp;
+                bool cancelled = false;
+                try { resp = await GenerateAsync(request, ct).ConfigureAwait(false); }
+                catch (OperationCanceledException) { cancelled = true; resp = AiResponse.Error("cancelled"); }
+                if (cancelled) { yield return AiEvent.Fail("cancelled"); yield break; }
+                if (resp.IsError) { yield return AiEvent.Fail(resp.ErrorMessage ?? resp.Text); yield return AiEvent.Done(resp); yield break; }
+                if (!string.IsNullOrEmpty(resp.Reasoning)) yield return AiEvent.Reason(resp.Reasoning!);
+                const int chunk = 28;
+                for (int i = 0; i < resp.Text.Length; i += chunk)
+                {
+                    ct.ThrowIfCancellationRequested();
+                    yield return AiEvent.Delta(resp.Text.Substring(i, Math.Min(chunk, resp.Text.Length - i)));
+                }
+                yield return AiEvent.Done(resp);
+                yield break;
             }
-            yield return AiEvent.Done(resp);
+
+            string prompt = BuildPrompt(request);
+            string? system = ResolveSystem(request);
+            var channel = System.Threading.Channels.Channel.CreateUnbounded<AiEvent>();
+            var sw = Stopwatch.StartNew();
+            DateTime start = DateTime.UtcNow;
+
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    using var timeoutCts = new CancellationTokenSource(CallTimeout);
+                    using var linked = CancellationTokenSource.CreateLinkedTokenSource(ct, timeoutCts.Token);
+                    var raw = await _cloud.StreamCloudApiAsync(
+                        request.Model,
+                        prompt,
+                        request.Settings,
+                        system,
+                        delta => channel.Writer.TryWrite(AiEvent.Delta(delta)),
+                        reasoningDelta => channel.Writer.TryWrite(AiEvent.Reason(reasoningDelta)),
+                        linked.Token).ConfigureAwait(false);
+
+                    sw.Stop();
+                    string clean = ReasoningFilter.Split(raw ?? string.Empty, out string parsedReason);
+                    bool isErr = clean.StartsWith("[ERROR", StringComparison.OrdinalIgnoreCase);
+
+                    if (isErr)
+                    {
+                        channel.Writer.TryWrite(AiEvent.Fail(clean));
+                        channel.Writer.TryWrite(AiEvent.Done(Finalize(AiResponse.Error(clean), request, sw.ElapsedMilliseconds)));
+                    }
+                    else
+                    {
+                        var resp = new AiResponse
+                        {
+                            Text = clean,
+                            Reasoning = string.IsNullOrWhiteSpace(parsedReason) ? null : parsedReason,
+                            IsError = false,
+                            LatencyMs = sw.ElapsedMilliseconds,
+                            ModelId = request.Model?.Id ?? "",
+                            ModelName = request.Model?.Name ?? "",
+                            Provider = request.Model?.Provider ?? Name,
+                            FinishReason = "stop"
+                        };
+                        var live = _cloud.LastLiveUsage;
+                        if (live != null && live.TimestampUtc >= start) resp.Usage = live;
+                        channel.Writer.TryWrite(AiEvent.Done(resp));
+                    }
+                }
+                catch (OperationCanceledException) when (ct.IsCancellationRequested)
+                {
+                    channel.Writer.TryWrite(AiEvent.Fail("cancelled"));
+                }
+                catch (Exception ex)
+                {
+                    sw.Stop();
+                    string err = $"[ERROR: {ex.GetType().Name}] {ex.Message}";
+                    channel.Writer.TryWrite(AiEvent.Fail(err));
+                    channel.Writer.TryWrite(AiEvent.Done(Finalize(AiResponse.Error(err), request, sw.ElapsedMilliseconds)));
+                }
+                finally
+                {
+                    channel.Writer.TryComplete();
+                }
+            }, CancellationToken.None);
+
+            await foreach (var ev in channel.Reader.ReadAllAsync(ct).ConfigureAwait(false))
+            {
+                yield return ev;
+            }
         }
 
         // Structured function-calling generation. Mirrors GenerateAsync's timeout/retry envelope but

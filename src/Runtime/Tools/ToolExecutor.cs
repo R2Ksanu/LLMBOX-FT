@@ -47,6 +47,7 @@ namespace LlmodelBox.Runtime.Tools
             }
 
             AgentActivityBus.Emit(AgentNode.Reasoning, $"Invoking tool '{call.Name}' ({tool.Risk})", "active");
+            ToolExecutionTracker.Current?.EmitToolStart(call.Name, ToolCallFormatter.Summary(call.Name, call.ArgumentsJson));
             try
             {
                 var result = await tool.ExecuteAsync(call, cancellationToken).ConfigureAwait(false);

@@ -40,10 +40,22 @@ namespace LlmodelBox.Runtime.Tools.Builtin
                 return Task.FromResult(ToolArgs.Error(call, $"Content exceeds {MaxContentBytes} bytes."));
 
             string full = WorkspacePaths.ResolveInside(_root, rel);
+            string beforeContent = string.Empty;
+            if (File.Exists(full))
+            {
+                try
+                {
+                    if (new FileInfo(full).Length <= MaxContentBytes)
+                        beforeContent = File.ReadAllText(full);
+                }
+                catch { }
+            }
             string? dir = Path.GetDirectoryName(full);
             if (!string.IsNullOrEmpty(dir)) Directory.CreateDirectory(dir);
             cancellationToken.ThrowIfCancellationRequested();
             LlmodelBox.Common.AtomicFile.WriteAllText(full, content);
+
+            ToolExecutionTracker.Current?.RecordFileEdit(rel ?? Path.GetFileName(full), beforeContent, content);
 
             return Task.FromResult(ToolArgs.Ok(call, $"Wrote {content.Length} chars to {rel}."));
         }

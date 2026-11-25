@@ -16,11 +16,13 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Media.Imaging;
+using System.Windows.Threading;
 using Microsoft.Win32;
 using LlmodelBox.Common;
 using LlmodelBox.Models;
 using LlmodelBox.Models.Ai;
 using LlmodelBox.Runtime;
+using LlmodelBox.Runtime.Content;
 using LlmodelBox.Runtime.Context;
 using LlmodelBox.Runtime.Memory;
 using LlmodelBox.Services;
@@ -48,6 +50,7 @@ namespace LlmodelBox.Controls
         private ProjectFileItem? _selectedFileRow;
         private ProjectFileItem? _selectedFolder;
         private List<ChatMessageItem> _chatMessages = new();
+        private readonly ObservableCollection<ChatMessageItem> _displayedChatMessages = new();
         private readonly IChatHistoryStore _historyStore = new JsonChatHistoryStore();
         private readonly IMemoryStore _memoryStore = new JsonMemoryStore();
         private List<string> _pendingChatImages = new();
@@ -56,6 +59,8 @@ namespace LlmodelBox.Controls
         private string? _currentOpenFilePath = null;
         private string _originalDiskContent = string.Empty;
         private CancellationTokenSource? _cliCts = null;
+        private CancellationTokenSource? _chatCts = null;
+        private bool _workspaceChatBusy = false;
         private int _activeInspectorTab = 0;
 
         private ModelItem? _activeModel => _getActiveModel();
@@ -1067,9 +1072,20 @@ namespace LlmodelBox.Controls
         private void RefreshChatListUi()
         {
             if (ChatMessagesList == null) return;
-            ChatMessagesList.ItemsSource = null;
-            ChatMessagesList.ItemsSource = _chatMessages;
-            ChatScrollViewer?.ScrollToEnd();
+            if (ChatMessagesList.ItemsSource != _displayedChatMessages)
+            {
+                ChatMessagesList.ItemsSource = _displayedChatMessages;
+            }
+            _displayedChatMessages.Clear();
+            foreach (var msg in _chatMessages)
+            {
+                _displayedChatMessages.Add(msg);
+            }
+            if (_displayedChatMessages.Count > 0)
+            {
+                var last = _displayedChatMessages[_displayedChatMessages.Count - 1];
+                _ = Dispatcher.BeginInvoke(new Action(() => ChatMessagesList.ScrollIntoView(last)), DispatcherPriority.Background);
+            }
             if (TxtInfoChatTurns != null)
             {
                 TxtInfoChatTurns.Text = $"{_chatMessages.Count} messages";
@@ -1189,10 +1205,18 @@ namespace LlmodelBox.Controls
             }
         }
 
-        private async Task DispatchChatMessageAsync()
+        private void BtnStopChatGeneration_Click(object sender, RoutedEventArgs e)
         {
-            string prompt = TxtChatPromptInput.Text.Trim();
-            if (string.IsNullOrEmpty(prompt) && _pendingChatImages.Count == 0) return;
+            try { _chatCts?.Cancel(); } catch { }
+        }
+
+        private async Task DispatchChatMessageAsync(string? overridePrompt = null, bool addUserMessage = true, List<string>? overrideImages = null)
+        {
+            if (_workspaceChatBusy) return;
+
+            string prompt = (overridePrompt ?? TxtChatPromptInput.Text ?? string.Empty).Trim();
+            var pendingImgs = overrideImages ?? _pendingChatImages;
+            if (string.IsNullOrEmpty(prompt) && pendingImgs.Count == 0) return;
 
             if (_activeModel == null)
             {
@@ -1206,27 +1230,35 @@ namespace LlmodelBox.Controls
             if (_activeModel == null) return;
             var requestModel = _activeModel;
 
-            // 1. Add User Message
-            var userMsg = new ChatMessageItem
+            List<string> messageImages;
+            if (addUserMessage)
             {
-                SenderRole = "User",
-                SenderName = _settings.ProfileName,
-                Content = prompt,
-                Timestamp = DateTime.Now.ToString("HH:mm:ss"),
-                ImageAttachments = new List<string>(_pendingChatImages)
-            };
-            _chatMessages.Add(userMsg);
-            TxtChatPromptInput.Clear();
-            _pendingChatImages.Clear();
-            PendingImagesList.ItemsSource = null;
-            PendingImagesBar.Visibility = Visibility.Collapsed;
-            RefreshChatListUi();
+                messageImages = new List<string>(_pendingChatImages);
+                var userMsg = new ChatMessageItem
+                {
+                    SenderRole = "User",
+                    SenderName = _settings.ProfileName,
+                    Content = prompt,
+                    Timestamp = DateTime.Now.ToString("HH:mm:ss"),
+                    ImageAttachments = messageImages
+                };
+                _chatMessages.Add(userMsg);
+                if (ChatMessagesList.ItemsSource != _displayedChatMessages) ChatMessagesList.ItemsSource = _displayedChatMessages;
+                _displayedChatMessages.Add(userMsg);
+                TxtChatPromptInput.Clear();
+                _pendingChatImages.Clear();
+                PendingImagesList.ItemsSource = null;
+                PendingImagesBar.Visibility = Visibility.Collapsed;
+                if (TxtInfoChatTurns != null) TxtInfoChatTurns.Text = $"{_chatMessages.Count} messages";
+                PersistChat();
+            }
+            else
+            {
+                messageImages = new List<string>(pendingImgs);
+            }
 
             AgentActivityBus.Emit(AgentNode.Prompt, $"\"{Truncate(prompt, 90)}\" ({prompt.Length} chars)");
 
-            // 2. Assemble prior conversation history (oldest-first, excluding the turn just added).
-            //    The Context Engine (runtime) budgets system instruction + history + open file + turn
-            //    against the model's capabilities; assembly logic no longer lives in the UI.
             var history = new List<AiMessage>();
             for (int h = 0; h < _chatMessages.Count - 1; h++)
             {
@@ -1245,54 +1277,151 @@ namespace LlmodelBox.Controls
                     ? _settings.SystemInstruction : null,
                 OpenFilePath = _currentOpenFilePath,
                 OpenFileText = TxtWorkspaceEditor.Text,
-                Attachments = userMsg.ImageAttachments.Select(Path.GetFileName).Where(n => !string.IsNullOrEmpty(n)).Select(n => n!).ToList(),
+                Attachments = messageImages.Select(Path.GetFileName).Where(n => !string.IsNullOrEmpty(n)).Select(n => n!).ToList(),
                 History = history,
                 ProjectKey = _activeProject?.Path
             };
 
-            // 3. Call Cloud API
+            var assistantMsg = new ChatMessageItem
+            {
+                SenderRole = "Assistant",
+                SenderName = requestModel.Name,
+                ModelName = requestModel.Name,
+                Provider = requestModel.Provider,
+                ActivityState = MessageActivityState.Connecting,
+                ActivityDetail = $"Connecting to {requestModel.Name}...",
+                IsStreaming = true,
+                Timestamp = DateTime.Now.ToString("HH:mm:ss")
+            };
+            _chatMessages.Add(assistantMsg);
+            if (ChatMessagesList.ItemsSource != _displayedChatMessages) ChatMessagesList.ItemsSource = _displayedChatMessages;
+            _displayedChatMessages.Add(assistantMsg);
+            _ = Dispatcher.BeginInvoke(new Action(() => ChatMessagesList.ScrollIntoView(assistantMsg)), DispatcherPriority.Background);
+
+            _workspaceChatBusy = true;
+            _chatCts = new CancellationTokenSource();
+            if (BtnSendChatMessage != null) BtnSendChatMessage.Visibility = Visibility.Collapsed;
+            if (BtnStopChatGeneration != null) BtnStopChatGeneration.Visibility = Visibility.Visible;
+
             AppendLog($"[AI CHAT] Sending prompt to {requestModel.Name} ({requestModel.Provider})...");
             AgentActivityBus.Emit(AgentNode.Model, $"Dispatch → {requestModel.Name} ({requestModel.Provider})", "active");
             AgentActivityBus.Emit(AgentNode.Reasoning, $"{requestModel.Name} is generating…", "active");
-            ShowThinking($"{requestModel.Name} is thinking…");
             DateTime callStartTime = DateTime.UtcNow;
             var sw = Stopwatch.StartNew();
-            string response;
-            bool runtimeError;
+
+            var streamBuffer = new StringBuilder();
+            var streamLock = new object();
+            bool hasPendingDelta = false;
+            var flushTimer = new DispatcherTimer(DispatcherPriority.Background, Dispatcher)
+            {
+                Interval = TimeSpan.FromMilliseconds(45)
+            };
+            flushTimer.Tick += (_, _) =>
+            {
+                string? snapshot = null;
+                lock (streamLock)
+                {
+                    if (hasPendingDelta)
+                    {
+                        snapshot = streamBuffer.ToString();
+                        hasPendingDelta = false;
+                    }
+                }
+                if (snapshot != null)
+                {
+                    assistantMsg.Content = snapshot;
+                    ChatMessagesList.ScrollIntoView(assistantMsg);
+                }
+                assistantMsg.ElapsedSeconds = sw.Elapsed.TotalSeconds;
+            };
+            flushTimer.Start();
+
+            AiResponse? aiResp = null;
+            bool runtimeError = false;
+            bool cancelled = false;
+            string response = string.Empty;
             int promptTokenEstimate = 0;
-            // Reflect live pipeline steps (intent → context → tool calls → response) in the thinking pill
-            // so the user can watch what the agent is actually doing, cospace-style.
-            AgentActivityBus.SignalEmitted += OnAgentStep;
+
+            void OnProgress(RuntimeProgressEvent evt)
+            {
+                if (!string.IsNullOrEmpty(evt.TokenDelta))
+                {
+                    lock (streamLock)
+                    {
+                        streamBuffer.Append(evt.TokenDelta);
+                        hasPendingDelta = true;
+                    }
+                }
+
+                Dispatcher.BeginInvoke(() =>
+                {
+                    assistantMsg.ActivityState = evt.State;
+                    if (!string.IsNullOrWhiteSpace(evt.Detail))
+                    {
+                        assistantMsg.ActivityDetail = evt.Detail;
+                        if (evt.State == MessageActivityState.ExecutingTool || evt.State == MessageActivityState.EditingFiles)
+                        {
+                            if (assistantMsg.ToolSteps.Count == 0 || !string.Equals(assistantMsg.ToolSteps[assistantMsg.ToolSteps.Count - 1], evt.Detail, StringComparison.Ordinal))
+                            {
+                                assistantMsg.ToolSteps.Add(evt.Detail);
+                                assistantMsg.ToolSteps = new List<string>(assistantMsg.ToolSteps);
+                            }
+                        }
+                    }
+                    if (!string.IsNullOrWhiteSpace(evt.FilePath))
+                        assistantMsg.ActiveFilePath = evt.FilePath;
+                    if (evt.FilesModified > 0)
+                        assistantMsg.FilesModifiedCount = evt.FilesModified;
+                    if (evt.Additions > 0)
+                        assistantMsg.AddedLinesCount = evt.Additions;
+                    if (evt.Deletions > 0)
+                        assistantMsg.RemovedLinesCount = evt.Deletions;
+                    assistantMsg.ElapsedSeconds = sw.Elapsed.TotalSeconds;
+                });
+            }
+
             try
             {
-                var aiResp = await _runtime.RunAsync(ctxRequest, CancellationToken.None);
+                aiResp = await _runtime.RunWithProgressAsync(ctxRequest, OnProgress, _chatCts.Token);
                 runtimeError = aiResp.IsError;
                 promptTokenEstimate = aiResp.PromptTokensEstimate;
                 response = aiResp.IsError ? (aiResp.ErrorMessage ?? aiResp.Text) : aiResp.Text;
             }
+            catch (OperationCanceledException)
+            {
+                cancelled = true;
+                lock (streamLock) { response = streamBuffer.ToString(); }
+            }
+            catch (Exception ex)
+            {
+                runtimeError = true;
+                response = $"[ERROR] {ex.Message}";
+            }
             finally
             {
-                AgentActivityBus.SignalEmitted -= OnAgentStep;
+                sw.Stop();
+                flushTimer.Stop();
+                _chatCts?.Dispose();
+                _chatCts = null;
+                _workspaceChatBusy = false;
+                if (BtnStopChatGeneration != null) BtnStopChatGeneration.Visibility = Visibility.Collapsed;
+                if (BtnSendChatMessage != null) BtnSendChatMessage.Visibility = Visibility.Visible;
                 HideThinking();
             }
-            sw.Stop();
 
-            // Keep the model's private reasoning out of the chat bubble; surface it in the Neural Net view instead.
             response = ReasoningFilter.Split(response, out string reasoning);
             if (!string.IsNullOrWhiteSpace(reasoning))
             {
                 AgentActivityBus.Emit(AgentNode.Reasoning, Truncate(reasoning, 160));
             }
 
-            bool isErr = runtimeError || response.StartsWith("[ERROR", StringComparison.OrdinalIgnoreCase);
-
+            bool isErr = !cancelled && (runtimeError || response.StartsWith("[ERROR", StringComparison.OrdinalIgnoreCase));
             if (isErr)
             {
                 AgentActivityBus.Emit(AgentNode.Response, Truncate(response, 120), "error");
             }
 
-            // 4. Token Accounting (Authentic live provider usage, or BPE subword fallback only if provider omitted usage)
-            if (!isErr)
+            if (!isErr && !cancelled)
             {
                 if (_cloudApiService.LastLiveUsage != null && _cloudApiService.LastLiveUsage.TimestampUtc >= callStartTime)
                 {
@@ -1323,21 +1452,118 @@ namespace LlmodelBox.Controls
                 AgentActivityBus.Emit(AgentNode.Response, $"{requestModel.Name} replied ({response.Length:N0} chars, {sw.ElapsedMilliseconds:N0}ms)");
             }
 
-            // 5. Add Assistant Response
-            var assistantMsg = new ChatMessageItem
+            assistantMsg.ElapsedSeconds = sw.Elapsed.TotalSeconds;
+            assistantMsg.IsStreaming = false;
+            assistantMsg.IsError = isErr;
+            assistantMsg.Content = response;
+
+            if (cancelled)
             {
-                SenderRole = "Assistant",
-                SenderName = requestModel.Name,
-                ModelName = requestModel.Name,
-                Provider = requestModel.Provider,
-                Content = response,
-                IsError = isErr,
-                Timestamp = DateTime.Now.ToString("HH:mm:ss")
-            };
-            _chatMessages.Add(assistantMsg);
-            RefreshChatListUi();
+                assistantMsg.ActivityState = MessageActivityState.Cancelled;
+                assistantMsg.ActivityDetail = "Generation cancelled by user.";
+                assistantMsg.Blocks = StructuredContentParser.Parse(response, aiResp?.StructuredBlocks);
+            }
+            else if (isErr)
+            {
+                assistantMsg.ActivityState = MessageActivityState.Failed;
+                assistantMsg.ActivityDetail = "Request failed.";
+                assistantMsg.Blocks = new List<ChatContentBlock>
+                {
+                    new ErrorBlock
+                    {
+                        Title = $"{requestModel.Name} Error",
+                        Message = response,
+                        Operation = "Workspace Chat",
+                        CanRetry = true
+                    }
+                };
+            }
+            else
+            {
+                assistantMsg.ActivityState = MessageActivityState.Completed;
+                assistantMsg.ActivityDetail = string.Empty;
+                assistantMsg.Blocks = StructuredContentParser.Parse(response, aiResp?.StructuredBlocks);
+            }
+            assistantMsg.NotifyBlocksUpdated();
+
+            if (assistantMsg.FilesModifiedCount > 0)
+            {
+                RefreshProjectFilesUi();
+            }
+
+            if (TxtInfoChatTurns != null) TxtInfoChatTurns.Text = $"{_chatMessages.Count} messages";
             PersistChat();
+            ChatMessagesList.ScrollIntoView(assistantMsg);
             AppendLog($"[AI CHAT] Received response from {requestModel.Name} ({sw.ElapsedMilliseconds}ms)");
+        }
+
+        private void WorkspaceRichMessage_TaskChanged(object? sender, EventArgs e)
+        {
+            PersistChat();
+        }
+
+        private void WorkspaceRichMessage_ReviewChangesRequested(object? sender, DiffSummaryBlock summary)
+        {
+            if (summary.Files.Count > 0)
+            {
+                var first = summary.Files[0];
+                string fullPath = ResolveProjectFilePath(first.FilePath);
+                if (File.Exists(fullPath))
+                {
+                    LoadFileIntoEditor(fullPath);
+                }
+                _diffLines = _workspaceService.GenerateDiff(first.BeforeContent, first.AfterContent);
+                DiffLinesList.ItemsSource = null;
+                DiffLinesList.ItemsSource = _diffLines;
+                int added = _diffLines.Count(d => d.Type == "Added");
+                int removed = _diffLines.Count(d => d.Type == "Removed");
+                TxtDiffFileName.Text = Path.GetFileName(first.FilePath);
+                TxtDiffAddedCount.Text = $"+{added}";
+                TxtDiffRemovedCount.Text = $"-{removed}";
+                DiffEmptyState.Visibility = (added > 0 || removed > 0) ? Visibility.Collapsed : Visibility.Visible;
+            }
+            BtnInspectorTab_Click(BtnInspectorTabDiff, new RoutedEventArgs());
+        }
+
+        private void WorkspaceRichMessage_OpenFileRequested(object? sender, string filePath)
+        {
+            string full = ResolveProjectFilePath(filePath);
+            if (File.Exists(full))
+            {
+                RefreshProjectFilesUi();
+                LoadFileIntoEditor(full);
+            }
+            else
+            {
+                try { if (File.Exists(filePath)) Process.Start(new ProcessStartInfo(filePath) { UseShellExecute = true }); }
+                catch { }
+            }
+        }
+
+        private async void WorkspaceRichMessage_RetryRequested(object? sender, ChatMessageItem failedMsg)
+        {
+            if (_workspaceChatBusy) return;
+            int idx = _chatMessages.IndexOf(failedMsg);
+            if (idx <= 0) return;
+
+            ChatMessageItem? prevUser = null;
+            for (int i = idx - 1; i >= 0; i--)
+            {
+                if (_chatMessages[i].IsUser) { prevUser = _chatMessages[i]; break; }
+            }
+            if (prevUser == null || string.IsNullOrWhiteSpace(prevUser.Content)) return;
+
+            _chatMessages.RemoveAt(idx);
+            _displayedChatMessages.Remove(failedMsg);
+            await DispatchChatMessageAsync(prevUser.Content, addUserMessage: false, prevUser.ImageAttachments);
+        }
+
+        private string ResolveProjectFilePath(string path)
+        {
+            if (string.IsNullOrWhiteSpace(path)) return string.Empty;
+            if (Path.IsPathRooted(path)) return path;
+            if (_activeProject != null) return Path.Combine(_activeProject.Path, path);
+            return path;
         }
 
         private void BtnAttachImage_Click(object sender, RoutedEventArgs e)

@@ -209,6 +209,197 @@ namespace LlmodelBox.Runtime
         public IAsyncEnumerable<AiEvent> StreamAsync(AiRequest request, CancellationToken cancellationToken)
             => _router.RouteStreamAsync(request, cancellationToken);
 
+        public async Task<AiResponse> RunWithProgressAsync(
+            ContextRequest request,
+            Action<RuntimeProgressEvent> onProgress,
+            CancellationToken cancellationToken)
+        {
+            string modelName = request.Model?.Name ?? "Model";
+            onProgress?.Invoke(new RuntimeProgressEvent
+            {
+                State = Models.MessageActivityState.Connecting,
+                Detail = $"Connecting to {modelName}..."
+            });
+
+            IntentResult? intent = null;
+            RuntimeTask? task = null;
+            bool wantsKnowledge = true, wantsTools = true;
+            if (_intent != null)
+            {
+                intent = _intent.Classify(request.UserPrompt);
+                wantsKnowledge = intent.WantsKnowledge;
+                wantsTools = intent.WantsTools;
+
+                AgentActivityBus.Emit(AgentNode.Prompt,
+                    $"Intent: {intent.Kind} ({intent.Confidence:P0}) · {intent.Tasks.Count} task(s)");
+
+                if (_taskManager != null && intent.Tasks.Count > 0)
+                {
+                    task = _taskManager.Create(intent.Tasks[0]);
+                    _taskManager.UpdateState(task.Id, AiTaskState.Planning);
+                    _taskManager.UpdateState(task.Id, AiTaskState.Executing);
+                }
+            }
+
+            if (string.IsNullOrWhiteSpace(request.MemoryPreamble))
+            {
+                var snapshot = _memory.Recall(request.ProjectKey);
+                request.MemoryPreamble = _memory.BuildPreamble(snapshot);
+            }
+
+            if (_knowledge != null && wantsKnowledge && string.IsNullOrWhiteSpace(request.KnowledgeBlock)
+                && !string.IsNullOrWhiteSpace(request.UserPrompt))
+            {
+                onProgress?.Invoke(new RuntimeProgressEvent
+                {
+                    State = Models.MessageActivityState.ExecutingTool,
+                    Detail = "Searching project files..."
+                });
+                try
+                {
+                    var index = _knowledge.Index(request.ProjectKey);
+                    if (!index.IsEmpty)
+                    {
+                        var snippets = _knowledge.Retrieve(index, request.UserPrompt, KnowledgeSnippets);
+                        var block = _knowledge.BuildKnowledgeBlock(snippets, KnowledgeBlockChars);
+                        if (!string.IsNullOrWhiteSpace(block))
+                        {
+                            request.KnowledgeBlock = block;
+                            AgentActivityBus.Emit(AgentNode.Context,
+                                $"Knowledge: {snippets.Count} excerpt(s) from {index.DocumentCount} indexed chunk(s)");
+                        }
+                    }
+                }
+                catch { }
+            }
+
+            var probe = new AiRequest { Model = request.Model, Settings = request.Settings };
+            probe.Messages.Add(AiMessage.User(request.UserPrompt ?? string.Empty));
+
+            var provider = _router.Select(probe);
+            var caps = SafeCapabilities(provider, request);
+            var built = _contextEngine.Build(request, caps);
+
+            var toolDefs = _tools.Definitions();
+            bool useTools = caps.ToolCalling && toolDefs.Count > 0 && wantsTools;
+
+            onProgress?.Invoke(new RuntimeProgressEvent
+            {
+                State = Models.MessageActivityState.Thinking,
+                Detail = $"{modelName} is thinking..."
+            });
+
+            var turnSession = new ToolTurnSession(onProgress);
+            AiResponse response;
+            try
+            {
+                using (ToolExecutionTracker.BeginScope(turnSession))
+                {
+                    if (useTools)
+                    {
+                        built.Request.Tools = new List<AiToolDefinition>(toolDefs);
+                        response = await _agentLoop.RunAsync(built.Request, RunAsync, cancellationToken).ConfigureAwait(false);
+                        if (!response.IsError && !string.IsNullOrEmpty(response.Text))
+                        {
+                            onProgress?.Invoke(new RuntimeProgressEvent
+                            {
+                                State = Models.MessageActivityState.Streaming,
+                                Detail = "Writing response...",
+                                TokenDelta = response.Text
+                            });
+                        }
+                    }
+                    else
+                    {
+                        built.Request.Stream = true;
+                        AiResponse? finalResp = null;
+                        var accumulated = new System.Text.StringBuilder();
+                        string? streamError = null;
+
+                        await foreach (var ev in _router.RouteStreamAsync(built.Request, cancellationToken).ConfigureAwait(false))
+                        {
+                            switch (ev.Type)
+                            {
+                                case AiEventType.Reasoning:
+                                    onProgress?.Invoke(new RuntimeProgressEvent
+                                    {
+                                        State = Models.MessageActivityState.Thinking,
+                                        Detail = $"{modelName} is thinking..."
+                                    });
+                                    break;
+                                case AiEventType.TokenDelta:
+                                    if (!string.IsNullOrEmpty(ev.TextDelta))
+                                    {
+                                        accumulated.Append(ev.TextDelta);
+                                        onProgress?.Invoke(new RuntimeProgressEvent
+                                        {
+                                            State = Models.MessageActivityState.Streaming,
+                                            Detail = "Generating response...",
+                                            TokenDelta = ev.TextDelta
+                                        });
+                                    }
+                                    break;
+                                case AiEventType.Error:
+                                    streamError = ev.Message;
+                                    break;
+                                case AiEventType.Completed:
+                                    finalResp = ev.Response;
+                                    break;
+                            }
+                        }
+
+                        response = finalResp ?? (streamError != null
+                            ? AiResponse.Error(streamError)
+                            : new AiResponse { Text = accumulated.ToString(), ModelId = request.Model?.Id ?? "", ModelName = modelName, Provider = request.Model?.Provider ?? "" });
+                    }
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                if (task != null && _taskManager != null) _taskManager.UpdateState(task.Id, AiTaskState.Cancelled);
+                onProgress?.Invoke(new RuntimeProgressEvent
+                {
+                    State = Models.MessageActivityState.Cancelled,
+                    Detail = "Generation stopped"
+                });
+                throw;
+            }
+
+            response.PromptTokensEstimate = built.InputTokenEstimate;
+
+            var edits = turnSession.SnapshotEdits();
+            if (edits.Count > 0)
+            {
+                int totalAdds = 0, totalDels = 0;
+                foreach (var e in edits) { totalAdds += e.Additions; totalDels += e.Deletions; }
+                response.StructuredBlocks.Add(new Models.DiffSummaryBlock
+                {
+                    Title = "Code Changes",
+                    FilesChanged = edits.Count,
+                    Additions = totalAdds,
+                    Deletions = totalDels,
+                    Files = edits
+                });
+            }
+
+            if (!response.IsError)
+            {
+                try { _memory.Observe(request.ProjectKey, request.UserPrompt ?? string.Empty, response.Text); }
+                catch { }
+            }
+
+            if (task != null && _taskManager != null)
+                _taskManager.UpdateState(task.Id, response.IsError ? AiTaskState.Failed : AiTaskState.Completed);
+
+            onProgress?.Invoke(new RuntimeProgressEvent
+            {
+                State = response.IsError ? Models.MessageActivityState.Failed : Models.MessageActivityState.Completed,
+                Detail = response.IsError ? (response.ErrorMessage ?? "Failed") : "Completed"
+            });
+
+            return response;
+        }
+
         private static string Truncate(string s, int max)
             => s.Length <= max ? s : s.Substring(0, max) + "…";
     }

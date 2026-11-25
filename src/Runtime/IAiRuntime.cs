@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
@@ -18,5 +19,11 @@ namespace LlmodelBox.Runtime
         Task<AiResponse> RunAsync(ContextRequest request, CancellationToken cancellationToken);
 
         IAsyncEnumerable<AiEvent> StreamAsync(AiRequest request, CancellationToken cancellationToken);
+
+        Task<AiResponse> RunWithProgressAsync(
+            ContextRequest request,
+            Action<RuntimeProgressEvent> onProgress,
+            CancellationToken cancellationToken)
+            => RunAsync(request, cancellationToken);
     }
 }

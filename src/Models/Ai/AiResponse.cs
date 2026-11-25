@@ -23,6 +23,8 @@ namespace LlmodelBox.Models.Ai
         // accounting when the provider omits authoritative live usage. 0 when not assembled by the engine.
         public int PromptTokensEstimate { get; set; }
 
+        public List<ChatContentBlock> StructuredBlocks { get; set; } = new();
+
         public static AiResponse Error(string message) =>
             new() { IsError = true, ErrorMessage = message, Text = message };
     }

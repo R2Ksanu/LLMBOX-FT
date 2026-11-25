@@ -1,20 +1,26 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
+using System.Windows.Threading;
 using LlmodelBox.Common;
 using LlmodelBox.Models;
 using LlmodelBox.Models.Ai;
 using LlmodelBox.Providers;
+using LlmodelBox.Runtime;
+using LlmodelBox.Runtime.Content;
 using LlmodelBox.Runtime.Context;
 using LlmodelBox.Runtime.Memory;
 using LlmodelBox.Services;
@@ -63,6 +69,7 @@ namespace LlmodelBox
     public partial class MainWindow
     {
         private readonly List<HomeChatThread> _homeThreads = new();
+        private readonly ObservableCollection<ChatMessageItem> _homeDisplayedMessages = new();
         private readonly JsonChatHistoryStore _ideChatHistoryStore = new();
         private readonly List<HomeAttachedContextItem> _attachedHomeFiles = new();
         private HomeChatThread? _activeHomeThread = null;
@@ -71,6 +78,8 @@ namespace LlmodelBox
         private bool _sidebarFilterGeneralOnly = false;
         private string _homeModelFilter = "All";
         private bool _homeChatBusy = false;
+        private CancellationTokenSource? _homeGenerationCts = null;
+        private DiffSummaryBlock? _activeDiffSummary = null;
 
         private sealed class HomeAttachedContextItem
         {
@@ -275,20 +284,29 @@ namespace LlmodelBox
 
         private void RefreshHomeChatThreadUi()
         {
-            if (HomeChatMessagesList == null || HomeChatEmptyState == null || HomeChatThreadScroller == null) return;
+            if (HomeChatMessagesList == null || HomeChatEmptyState == null) return;
 
             var msgs = _activeHomeThread?.Messages ?? new List<ChatMessageItem>();
             bool hasMessages = msgs.Count > 0;
             HomeChatEmptyState.Visibility = hasMessages ? Visibility.Collapsed : Visibility.Visible;
-            HomeChatThreadScroller.Visibility = hasMessages ? Visibility.Visible : Visibility.Collapsed;
+            HomeChatMessagesList.Visibility = hasMessages ? Visibility.Visible : Visibility.Collapsed;
 
-            HomeChatMessagesList.ItemsSource = null;
-            HomeChatMessagesList.ItemsSource = msgs.ToList();
+            if (HomeChatMessagesList.ItemsSource != _homeDisplayedMessages)
+            {
+                HomeChatMessagesList.ItemsSource = _homeDisplayedMessages;
+            }
+
+            _homeDisplayedMessages.Clear();
+            foreach (var m in msgs)
+            {
+                _homeDisplayedMessages.Add(m);
+            }
 
             if (hasMessages)
             {
-                _ = Dispatcher.BeginInvoke(new Action(() => HomeChatThreadScroller.ScrollToEnd()),
-                    System.Windows.Threading.DispatcherPriority.Background);
+                var last = _homeDisplayedMessages[_homeDisplayedMessages.Count - 1];
+                _ = Dispatcher.BeginInvoke(new Action(() => HomeChatMessagesList.ScrollIntoView(last)),
+                    DispatcherPriority.Background);
             }
         }
 
@@ -819,6 +837,18 @@ namespace LlmodelBox
             string prompt = (TxtHomePrompt.Text ?? string.Empty).Trim();
             if (string.IsNullOrEmpty(prompt)) return;
 
+            await ExecuteHomePromptAsync(prompt, addUserMessage: true);
+        }
+
+        private void BtnHomeStop_Click(object sender, RoutedEventArgs e)
+        {
+            try { _homeGenerationCts?.Cancel(); } catch { }
+        }
+
+        private async Task ExecuteHomePromptAsync(string prompt, bool addUserMessage)
+        {
+            if (_homeChatBusy) return;
+
             if (_activeModel == null)
             {
                 if (_allModels.Count > 0) SetActiveModel(_allModels[0]);
@@ -848,27 +878,31 @@ namespace LlmodelBox
                 _homeThreads.Insert(0, _activeHomeThread);
             }
 
-            TxtHomePrompt.Text = string.Empty;
-            ShowView(ViewChatHome, null);
-
-            string userInitials = string.IsNullOrWhiteSpace(_settings.ProfileName) ? "Operator" : _settings.ProfileName;
-            var userMsg = new ChatMessageItem
+            if (addUserMessage)
             {
-                SenderRole = "User",
-                SenderName = userInitials,
-                Content = prompt,
-                Timestamp = DateTime.Now.ToString("HH:mm")
-            };
-            _activeHomeThread.Messages.Add(userMsg);
-            _activeHomeThread.UpdatedAtUtc = DateTime.UtcNow;
-            SaveHomeThreads();
-            RefreshHomeConversationsUi();
-            RefreshHomeChatThreadUi();
-            RefreshProjectsUi();
+                if (TxtHomePrompt != null) TxtHomePrompt.Text = string.Empty;
+                ShowView(ViewChatHome, null);
+
+                string userInitials = string.IsNullOrWhiteSpace(_settings.ProfileName) ? "Operator" : _settings.ProfileName;
+                var userMsg = new ChatMessageItem
+                {
+                    SenderRole = "User",
+                    SenderName = userInitials,
+                    Content = prompt,
+                    Timestamp = DateTime.Now.ToString("HH:mm")
+                };
+                _activeHomeThread.Messages.Add(userMsg);
+                _activeHomeThread.UpdatedAtUtc = DateTime.UtcNow;
+                SaveHomeThreads();
+                RefreshHomeConversationsUi();
+                RefreshHomeChatThreadUi();
+                RefreshProjectsUi();
+            }
 
             var requestModel = _activeModel!;
             var history = new List<AiMessage>();
-            for (int i = 0; i < _activeHomeThread.Messages.Count - 1; i++)
+            int historyEnd = _activeHomeThread.Messages.Count - 1;
+            for (int i = 0; i < historyEnd; i++)
             {
                 var cm = _activeHomeThread.Messages[i];
                 if (string.IsNullOrWhiteSpace(cm.Content)) continue;
@@ -879,7 +913,7 @@ namespace LlmodelBox
             string effectivePrompt = prompt;
             if (_attachedHomeFiles.Count > 0)
             {
-                var sb = new System.Text.StringBuilder(prompt);
+                var sb = new StringBuilder(prompt);
                 sb.AppendLine();
                 sb.AppendLine();
                 foreach (var f in _attachedHomeFiles)
@@ -904,25 +938,119 @@ namespace LlmodelBox
                 ProjectKey = _homeChatProject?.Path
             };
 
+            var assistantMsg = new ChatMessageItem
+            {
+                SenderRole = "Assistant",
+                SenderName = requestModel.Name,
+                ModelName = requestModel.Name,
+                Provider = requestModel.Provider,
+                ActivityState = MessageActivityState.Connecting,
+                ActivityDetail = $"Connecting to {requestModel.Name}...",
+                IsStreaming = true,
+                Timestamp = DateTime.Now.ToString("HH:mm")
+            };
+            _activeHomeThread.Messages.Add(assistantMsg);
+            if (HomeChatMessagesList != null)
+            {
+                if (HomeChatMessagesList.ItemsSource != _homeDisplayedMessages)
+                    HomeChatMessagesList.ItemsSource = _homeDisplayedMessages;
+                HomeChatEmptyState.Visibility = Visibility.Collapsed;
+                HomeChatMessagesList.Visibility = Visibility.Visible;
+                _homeDisplayedMessages.Add(assistantMsg);
+                _ = Dispatcher.BeginInvoke(new Action(() => HomeChatMessagesList.ScrollIntoView(assistantMsg)), DispatcherPriority.Background);
+            }
+
             _homeChatBusy = true;
-            if (BtnHomeSend != null) BtnHomeSend.IsEnabled = false;
-            if (HomeThinkingBar != null) HomeThinkingBar.Visibility = Visibility.Visible;
-            if (TxtHomeThinking != null) TxtHomeThinking.Text = $"{requestModel.Name} is thinking...";
-            _ = Dispatcher.BeginInvoke(new Action(() => HomeChatThreadScroller?.ScrollToEnd()), System.Windows.Threading.DispatcherPriority.Background);
+            _homeGenerationCts = new CancellationTokenSource();
+            if (BtnHomeSend != null) BtnHomeSend.Visibility = Visibility.Collapsed;
+            if (BtnHomeStop != null) BtnHomeStop.Visibility = Visibility.Visible;
 
             AgentActivityBus.Emit(AgentNode.Prompt, $"[Home] \"{prompt}\"");
             DateTime callStartTime = DateTime.UtcNow;
             var sw = Stopwatch.StartNew();
-            string responseText;
-            bool runtimeError;
+
+            var streamBuffer = new StringBuilder();
+            var streamLock = new object();
+            bool hasPendingDelta = false;
+            var flushTimer = new DispatcherTimer(DispatcherPriority.Background, Dispatcher)
+            {
+                Interval = TimeSpan.FromMilliseconds(45)
+            };
+            flushTimer.Tick += (_, _) =>
+            {
+                string? snapshot = null;
+                lock (streamLock)
+                {
+                    if (hasPendingDelta)
+                    {
+                        snapshot = streamBuffer.ToString();
+                        hasPendingDelta = false;
+                    }
+                }
+                if (snapshot != null)
+                {
+                    assistantMsg.Content = snapshot;
+                    HomeChatMessagesList?.ScrollIntoView(assistantMsg);
+                }
+                assistantMsg.ElapsedSeconds = sw.Elapsed.TotalSeconds;
+            };
+            flushTimer.Start();
+
+            AiResponse? aiResp = null;
+            bool runtimeError = false;
+            bool cancelled = false;
+            string responseText = string.Empty;
             int promptTokenEstimate = 0;
+
+            void OnProgress(RuntimeProgressEvent evt)
+            {
+                if (!string.IsNullOrEmpty(evt.TokenDelta))
+                {
+                    lock (streamLock)
+                    {
+                        streamBuffer.Append(evt.TokenDelta);
+                        hasPendingDelta = true;
+                    }
+                }
+
+                Dispatcher.BeginInvoke(() =>
+                {
+                    assistantMsg.ActivityState = evt.State;
+                    if (!string.IsNullOrWhiteSpace(evt.Detail))
+                    {
+                        assistantMsg.ActivityDetail = evt.Detail;
+                        if (evt.State == MessageActivityState.ExecutingTool || evt.State == MessageActivityState.EditingFiles)
+                        {
+                            if (assistantMsg.ToolSteps.Count == 0 || !string.Equals(assistantMsg.ToolSteps[assistantMsg.ToolSteps.Count - 1], evt.Detail, StringComparison.Ordinal))
+                            {
+                                assistantMsg.ToolSteps.Add(evt.Detail);
+                                assistantMsg.ToolSteps = new List<string>(assistantMsg.ToolSteps);
+                            }
+                        }
+                    }
+                    if (!string.IsNullOrWhiteSpace(evt.FilePath))
+                        assistantMsg.ActiveFilePath = evt.FilePath;
+                    if (evt.FilesModified > 0)
+                        assistantMsg.FilesModifiedCount = evt.FilesModified;
+                    if (evt.Additions > 0)
+                        assistantMsg.AddedLinesCount = evt.Additions;
+                    if (evt.Deletions > 0)
+                        assistantMsg.RemovedLinesCount = evt.Deletions;
+                    assistantMsg.ElapsedSeconds = sw.Elapsed.TotalSeconds;
+                });
+            }
 
             try
             {
-                var aiResp = await _aiRuntime.RunAsync(ctxRequest, CancellationToken.None);
+                aiResp = await _aiRuntime.RunWithProgressAsync(ctxRequest, OnProgress, _homeGenerationCts.Token);
                 runtimeError = aiResp.IsError;
                 promptTokenEstimate = aiResp.PromptTokensEstimate;
                 responseText = aiResp.IsError ? (aiResp.ErrorMessage ?? aiResp.Text) : aiResp.Text;
+            }
+            catch (OperationCanceledException)
+            {
+                cancelled = true;
+                lock (streamLock) { responseText = streamBuffer.ToString(); }
             }
             catch (Exception ex)
             {
@@ -932,9 +1060,12 @@ namespace LlmodelBox
             finally
             {
                 sw.Stop();
+                flushTimer.Stop();
+                _homeGenerationCts?.Dispose();
+                _homeGenerationCts = null;
                 _homeChatBusy = false;
-                if (BtnHomeSend != null) BtnHomeSend.IsEnabled = true;
-                if (HomeThinkingBar != null) HomeThinkingBar.Visibility = Visibility.Collapsed;
+                if (BtnHomeStop != null) BtnHomeStop.Visibility = Visibility.Collapsed;
+                if (BtnHomeSend != null) BtnHomeSend.Visibility = Visibility.Visible;
             }
 
             responseText = ReasoningFilter.Split(responseText, out string reasoning);
@@ -943,8 +1074,8 @@ namespace LlmodelBox
                 AgentActivityBus.Emit(AgentNode.Reasoning, reasoning.Length > 160 ? reasoning.Substring(0, 160) + "..." : reasoning);
             }
 
-            bool isErr = runtimeError || responseText.StartsWith("[ERROR", StringComparison.OrdinalIgnoreCase);
-            if (!isErr && (_cloudApiService.LastLiveUsage == null || _cloudApiService.LastLiveUsage.TimestampUtc < callStartTime))
+            bool isErr = !cancelled && (runtimeError || responseText.StartsWith("[ERROR", StringComparison.OrdinalIgnoreCase));
+            if (!isErr && !cancelled && (_cloudApiService.LastLiveUsage == null || _cloudApiService.LastLiveUsage.TimestampUtc < callStartTime))
             {
                 int pTok = promptTokenEstimate > 0 ? promptTokenEstimate : TokenHelper.CountTokens(prompt);
                 int cTok = TokenHelper.CountTokens(responseText);
@@ -962,25 +1093,164 @@ namespace LlmodelBox
                 });
             }
 
-            _activeHomeThread.Messages.Add(new ChatMessageItem
-            {
-                SenderRole = "Assistant",
-                SenderName = requestModel.Name,
-                ModelName = requestModel.Name,
-                Provider = requestModel.Provider,
-                Content = responseText,
-                IsError = isErr,
-                Timestamp = DateTime.Now.ToString("HH:mm")
-            });
-            _activeHomeThread.UpdatedAtUtc = DateTime.UtcNow;
+            assistantMsg.ElapsedSeconds = sw.Elapsed.TotalSeconds;
+            assistantMsg.IsStreaming = false;
+            assistantMsg.IsError = isErr;
+            assistantMsg.Content = responseText;
 
+            if (cancelled)
+            {
+                assistantMsg.ActivityState = MessageActivityState.Cancelled;
+                assistantMsg.ActivityDetail = "Generation cancelled by user.";
+                assistantMsg.Blocks = StructuredContentParser.Parse(responseText, aiResp?.StructuredBlocks);
+            }
+            else if (isErr)
+            {
+                assistantMsg.ActivityState = MessageActivityState.Failed;
+                assistantMsg.ActivityDetail = "Request failed.";
+                assistantMsg.Blocks = new List<ChatContentBlock>
+                {
+                    new ErrorBlock
+                    {
+                        Title = $"{requestModel.Name} Error",
+                        Message = responseText,
+                        Operation = "Chat Generation",
+                        CanRetry = true
+                    }
+                };
+            }
+            else
+            {
+                assistantMsg.ActivityState = MessageActivityState.Completed;
+                assistantMsg.ActivityDetail = string.Empty;
+                assistantMsg.Blocks = StructuredContentParser.Parse(responseText, aiResp?.StructuredBlocks);
+            }
+            assistantMsg.NotifyBlocksUpdated();
+
+            _activeHomeThread.UpdatedAtUtc = DateTime.UtcNow;
             _homeThreads.RemoveAll(t => t.Id == _activeHomeThread.Id);
             _homeThreads.Insert(0, _activeHomeThread);
             SaveHomeThreads();
             RefreshHomeConversationsUi();
-            RefreshHomeChatThreadUi();
             RefreshProjectsUi();
             UpdateHomeContextRing();
+            if (HomeChatMessagesList != null)
+            {
+                _ = Dispatcher.BeginInvoke(new Action(() => HomeChatMessagesList.ScrollIntoView(assistantMsg)), DispatcherPriority.Background);
+            }
+        }
+
+        private void HomeRichMessage_TaskChanged(object? sender, EventArgs e)
+        {
+            SaveHomeThreads();
+        }
+
+        private void HomeRichMessage_ReviewChangesRequested(object? sender, DiffSummaryBlock summary)
+        {
+            _activeDiffSummary = summary;
+            if (ModalDiffReview == null || DiffReviewFilesList == null || DiffReviewContentPanel == null) return;
+
+            TxtDiffReviewTitle.Text = string.IsNullOrWhiteSpace(summary.Title) ? "Review Code Changes" : summary.Title;
+            TxtDiffReviewStats.Text = $"{summary.Files.Count} file(s)  +{summary.Additions} / -{summary.Deletions}";
+            DiffReviewFilesList.ItemsSource = null;
+            DiffReviewFilesList.ItemsSource = summary.Files;
+            if (summary.Files.Count > 0)
+            {
+                DiffReviewFilesList.SelectedIndex = 0;
+            }
+            else
+            {
+                DiffReviewContentPanel.Children.Clear();
+            }
+            ModalDiffReview.Visibility = Visibility.Visible;
+        }
+
+        private void DiffReviewFilesList_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (DiffReviewContentPanel == null) return;
+            DiffReviewContentPanel.Children.Clear();
+
+            if (DiffReviewFilesList?.SelectedItem is not ChangedFileEntry file) return;
+
+            var diffLines = new WorkspaceService().GenerateDiff(file.BeforeContent, file.AfterContent);
+            var addBg = new SolidColorBrush(Color.FromArgb(26, 34, 197, 94));
+            var delBg = new SolidColorBrush(Color.FromArgb(26, 239, 68, 68));
+            var addFg = new SolidColorBrush(Color.FromRgb(0x4a, 0xde, 0x80));
+            var delFg = new SolidColorBrush(Color.FromRgb(0xf8, 0x71, 0x71));
+
+            foreach (var dl in diffLines)
+            {
+                var row = new Border
+                {
+                    Background = dl.Type == "Added" ? addBg : dl.Type == "Removed" ? delBg : Brushes.Transparent,
+                    Padding = new Thickness(8, 2, 8, 2)
+                };
+                var rg = new Grid();
+                rg.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(36) });
+                rg.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(36) });
+                rg.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(16) });
+                rg.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+
+                var t1 = new TextBlock { Text = dl.DisplayOldLine, FontFamily = new FontFamily("Consolas"), FontSize = 11, Foreground = TryFindResource("BrushTextDim") as Brush ?? Brushes.Gray, TextAlignment = TextAlignment.Right, Margin = new Thickness(0, 0, 6, 0) };
+                var t2 = new TextBlock { Text = dl.DisplayNewLine, FontFamily = new FontFamily("Consolas"), FontSize = 11, Foreground = TryFindResource("BrushTextDim") as Brush ?? Brushes.Gray, TextAlignment = TextAlignment.Right, Margin = new Thickness(0, 0, 6, 0) };
+                var t3 = new TextBlock { Text = dl.Prefix, FontFamily = new FontFamily("Consolas"), FontSize = 11.5, FontWeight = FontWeights.Bold, Foreground = dl.Type == "Added" ? addFg : dl.Type == "Removed" ? delFg : Brushes.Gray };
+                var t4 = new TextBlock { Text = dl.Content, FontFamily = new FontFamily("Consolas"), FontSize = 11.5, Foreground = dl.Type == "Added" ? addFg : dl.Type == "Removed" ? delFg : (TryFindResource("BrushTextPrimary") as Brush ?? Brushes.White) };
+
+                Grid.SetColumn(t1, 0); Grid.SetColumn(t2, 1); Grid.SetColumn(t3, 2); Grid.SetColumn(t4, 3);
+                rg.Children.Add(t1); rg.Children.Add(t2); rg.Children.Add(t3); rg.Children.Add(t4);
+                row.Child = rg;
+                DiffReviewContentPanel.Children.Add(row);
+            }
+        }
+
+        private void BtnCloseDiffReview_Click(object sender, RoutedEventArgs e)
+        {
+            if (ModalDiffReview != null) ModalDiffReview.Visibility = Visibility.Collapsed;
+        }
+
+        private void BtnDiffOpenWorkspace_Click(object sender, RoutedEventArgs e)
+        {
+            if (ModalDiffReview != null) ModalDiffReview.Visibility = Visibility.Collapsed;
+            var targetProject = _homeChatProject ?? _activeProject;
+            if (targetProject != null) OpenProjectWorkspace(targetProject);
+        }
+
+        private void HomeRichMessage_OpenFileRequested(object? sender, string filePath)
+        {
+            if (string.IsNullOrWhiteSpace(filePath)) return;
+            if (_homeChatProject != null)
+            {
+                OpenProjectWorkspace(_homeChatProject);
+                return;
+            }
+            try
+            {
+                if (File.Exists(filePath))
+                    Process.Start(new ProcessStartInfo(filePath) { UseShellExecute = true });
+            }
+            catch { }
+        }
+
+        private async void HomeRichMessage_RetryRequested(object? sender, ChatMessageItem failedMsg)
+        {
+            if (_homeChatBusy || _activeHomeThread == null) return;
+            int idx = _activeHomeThread.Messages.IndexOf(failedMsg);
+            if (idx <= 0) return;
+
+            string? retryPrompt = null;
+            for (int i = idx - 1; i >= 0; i--)
+            {
+                if (_activeHomeThread.Messages[i].IsUser)
+                {
+                    retryPrompt = _activeHomeThread.Messages[i].Content;
+                    break;
+                }
+            }
+            if (string.IsNullOrWhiteSpace(retryPrompt)) return;
+
+            _activeHomeThread.Messages.RemoveAt(idx);
+            _homeDisplayedMessages.Remove(failedMsg);
+            await ExecuteHomePromptAsync(retryPrompt, addUserMessage: false);
         }
 
         // ===== Settings Storage Paths & Dynamic Provider Logos =====

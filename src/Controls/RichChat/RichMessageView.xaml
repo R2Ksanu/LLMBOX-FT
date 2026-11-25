@@ -1,0 +1,119 @@
+<UserControl x:Class="LlmodelBox.Controls.RichChat.RichMessageView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             SnapsToDevicePixels="True">
+    <StackPanel>
+        <!-- Real-Time Message Activity Header (Thinking / Streaming / Editing / Executing Tool / Cancelled / Failed) -->
+        <Border x:Name="ActivityHeaderBorder"
+                Visibility="Collapsed"
+                Background="#1038bdf8"
+                BorderBrush="{DynamicResource BrushBorder}"
+                BorderThickness="1"
+                CornerRadius="7"
+                Padding="10,7"
+                Margin="0,0,0,8">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <!-- Left Animated Indicator: 3-dot pulse OR spinning gear/ring -->
+                <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,8,0">
+                    <StackPanel x:Name="ThreeDotsPanel" Orientation="Horizontal" VerticalAlignment="Center" Visibility="Visible">
+                        <Ellipse x:Name="Dot1" Width="6" Height="6" Fill="{DynamicResource BrushAccent}" Margin="0,0,3,0"/>
+                        <Ellipse x:Name="Dot2" Width="6" Height="6" Fill="{DynamicResource BrushAccent}" Margin="0,0,3,0" Opacity="0.6"/>
+                        <Ellipse x:Name="Dot3" Width="6" Height="6" Fill="{DynamicResource BrushAccent}" Opacity="0.3"/>
+                    </StackPanel>
+
+                    <Border x:Name="SpinnerPanel" Width="14" Height="14" Visibility="Collapsed" VerticalAlignment="Center"
+                            RenderTransformOrigin="0.5,0.5">
+                        <Border.RenderTransform>
+                            <RotateTransform x:Name="SpinnerRotateTransform" Angle="0"/>
+                        </Border.RenderTransform>
+                        <Ellipse Width="12" Height="12" Stroke="{DynamicResource BrushAccent}" StrokeThickness="2" StrokeDashArray="3,2"/>
+                    </Border>
+                </StackPanel>
+
+                <!-- Center Activity Text + Active File Chip + Edit Line Counters -->
+                <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                    <WrapPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <TextBlock x:Name="TxtActivityText"
+                                   Text="Thinking..."
+                                   FontSize="11.5"
+                                   FontWeight="SemiBold"
+                                   Foreground="{DynamicResource BrushTextPrimary}"
+                                   TextWrapping="Wrap"/>
+                        <Border x:Name="ActiveFileChip"
+                                Visibility="Collapsed"
+                                Background="{DynamicResource BrushCardInnerBg}"
+                                BorderBrush="{DynamicResource BrushBorder}"
+                                BorderThickness="1"
+                                CornerRadius="4"
+                                Padding="6,1"
+                                Margin="8,0,0,0">
+                            <TextBlock x:Name="TxtActiveFile"
+                                       FontFamily="Consolas"
+                                       FontSize="10.5"
+                                       Foreground="{DynamicResource BrushTextSecondary}"/>
+                        </Border>
+                        <TextBlock x:Name="TxtEditCounts"
+                                   Visibility="Collapsed"
+                                   FontFamily="Consolas"
+                                   FontSize="10.5"
+                                   Foreground="{DynamicResource BrushTextSecondary}"
+                                   Margin="8,1,0,0"/>
+                    </WrapPanel>
+                </StackPanel>
+
+                <!-- Right Elapsed Time + Status Pill -->
+                <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center" Margin="8,0,0,0">
+                    <TextBlock x:Name="TxtElapsedTime"
+                               Visibility="Collapsed"
+                               FontFamily="Consolas"
+                               FontSize="10"
+                               Foreground="{DynamicResource BrushTextDim}"
+                               VerticalAlignment="Center"
+                               Margin="0,0,8,0"/>
+                    <Border x:Name="ActivityStatusPill"
+                            Background="#2238bdf8"
+                            BorderBrush="{DynamicResource BrushAccent}"
+                            BorderThickness="1"
+                            CornerRadius="4"
+                            Padding="6,2">
+                        <TextBlock x:Name="TxtActivityStatusBadge"
+                                   Text="THINKING"
+                                   FontFamily="Consolas"
+                                   FontSize="9.5"
+                                   FontWeight="Bold"
+                                   Foreground="{DynamicResource BrushAccent}"/>
+                    </Border>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- Dynamic Structured Content Blocks & Markdown Prose -->
+        <StackPanel x:Name="BlocksHost"/>
+
+        <!-- Concise Executed Tool Steps Trace (Optional Expander) -->
+        <Expander x:Name="ToolTraceExpander"
+                  Visibility="Collapsed"
+                  IsExpanded="False"
+                  Margin="0,6,0,0"
+                  Foreground="{DynamicResource BrushTextDim}"
+                  FontSize="11">
+            <Expander.Header>
+                <TextBlock x:Name="TxtToolTraceHeader" Text="Activity trace" FontSize="11" FontFamily="Consolas" Foreground="{DynamicResource BrushTextDim}"/>
+            </Expander.Header>
+            <Border Background="{DynamicResource BrushCardInnerBg}"
+                    BorderBrush="{DynamicResource BrushBorder}"
+                    BorderThickness="1"
+                    CornerRadius="6"
+                    Padding="8,6"
+                    Margin="0,4,0,0">
+                <StackPanel x:Name="ToolTraceList"/>
+            </Border>
+        </Expander>
+    </StackPanel>
+</UserControl>
