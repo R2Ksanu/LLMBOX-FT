@@ -6,7 +6,7 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              d:DesignHeight="520" d:DesignWidth="900"
              ClipToBounds="True">
-    <Grid Background="#0A0A12">
+    <Grid Background="{DynamicResource BrushCardInnerBg}">
         <Viewport3D x:Name="Viewport">
             <Viewport3D.Camera>
                 <PerspectiveCamera x:Name="Cam" Position="0,4,18" LookDirection="0,-4,-18" UpDirection="0,1,0" FieldOfView="55"/>
@@ -32,7 +32,7 @@
 
         <!-- 2D overlay: hint -->
         <TextBlock Text="drag to orbit · scroll to zoom · signals fire in real time"
-                   FontFamily="Consolas" FontSize="10.5" Foreground="#7A8296"
+                   FontFamily="Consolas" FontSize="10.5" Foreground="{DynamicResource BrushTextMuted}"
                    HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="14,0,0,10" IsHitTestVisible="False"/>
     </Grid>
 </UserControl>

@@ -4,6 +4,7 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:controls="clr-namespace:LlmodelBox.Controls"
+        xmlns:common="clr-namespace:LlmodelBox.Common"
         mc:Ignorable="d"
         Title="LlmodelBox // BlackBox Edition"
         Height="720" Width="1140"
@@ -50,6 +51,38 @@
         <SolidColorBrush x:Key="BrushDangerGlow" Color="#4c0519"/>
         <SolidColorBrush x:Key="BrushWarning" Color="#f59e0b"/>
         <SolidColorBrush x:Key="BrushWarningGlow" Color="#451a03"/>
+
+        <!-- Tiny Top Menu Bar Button (Antigravity-style clean header action) -->
+        <Style x:Key="TopMenuBarBtn" TargetType="Button">
+            <Setter Property="WindowChrome.IsHitTestVisibleInChrome" Value="True"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="{DynamicResource BrushTextSecondary}"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="FontSize" Value="11.5"/>
+            <Setter Property="FontWeight" Value="Medium"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Padding" Value="8,4"/>
+            <Setter Property="Margin" Value="2,0"/>
+            <Setter Property="Focusable" Value="False"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="bd" Background="{TemplateBinding Background}" CornerRadius="5" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="bd" Property="Background" Value="{DynamicResource BrushCardInnerBg}"/>
+                                <Setter Property="Foreground" Value="{DynamicResource BrushTextPrimary}"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="bd" Property="Background" Value="{DynamicResource BrushBorderSubtle}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
 
         <!-- Segmented Theme Pill Button Style with Smooth Translucent Highlight & Scale -->
         <Style x:Key="ThemePillBtn" TargetType="Button">
@@ -573,29 +606,34 @@
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
 
-                    <!-- App Title / Branding -->
-                    <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center" Margin="14,0,0,0">
-                        <Border Width="22" Height="22" Background="{DynamicResource BrushCardInnerBg}" BorderBrush="{DynamicResource BrushAccent}" BorderThickness="1" CornerRadius="4" Margin="0,0,10,0">
-                            <Path Data="M 2,6 L 8,2 L 14,6 L 14,14 L 8,18 L 2,14 Z M 2,6 L 8,10 L 14,6 M 8,10 L 8,18" 
-                                  Stroke="{DynamicResource BrushAccentLight}" StrokeThickness="1" Stretch="Uniform" Margin="2"/>
+                    <!-- App Title / Branding + Tiny Top Menu Bar -->
+                    <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center" Margin="12,0,0,0">
+                        <Border Width="20" Height="20" Background="{DynamicResource BrushCardInnerBg}" BorderBrush="{DynamicResource BrushBorder}" BorderThickness="1" CornerRadius="5" Margin="0,0,8,0">
+                            <Path Data="M 2,6 L 8,2 L 14,6 L 14,14 L 8,18 L 2,14 Z M 2,6 L 8,10 L 14,6 M 8,10 L 8,18"
+                                  Stroke="{DynamicResource BrushAccentLight}" StrokeThickness="1.1" Stretch="Uniform" Margin="2"/>
                         </Border>
-                        <TextBlock Text="LlmodelBox" FontWeight="Bold" FontSize="14" Foreground="{DynamicResource BrushTextPrimary}" VerticalAlignment="Center"/>
+                        <TextBlock Text="LlmodelBox" FontWeight="SemiBold" FontSize="12.5" Foreground="{DynamicResource BrushTextPrimary}" VerticalAlignment="Center" Margin="0,0,10,0"/>
+
+                        <Button x:Name="BtnTopNavChat" Content="Chat" Style="{StaticResource TopMenuBarBtn}" Click="BtnNavChat_Click" ToolTip="Home Chat"/>
+                        <Button x:Name="BtnTopNavWorkspace" Content="Workspace" Style="{StaticResource TopMenuBarBtn}" Click="BtnNavHome_Click" ToolTip="Open Project Workspaces"/>
+                        <Button x:Name="BtnTopNavModels" Content="Models" Style="{StaticResource TopMenuBarBtn}" Click="BtnNavModelLibrary_Click" ToolTip="Cloud Model Registry"/>
+                        <Button x:Name="BtnTopNavUsage" Content="Usage" Style="{StaticResource TopMenuBarBtn}" Click="BtnNavTokenAnalysis_Click" ToolTip="Token Usage"/>
+                        <Button x:Name="BtnTopNavNeural" Content="Neural Net" Style="{StaticResource TopMenuBarBtn}" Click="BtnNavNeuralNet_Click" ToolTip="Live Agent Neural Net"/>
                     </StackPanel>
 
-                    <!-- Center Drag Area / Info -->
+                    <!-- Center Drag Area / Subtle Status -->
                     <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
-                        <Ellipse Width="6" Height="6" Fill="{DynamicResource BrushSuccess}" Margin="0,0,6,0"/>
-                        <TextBlock x:Name="TxtHeaderInfo" Text="BLACKBOX ENGINE ONLINE // WIN10" FontSize="11" Foreground="{DynamicResource BrushTextMuted}" FontFamily="Consolas"/>
+                        <TextBlock x:Name="TxtHeaderInfo" Text="" FontSize="10.5" Foreground="{DynamicResource BrushTextDim}" FontFamily="Consolas"/>
                     </StackPanel>
 
                     <!-- System Controls (Minimize, Fullscreen, Close) + Theme Switcher -->
                     <StackPanel Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
                         <!-- 3-Theme Segmented Pill Switcher -->
-                        <Border WindowChrome.IsHitTestVisibleInChrome="True" Background="{DynamicResource BrushCardInnerBg}" BorderBrush="{DynamicResource BrushBorderSubtle}" BorderThickness="1" CornerRadius="10" Margin="0,0,12,0" Padding="2" VerticalAlignment="Center">
+                        <Border WindowChrome.IsHitTestVisibleInChrome="True" Background="{DynamicResource BrushCardInnerBg}" BorderBrush="{DynamicResource BrushBorderSubtle}" BorderThickness="1" CornerRadius="8" Margin="0,0,10,0" Padding="2" VerticalAlignment="Center">
                             <StackPanel Orientation="Horizontal">
-                                <Button x:Name="BtnThemeOled" Content="🌘 Midnight" Tag="Midnight" Click="BtnThemeSelect_Click" Style="{StaticResource ThemePillBtn}"/>
-                                <Button x:Name="BtnThemeMidnight" Content="🌊 Slate" Tag="Slate" Click="BtnThemeSelect_Click" Style="{StaticResource ThemePillBtn}" Margin="2,0,0,0"/>
-                                <Button x:Name="BtnThemeCarbon" Content="☀ Daylight" Tag="Daylight" Click="BtnThemeSelect_Click" Style="{StaticResource ThemePillBtn}" Margin="2,0,0,0"/>
+                                <Button x:Name="BtnThemeOled" Content="Midnight" Tag="Midnight" Click="BtnThemeSelect_Click" Style="{StaticResource ThemePillBtn}"/>
+                                <Button x:Name="BtnThemeMidnight" Content="Slate" Tag="Slate" Click="BtnThemeSelect_Click" Style="{StaticResource ThemePillBtn}" Margin="2,0,0,0"/>
+                                <Button x:Name="BtnThemeCarbon" Content="Daylight" Tag="Daylight" Click="BtnThemeSelect_Click" Style="{StaticResource ThemePillBtn}" Margin="2,0,0,0"/>
                             </StackPanel>
                         </Border>
 
@@ -666,139 +704,320 @@
                         <ColumnDefinition Width="*"/>
                     </Grid.ColumnDefinitions>
 
-                    <!-- ================= ENHANCED LEFT SIDEBAR ================= -->
-                    <Border Grid.Column="0" Background="{DynamicResource BrushWindowBg}" BorderBrush="{DynamicResource BrushBorderSubtle}" BorderThickness="0,0,1,0">
-                    <Grid Margin="12,14,12,12">
+                    <!-- ================= CLEAN CONVERSATION SIDEBAR ================= -->
+                    <Border Grid.Column="0" Background="{DynamicResource BrushTitleBarBg}" BorderBrush="{DynamicResource BrushBorderSubtle}" BorderThickness="0,0,1,0">
+                    <Grid Margin="10,12,10,10">
                         <Grid.RowDefinitions>
-                            <RowDefinition Height="*"/>    <!-- Scrollable Navigation Hub -->
-                            <RowDefinition Height="Auto"/> <!-- Left Side Down Side Profile Card -->
+                            <RowDefinition Height="Auto"/> <!-- New Conversation + Quick Links -->
+                            <RowDefinition Height="*"/>    <!-- Conversations List -->
+                            <RowDefinition Height="Auto"/> <!-- Settings & Profile Footer -->
                         </Grid.RowDefinitions>
 
-                        <!-- Scrollable Navigation Categories -->
-                        <ScrollViewer Grid.Row="0" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-                            <StackPanel>
-                                <!-- CATEGORY 1: WORKSPACE HUB -->
-                                <TextBlock Text="WORKSPACES" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource BrushTextDim}" FontFamily="Consolas" Margin="6,0,0,6"/>
-                                <Button Style="{StaticResource SidebarNavBtn}" Click="BtnNavHome_Click">
-                                    <StackPanel Orientation="Horizontal">
-                                        <Path Data="{StaticResource IconHome}" Fill="{DynamicResource BrushTextSecondary}" Stretch="Uniform" Width="15" Height="15" VerticalAlignment="Center" Margin="0,0,10,0"/>
-                                        <TextBlock Text="Workspaces Portal" VerticalAlignment="Center"/>
-                                    </StackPanel>
-                                </Button>
-                                <Button Style="{StaticResource SidebarNavBtn}" Click="BtnNavTerminal_Click">
-                                    <StackPanel Orientation="Horizontal">
-                                        <Path Data="{StaticResource IconTerminal}" Fill="{DynamicResource BrushTextSecondary}" Stretch="Uniform" Width="15" Height="15" VerticalAlignment="Center" Margin="0,0,10,0"/>
-                                        <TextBlock Text="Engine Terminal" VerticalAlignment="Center"/>
-                                    </StackPanel>
-                                </Button>
-
-                                <!-- CATEGORY 2: CLOUD MODEL APIS -->
-                                <TextBlock Text="CLOUD MODEL APIS" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource BrushAccentLight}" FontFamily="Consolas" Margin="6,14,0,6"/>
-                                <Button Style="{StaticResource SidebarNavBtn}" Click="BtnNavModelLibrary_Click">
-                                    <Grid Width="205">
-                                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                            <Path Data="{StaticResource IconCube}" Fill="{DynamicResource BrushTextSecondary}" Stretch="Uniform" Width="15" Height="15" VerticalAlignment="Center" Margin="0,0,10,0"/>
-                                            <TextBlock Text="Cloud Model APIs" VerticalAlignment="Center"/>
-                                        </StackPanel>
-                                        <Border Background="{DynamicResource BrushCardInnerBg}" CornerRadius="3" Padding="5,1" HorizontalAlignment="Right" VerticalAlignment="Center">
-                                            <TextBlock x:Name="TxtModelCountBadge" Text="8 APIs" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource BrushAccentLight}"/>
+                        <!-- Top Action: + New Conversation & Subtle Links -->
+                        <StackPanel Grid.Row="0" Margin="0,0,0,10">
+                            <Button x:Name="BtnNewConversation" Click="BtnNewConversation_Click" HorizontalContentAlignment="Left" Padding="12,8" Margin="0,0,0,8" Cursor="Hand"
+                                    Background="{DynamicResource BrushCardInnerBg}" Foreground="{DynamicResource BrushTextPrimary}" BorderBrush="{DynamicResource BrushBorder}" BorderThickness="1">
+                                <Button.Template>
+                                    <ControlTemplate TargetType="Button">
+                                        <Border x:Name="bdr" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="8" Padding="{TemplateBinding Padding}">
+                                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                <TextBlock Text="+" FontSize="15" FontWeight="SemiBold" Foreground="{DynamicResource BrushTextSecondary}" Margin="0,-1,8,0" VerticalAlignment="Center"/>
+                                                <TextBlock Text="New Conversation" FontSize="12.5" FontWeight="Medium" VerticalAlignment="Center"/>
+                                            </StackPanel>
                                         </Border>
-                                    </Grid>
-                                </Button>
-                                <Button Style="{StaticResource SidebarNavBtn}" Click="BtnNavApiKeys_Click">
-                                    <StackPanel Orientation="Horizontal">
-                                        <Path Data="{StaticResource IconKey}" Fill="{DynamicResource BrushTextSecondary}" Stretch="Uniform" Width="15" Height="15" VerticalAlignment="Center" Margin="0,0,10,0"/>
-                                        <TextBlock Text="API Key Manager" VerticalAlignment="Center"/>
-                                    </StackPanel>
-                                </Button>
-                                <Button Style="{StaticResource SidebarNavBtn}" Click="BtnNavTokenAnalysis_Click">
-                                    <StackPanel Orientation="Horizontal">
-                                        <Path Data="{StaticResource IconChart}" Fill="{DynamicResource BrushTextSecondary}" Stretch="Uniform" Width="15" Height="15" VerticalAlignment="Center" Margin="0,0,10,0"/>
-                                        <TextBlock Text="Token Analysis" VerticalAlignment="Center"/>
-                                    </StackPanel>
-                                </Button>
-                                <Button Style="{StaticResource SidebarNavBtn}" Click="BtnNavNeuralNet_Click">
-                                    <StackPanel Orientation="Horizontal">
-                                        <Path Data="{StaticResource IconBolt}" Fill="{DynamicResource BrushTextSecondary}" Stretch="Uniform" Width="15" Height="15" VerticalAlignment="Center" Margin="0,0,10,0"/>
-                                        <TextBlock Text="Neural Net" VerticalAlignment="Center"/>
-                                    </StackPanel>
-                                </Button>
-                                <Button Style="{StaticResource SidebarNavBtn}" Click="BtnNavTestEndpoints_Click">
-                                    <StackPanel Orientation="Horizontal">
-                                        <Path Data="{StaticResource IconBolt}" Fill="{DynamicResource BrushTextSecondary}" Stretch="Uniform" Width="15" Height="15" VerticalAlignment="Center" Margin="0,0,10,0"/>
-                                        <TextBlock Text="Test Connectivity" VerticalAlignment="Center"/>
-                                    </StackPanel>
-                                </Button>
+                                        <ControlTemplate.Triggers>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter TargetName="bdr" Property="Background" Value="{DynamicResource BrushBorderSubtle}"/>
+                                                <Setter TargetName="bdr" Property="BorderBrush" Value="{DynamicResource BrushBorderHover}"/>
+                                            </Trigger>
+                                        </ControlTemplate.Triggers>
+                                    </ControlTemplate>
+                                </Button.Template>
+                            </Button>
 
-                                <!-- CATEGORY 3: GATEWAY & STORAGE -->
-                                <TextBlock Text="GATEWAY &amp; STORAGE" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource BrushTextDim}" FontFamily="Consolas" Margin="6,14,0,6"/>
-                                <Button Style="{StaticResource SidebarNavBtn}" Click="BtnNavStorage_Click">
-                                    <StackPanel Orientation="Horizontal">
-                                        <Path Data="{StaticResource IconFolder}" Fill="{DynamicResource BrushTextSecondary}" Stretch="Uniform" Width="15" Height="15" VerticalAlignment="Center" Margin="0,0,10,0"/>
-                                        <TextBlock Text="Storage Folder (VFS)" VerticalAlignment="Center"/>
+                            <Button Style="{StaticResource SidebarNavBtn}" Padding="10,6" Margin="0,0,0,2" Click="BtnNavHome_Click">
+                                <StackPanel Orientation="Horizontal">
+                                    <Path Data="{StaticResource IconHome}" Fill="{DynamicResource BrushTextMuted}" Stretch="Uniform" Width="13" Height="13" VerticalAlignment="Center" Margin="0,0,9,0"/>
+                                    <TextBlock Text="Workspace" FontSize="12" FontWeight="Normal" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Button>
+                            <Button Style="{StaticResource SidebarNavBtn}" Padding="10,6" Margin="0,0,0,2" Click="BtnNavModelLibrary_Click">
+                                <Grid Width="205">
+                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                        <Path Data="{StaticResource IconCube}" Fill="{DynamicResource BrushTextMuted}" Stretch="Uniform" Width="13" Height="13" VerticalAlignment="Center" Margin="0,0,9,0"/>
+                                        <TextBlock Text="Models &amp; Keys" FontSize="12" FontWeight="Normal" VerticalAlignment="Center"/>
                                     </StackPanel>
-                                </Button>
+                                    <TextBlock x:Name="TxtModelCountBadge" Text="484" FontSize="10" Foreground="{DynamicResource BrushTextDim}" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                                </Grid>
+                            </Button>
+                        </StackPanel>
 
-                                <!-- Real-Time Cloud Gateway Status Card -->
-                                <Border Background="{DynamicResource BrushCardBg}" BorderBrush="{DynamicResource BrushBorder}" BorderThickness="1" CornerRadius="6" Padding="12,10" Margin="0,10,0,0">
-                                    <StackPanel>
-                                        <Grid Margin="0,0,0,6">
-                                            <TextBlock Text="CLOUD API GATEWAY" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource BrushAccentLight}" FontFamily="Consolas"/>
-                                            <TextBlock Text="TLS 1.3" HorizontalAlignment="Right" FontSize="10" Foreground="{DynamicResource BrushSuccess}" FontWeight="Bold" FontFamily="Consolas"/>
+                        <!-- Conversations List -->
+                        <Grid Grid.Row="1">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="*"/>
+                            </Grid.RowDefinitions>
+
+                            <Grid Grid.Row="0" Margin="8,4,6,6">
+                                <TextBlock Text="Conversations" FontSize="11" FontWeight="Medium" Foreground="{DynamicResource BrushTextMuted}" VerticalAlignment="Center"/>
+                            </Grid>
+
+                            <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                                <StackPanel>
+                                    <TextBlock x:Name="TxtNoConversationsHint" Text="No conversations yet. Start typing on the right."
+                                               FontSize="11" Foreground="{DynamicResource BrushTextDim}" TextWrapping="Wrap" Margin="8,8,8,0" Visibility="Collapsed"/>
+                                    <ItemsControl x:Name="HomeConversationsList">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <Border x:Name="ConvRow" Background="{Binding RowBackground}" BorderBrush="Transparent" BorderThickness="1" CornerRadius="7" Padding="10,7" Margin="0,0,0,2" Cursor="Hand"
+                                                        Tag="{Binding}" MouseLeftButtonUp="HomeConversation_Click">
+                                                    <Grid>
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="*"/>
+                                                            <ColumnDefinition Width="Auto"/>
+                                                        </Grid.ColumnDefinitions>
+                                                        <StackPanel Grid.Column="0">
+                                                            <TextBlock Text="{Binding Title}" FontSize="12" FontWeight="{Binding TitleWeight}" Foreground="{DynamicResource BrushTextPrimary}" TextTrimming="CharacterEllipsis"/>
+                                                            <StackPanel Orientation="Horizontal" Margin="0,2,0,0">
+                                                                <Path Data="{StaticResource IconFolder}" Fill="{DynamicResource BrushTextDim}" Stretch="Uniform" Width="10" Height="10" VerticalAlignment="Center" Margin="0,0,5,0"/>
+                                                                <TextBlock Text="{Binding Subtitle}" FontSize="10.5" Foreground="{DynamicResource BrushTextDim}" TextTrimming="CharacterEllipsis" MaxWidth="140"/>
+                                                            </StackPanel>
+                                                        </StackPanel>
+                                                        <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Top" Margin="6,0,0,0">
+                                                            <TextBlock Text="{Binding RelativeTime}" FontSize="10" Foreground="{DynamicResource BrushTextDim}" Margin="0,1,4,0"/>
+                                                            <Button Content="✕" Width="16" Height="16" Padding="0" Background="Transparent" BorderThickness="0" Foreground="{DynamicResource BrushTextDim}"
+                                                                    FontSize="9.5" Cursor="Hand" Tag="{Binding}" Click="BtnDeleteHomeConversation_Click" ToolTip="Delete conversation"/>
+                                                        </StackPanel>
+                                                    </Grid>
+                                                </Border>
+                                                <DataTemplate.Triggers>
+                                                    <Trigger SourceName="ConvRow" Property="IsMouseOver" Value="True">
+                                                        <Setter TargetName="ConvRow" Property="Background" Value="{DynamicResource BrushCardInnerBg}"/>
+                                                    </Trigger>
+                                                </DataTemplate.Triggers>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </StackPanel>
+                            </ScrollViewer>
+                        </Grid>
+
+                        <!-- Bottom Footer: Settings & Compact Profile -->
+                        <StackPanel Grid.Row="2" Margin="0,8,0,0">
+                            <Border BorderBrush="{DynamicResource BrushBorderSubtle}" BorderThickness="0,1,0,0" Padding="0,8,0,0">
+                                <StackPanel>
+                                    <Button x:Name="BtnSettings" Style="{StaticResource SidebarNavBtn}" Padding="10,7" Margin="0,0,0,4" Click="BtnSettings_Click" ToolTip="Settings &amp; API Keys">
+                                        <StackPanel Orientation="Horizontal">
+                                            <TextBlock Text="⚙" FontSize="13" Foreground="{DynamicResource BrushTextMuted}" VerticalAlignment="Center" Margin="0,0,9,0"/>
+                                            <TextBlock Text="Settings" FontSize="12" FontWeight="Medium" VerticalAlignment="Center"/>
+                                        </StackPanel>
+                                    </Button>
+
+                                    <Border x:Name="VisualizeProfileCard" Background="Transparent" CornerRadius="6" Padding="8,4" RenderTransformOrigin="0.5,0.5">
+                                        <Border.RenderTransform>
+                                            <ScaleTransform x:Name="ProfileCardScale" ScaleX="1.0" ScaleY="1.0"/>
+                                        </Border.RenderTransform>
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto"/>
+                                                <ColumnDefinition Width="*"/>
+                                            </Grid.ColumnDefinitions>
+                                            <Border Grid.Column="0" Width="22" Height="22" CornerRadius="11" Background="{DynamicResource BrushAccent}" Margin="0,0,8,0" VerticalAlignment="Center">
+                                                <TextBlock x:Name="TxtProfileInitials" Text="AX" FontWeight="Bold" FontSize="9.5" Foreground="{DynamicResource BrushAccentText}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                            </Border>
+                                            <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                                <TextBlock x:Name="TxtProfileName" Text="Axion" FontWeight="SemiBold" FontSize="11" Foreground="{DynamicResource BrushTextSecondary}" TextTrimming="CharacterEllipsis"/>
+                                                <TextBlock x:Name="TxtActiveGatewayModel" Text="Active: GPT-4o" FontSize="9.5" Foreground="{DynamicResource BrushTextDim}" TextTrimming="CharacterEllipsis"/>
+                                                <TextBlock x:Name="TxtProfileRole" Text="Online" Visibility="Collapsed"/>
+                                            </StackPanel>
                                         </Grid>
-                                        <TextBlock x:Name="TxtActiveGatewayModel" Text="Active: GPT-4o (OpenAI)" FontSize="11" Foreground="{DynamicResource BrushTextPrimary}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
-                                        <Grid Margin="0,6,0,0">
-                                            <TextBlock Text="CONNECTION:" FontSize="10" Foreground="{DynamicResource BrushTextDim}" FontFamily="Consolas"/>
-                                            <TextBlock Text="● DIRECT HTTPS" HorizontalAlignment="Right" FontSize="10" Foreground="{DynamicResource BrushSuccess}" FontWeight="Bold" FontFamily="Consolas"/>
-                                        </Grid>
+                                    </Border>
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
+                    </Grid>
+                </Border>
+
+                <GridSplitter Grid.Column="1" Width="4" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Style="{StaticResource IdeSplitter}"/>
+
+                <!-- ================= MAIN DYNAMIC CONTENT (RIGHT SIDE) ================= -->
+                <Grid Grid.Column="2">
+                    <!-- VIEW 0: CLEAN CHAT HOME (DEFAULT STARTUP VIEW) -->
+                    <Grid x:Name="ViewChatHome" Visibility="Visible" RenderTransformOrigin="0.5,0.5">
+                        <Grid.RenderTransform>
+                            <TranslateTransform x:Name="ChatHomeTranslate" Y="0"/>
+                        </Grid.RenderTransform>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="*"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+
+                        <!-- Empty / Welcome State -->
+                        <StackPanel x:Name="HomeChatEmptyState" Grid.Row="0" VerticalAlignment="Center" HorizontalAlignment="Center" Margin="24,0,24,10">
+                            <Border Width="52" Height="52" HorizontalAlignment="Center" Margin="0,0,0,18" Background="Transparent">
+                                <Path Data="M 16,2 L 30,28 L 23,28 L 16,14 L 9,28 L 2,28 Z" Fill="{DynamicResource BrushTextDim}" Opacity="0.45" Stretch="Uniform"/>
+                            </Border>
+                            <TextBlock x:Name="TxtHomeGreeting" Text="Welcome back. Where should we pick up?"
+                                       FontSize="22" FontWeight="SemiBold" Foreground="{DynamicResource BrushTextPrimary}"
+                                       HorizontalAlignment="Center" TextAlignment="Center"/>
+                        </StackPanel>
+
+                        <!-- Active Chat Messages Thread -->
+                        <ScrollViewer x:Name="HomeChatThreadScroller" Grid.Row="0" Visibility="Collapsed"
+                                      VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Padding="24,20,24,10">
+                            <StackPanel MaxWidth="780" HorizontalAlignment="Stretch">
+                                <ItemsControl x:Name="HomeChatMessagesList">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Grid Margin="0,0,0,14">
+                                                <Border HorizontalAlignment="{Binding Alignment}" MaxWidth="680"
+                                                        Background="{Binding BubbleBackground}" BorderBrush="{Binding BubbleBorder}"
+                                                        BorderThickness="1" CornerRadius="10" Padding="14,10">
+                                                    <StackPanel>
+                                                        <StackPanel Orientation="Horizontal" Margin="0,0,0,5">
+                                                            <TextBlock Text="{Binding RoleBadgeText}" FontSize="10" FontWeight="Bold" Foreground="{Binding RoleColor}" FontFamily="Consolas"/>
+                                                            <TextBlock Text="{Binding Timestamp}" FontSize="10" Foreground="{DynamicResource BrushTextDim}" FontFamily="Consolas" Margin="8,0,0,0"/>
+                                                        </StackPanel>
+                                                        <RichTextBox common:MarkdownProps.Text="{Binding Content}"
+                                                                     IsReadOnly="True" BorderThickness="0" Background="Transparent"
+                                                                     Padding="0" Margin="0" IsDocumentEnabled="True"
+                                                                     Foreground="{DynamicResource BrushTextPrimary}"/>
+                                                    </StackPanel>
+                                                </Border>
+                                            </Grid>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+
+                                <Border x:Name="HomeThinkingBar" Visibility="Collapsed" HorizontalAlignment="Left"
+                                        Background="{DynamicResource BrushCardInnerBg}" BorderBrush="{DynamicResource BrushBorder}"
+                                        BorderThickness="1" CornerRadius="8" Padding="12,8" Margin="0,4,0,12">
+                                    <StackPanel Orientation="Horizontal">
+                                        <Ellipse Width="7" Height="7" Fill="{DynamicResource BrushAccent}" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                                        <TextBlock x:Name="TxtHomeThinking" Text="Thinking..." FontSize="12" Foreground="{DynamicResource BrushTextSecondary}" FontFamily="Consolas"/>
                                     </StackPanel>
                                 </Border>
                             </StackPanel>
                         </ScrollViewer>
 
-                        <!-- ================= LEFT SIDE DOWN SIDE: VISUALIZE PROFILE CARD ================= -->
-                        <Border Grid.Row="1" x:Name="VisualizeProfileCard" Background="{DynamicResource BrushCardInnerBg}" BorderBrush="{DynamicResource BrushBorder}" BorderThickness="1.2" CornerRadius="8" Padding="10,8" Margin="0,10,0,0"
-                                RenderTransformOrigin="0.5,0.5">
-                            <Border.RenderTransform>
-                                <ScaleTransform x:Name="ProfileCardScale" ScaleX="1.0" ScaleY="1.0"/>
-                            </Border.RenderTransform>
+                        <!-- Bottom-Anchored Clean Composer Card -->
+                        <Border Grid.Row="1" MaxWidth="760" HorizontalAlignment="Stretch" Margin="28,4,28,26"
+                                Background="{DynamicResource BrushCardBg}" BorderBrush="{DynamicResource BrushBorder}"
+                                BorderThickness="1" CornerRadius="12">
                             <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="Auto"/> <!-- Circle Profile Icon -->
-                                    <ColumnDefinition Width="*"/>    <!-- Profile Name & Status -->
-                                    <ColumnDefinition Width="Auto"/> <!-- Settings Icon Button -->
-                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
 
-                                <!-- Circular Profile Icon -->
-                                <Border Grid.Column="0" Width="38" Height="38" CornerRadius="19" Background="{DynamicResource BrushAccent}" BorderBrush="{DynamicResource BrushAccent}" BorderThickness="1.5" Margin="0,0,10,0" VerticalAlignment="Center">
-                                    <TextBlock x:Name="TxtProfileInitials" Text="AX" FontWeight="Bold" FontSize="13" Foreground="{DynamicResource BrushTextPrimary}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                <!-- Top Context Strip: Workspace / Project Selector -->
+                                <Border Grid.Row="0" BorderBrush="{DynamicResource BrushBorderSubtle}" BorderThickness="0,0,0,1" Padding="12,7">
+                                    <StackPanel Orientation="Horizontal">
+                                        <Grid>
+                                            <Button x:Name="BtnHomeWorkspaceCtx" Click="BtnHomeWorkspaceCtx_Click" Background="Transparent" BorderThickness="0" Cursor="Hand" Padding="4,2">
+                                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                    <Path Data="{StaticResource IconFolder}" Fill="{DynamicResource BrushTextMuted}" Stretch="Uniform" Width="12" Height="12" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                                    <TextBlock x:Name="TxtHomeWorkspaceCtx" Text="General Chat" FontSize="11.5" Foreground="{DynamicResource BrushTextSecondary}" VerticalAlignment="Center"/>
+                                                    <TextBlock Text=" ⌄" FontSize="10" Foreground="{DynamicResource BrushTextDim}" VerticalAlignment="Center"/>
+                                                </StackPanel>
+                                            </Button>
+                                            <Popup x:Name="HomeWorkspacePopup" PlacementTarget="{Binding ElementName=BtnHomeWorkspaceCtx}" Placement="Top" StaysOpen="False" AllowsTransparency="True">
+                                                <Border Background="{DynamicResource BrushCardInnerBg}" BorderBrush="{DynamicResource BrushBorder}" BorderThickness="1" CornerRadius="8" Padding="4" MinWidth="240" MaxHeight="260">
+                                                    <ListBox x:Name="HomeWorkspacePickerList" Background="Transparent" BorderThickness="0" SelectionChanged="HomeWorkspacePickerList_SelectionChanged">
+                                                        <ListBox.ItemTemplate>
+                                                            <DataTemplate>
+                                                                <TextBlock Text="{Binding Name}" FontSize="12" Foreground="{DynamicResource BrushTextPrimary}" Padding="8,6"/>
+                                                            </DataTemplate>
+                                                        </ListBox.ItemTemplate>
+                                                    </ListBox>
+                                                </Border>
+                                            </Popup>
+                                        </Grid>
+                                    </StackPanel>
                                 </Border>
 
-                                <!-- Profile Name & Status -->
-                                <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                                    <TextBlock x:Name="TxtProfileName" Text="Axion" FontWeight="Bold" FontSize="13" Foreground="{DynamicResource BrushTextPrimary}" TextTrimming="CharacterEllipsis"/>
-                                    <StackPanel Orientation="Horizontal" Margin="0,2,0,0">
-                                        <Ellipse Width="6" Height="6" Fill="{DynamicResource BrushSuccess}" VerticalAlignment="Center" Margin="0,0,5,0"/>
-                                        <TextBlock x:Name="TxtProfileRole" Text="Operator // Online" FontSize="11" Foreground="{DynamicResource BrushTextMuted}" FontFamily="Consolas" TextTrimming="CharacterEllipsis"/>
-                                    </StackPanel>
-                                </StackPanel>
+                                <!-- Input Prompt Area -->
+                                <Grid Grid.Row="1" Margin="14,10,14,6">
+                                    <TextBlock Text="Ask anything, or attach a workspace above..." FontSize="13.5" Foreground="{DynamicResource BrushTextDim}" IsHitTestVisible="False" VerticalAlignment="Top" Margin="2,2,0,0">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock">
+                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding Text, ElementName=TxtHomePrompt}" Value="">
+                                                        <Setter Property="Visibility" Value="Visible"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+                                    <TextBox x:Name="TxtHomePrompt" Background="Transparent" BorderThickness="0"
+                                             Foreground="{DynamicResource BrushTextPrimary}" CaretBrush="{DynamicResource BrushAccentLight}"
+                                             FontSize="13.5" AcceptsReturn="True" TextWrapping="Wrap" MinHeight="42" MaxHeight="160"
+                                             VerticalScrollBarVisibility="Auto" PreviewKeyDown="TxtHomePrompt_PreviewKeyDown"/>
+                                </Grid>
 
-                                <!-- Settings Icon Button (Opens LlmodelBox Settings) -->
-                                <Button Grid.Column="2" x:Name="BtnSettings" Style="{StaticResource BlackBoxActionBtn}" Width="32" Height="32" Padding="0" 
-                                        ToolTip="LlmodelBox Settings" Click="BtnSettings_Click">
-                                    <TextBlock Text="⚙" FontSize="15" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                </Button>
+                                <!-- Bottom Composer Bar: Model Picker + Circular Send Button -->
+                                <Grid Grid.Row="2" Margin="12,2,12,10">
+                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center" HorizontalAlignment="Left">
+                                        <Grid>
+                                            <Button x:Name="BtnHomeModelPicker" Click="BtnHomeModelPicker_Click" Background="Transparent" BorderThickness="0" Cursor="Hand" Padding="6,4">
+                                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                    <TextBlock x:Name="TxtHomeModelLabel" Text="GPT-4o" FontSize="11.5" FontWeight="Medium" Foreground="{DynamicResource BrushTextSecondary}" VerticalAlignment="Center"/>
+                                                    <TextBlock Text=" ⌄" FontSize="10" Foreground="{DynamicResource BrushTextDim}" VerticalAlignment="Center"/>
+                                                </StackPanel>
+                                            </Button>
+                                            <Popup x:Name="HomeModelPopup" PlacementTarget="{Binding ElementName=BtnHomeModelPicker}" Placement="Top" StaysOpen="False" AllowsTransparency="True">
+                                                <Border Background="{DynamicResource BrushCardInnerBg}" BorderBrush="{DynamicResource BrushBorder}" BorderThickness="1" CornerRadius="8" Padding="4" MinWidth="280" MaxHeight="340">
+                                                    <DockPanel>
+                                                        <TextBlock DockPanel.Dock="Top" Text="SELECT MODEL" FontSize="9.5" FontWeight="Bold" FontFamily="Consolas" Foreground="{DynamicResource BrushTextDim}" Margin="8,6"/>
+                                                        <ListBox x:Name="HomeModelPickerList" Background="Transparent" BorderThickness="0" SelectionChanged="HomeModelPickerList_SelectionChanged">
+                                                            <ListBox.ItemTemplate>
+                                                                <DataTemplate>
+                                                                    <StackPanel Margin="6,4">
+                                                                        <TextBlock Text="{Binding Name}" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource BrushTextPrimary}"/>
+                                                                        <TextBlock Text="{Binding Provider}" FontSize="10" Foreground="{DynamicResource BrushTextDim}"/>
+                                                                    </StackPanel>
+                                                                </DataTemplate>
+                                                            </ListBox.ItemTemplate>
+                                                        </ListBox>
+                                                    </DockPanel>
+                                                </Border>
+                                            </Popup>
+                                        </Grid>
+
+                                        <Button Content="API Keys" Click="BtnNavApiKeys_Click" Background="Transparent" BorderThickness="0"
+                                                Foreground="{DynamicResource BrushTextDim}" FontSize="11" Cursor="Hand" Margin="8,0,0,0" Padding="6,4"/>
+                                    </StackPanel>
+
+                                    <Button x:Name="BtnHomeSend" Click="BtnHomeSend_Click" HorizontalAlignment="Right" VerticalAlignment="Center"
+                                            Width="30" Height="30" Cursor="Hand" ToolTip="Send (Enter)">
+                                        <Button.Template>
+                                            <ControlTemplate TargetType="Button">
+                                                <Border x:Name="sendBdr" Background="{DynamicResource BrushTextPrimary}" CornerRadius="15">
+                                                    <Path Data="M 6,11 L 6,2 M 2,6 L 6,2 L 10,6" Stroke="{DynamicResource BrushWindowBg}" StrokeThickness="1.7"
+                                                          StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round"
+                                                          Width="12" Height="13" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                </Border>
+                                                <ControlTemplate.Triggers>
+                                                    <Trigger Property="IsMouseOver" Value="True">
+                                                        <Setter TargetName="sendBdr" Property="Opacity" Value="0.88"/>
+                                                    </Trigger>
+                                                    <Trigger Property="IsEnabled" Value="False">
+                                                        <Setter TargetName="sendBdr" Property="Opacity" Value="0.35"/>
+                                                    </Trigger>
+                                                </ControlTemplate.Triggers>
+                                            </ControlTemplate>
+                                        </Button.Template>
+                                    </Button>
+                                </Grid>
                             </Grid>
                         </Border>
                     </Grid>
-                </Border>
 
-                <GridSplitter Grid.Column="1" Width="6" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Style="{StaticResource IdeSplitter}"/>
-
-                <!-- ================= MAIN DYNAMIC CONTENT (RIGHT SIDE) ================= -->
-                <Grid Grid.Column="2">
-                    <!-- VIEW A: HOMEPAGE (PROJECT PORTAL) -->
-                    <Grid x:Name="ViewHomepage" Visibility="Visible" Margin="22,16" RenderTransformOrigin="0.5,0.5">
+                    <!-- VIEW A: HOMEPAGE (PROJECT WORKSPACE PORTAL) -->
+                    <Grid x:Name="ViewHomepage" Visibility="Collapsed" Margin="22,16" RenderTransformOrigin="0.5,0.5">
                         <Grid.RenderTransform>
                             <TranslateTransform x:Name="HomepageTranslate" Y="0"/>
                         </Grid.RenderTransform>

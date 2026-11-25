@@ -181,14 +181,15 @@ namespace LlmodelBox
             _ = EnsureCompanyLogosAsync();
 
             // The animated splash (App.xaml.cs) is the only loading screen now; go straight to the
-            // homepage with a subtle entrance instead of the old in-window cinematic boot overlay.
+            // clean Chat Home with a subtle entrance.
             LoadingOverlay.Visibility = Visibility.Collapsed;
-            ViewHomepage.Opacity = 0.0;
-            HomepageTranslate.Y = 24.0;
-            ViewHomepage.BeginAnimation(UIElement.OpacityProperty,
-                new DoubleAnimation(0.0, 1.0, TimeSpan.FromMilliseconds(450)) { EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut } });
-            HomepageTranslate.BeginAnimation(TranslateTransform.YProperty,
-                new DoubleAnimation(24.0, 0.0, TimeSpan.FromMilliseconds(450)) { EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut } });
+            InitHomeChat();
+            ViewChatHome.Opacity = 0.0;
+            ChatHomeTranslate.Y = 18.0;
+            ViewChatHome.BeginAnimation(UIElement.OpacityProperty,
+                new DoubleAnimation(0.0, 1.0, TimeSpan.FromMilliseconds(420)) { EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut } });
+            ChatHomeTranslate.BeginAnimation(TranslateTransform.YProperty,
+                new DoubleAnimation(18.0, 0.0, TimeSpan.FromMilliseconds(420)) { EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut } });
             StartupProgress?.Invoke(95, "Finalizing");
             RefreshLiveData();
             StartupCompleted?.Invoke();
@@ -407,6 +408,7 @@ namespace LlmodelBox
                 }
             }
             TxtProfileInitials.Text = initials;
+            UpdateHomeGreetingAndLabels();
         }
 
         private void BtnSettings_Click(object sender, RoutedEventArgs e)
@@ -1428,6 +1430,7 @@ namespace LlmodelBox
 
         private void BtnBackToProjects_Click(object sender, RoutedEventArgs e)
         {
+            if (ViewChatHome != null) ViewChatHome.Visibility = Visibility.Collapsed;
             ViewProjectWorkspace.Visibility = Visibility.Collapsed;
             ViewModelLibrary.Visibility = Visibility.Collapsed;
             ViewHomepage.Visibility = Visibility.Visible;
@@ -1635,7 +1638,7 @@ namespace LlmodelBox
             int totalModels = _allCompanyCategories.Sum(c => c.Models?.Count ?? 0);
             if (TxtModelCountBadge != null)
             {
-                TxtModelCountBadge.Text = $"{totalModels} Models ({_allCompanyCategories.Count} Companies)";
+                TxtModelCountBadge.Text = $"{totalModels}";
             }
         }
 
@@ -1742,7 +1745,8 @@ namespace LlmodelBox
             if (_activeModel == null) return;
             TxtActiveGatewayModel.Text = $"Active: {_activeModel.Name} ({_activeModel.Provider})";
             foreach (var ws in OpenWorkspaces()) ws.UpdateActiveModelBadge(_activeModel);
-            TxtHeaderInfo.Text = $"BLACKBOX // {_activeModel.Name.ToUpperInvariant()} // API ONLINE";
+            TxtHeaderInfo.Text = $"{_activeModel.Name} · {_activeModel.Provider}";
+            UpdateHomeGreetingAndLabels();
         }
 
         private void BtnFilterModels_Click(object sender, RoutedEventArgs e)
@@ -2416,6 +2420,7 @@ namespace LlmodelBox
 
         private void ShowView(FrameworkElement viewToShow, TranslateTransform? translate = null)
         {
+            if (ViewChatHome != null) ViewChatHome.Visibility = Visibility.Collapsed;
             ViewHomepage.Visibility = Visibility.Collapsed;
             ViewModelLibrary.Visibility = Visibility.Collapsed;
             ViewProjectWorkspace.Visibility = Visibility.Collapsed;

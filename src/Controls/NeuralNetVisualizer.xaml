@@ -6,7 +6,7 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:local="clr-namespace:LlmodelBox.Controls"
              d:DesignHeight="640" d:DesignWidth="1100">
-    <Grid Background="{DynamicResource BrushAppBg}">
+    <Grid Background="{DynamicResource BrushWindowBg}">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
