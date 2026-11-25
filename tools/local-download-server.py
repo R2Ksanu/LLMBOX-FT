@@ -141,8 +141,10 @@ def prepare_release(
     )
 
     resolved_commit = commit.strip() if commit and commit.strip() else detect_git_commit(repo_root)
+    is_single_file = not (build_dir / "LlmodelBox.dll").is_file()
     meta = {
         "package_label": package_label,
+        "is_single_file": is_single_file,
         "build_host": f"{platform.system()} ({platform.machine()})",
         "target_rid": "win-x64",
         "branch": branch or "main",
@@ -197,6 +199,43 @@ def render_index_html(meta: dict) -> bytes:
     esc = html.escape
     branch = meta.get("branch", "main")
     commit = meta.get("commit", "local")
+    is_single_file = bool(meta.get("is_single_file", True))
+
+    if is_single_file:
+        subtitle_html = (
+            "Built for Windows (x64) as a self-contained single-file executable. "
+            "Download <code>LlmodelBox.exe</code> directly and run it on Windows."
+        )
+        downloads_html = f"""      <div class="dl-card">
+        <div>
+          <div class="dl-title">{esc(meta["exe_name"])} (Standalone)</div>
+          <div class="dl-info">Size: {esc(meta["exe_size_human"])} | SHA-256: {esc(meta["exe_sha256"][:24])}...</div>
+        </div>
+        <a class="btn" href="/download/LlmodelBox.exe">Download .exe</a>
+      </div>
+
+      <div class="dl-card">
+        <div>
+          <div class="dl-title">{esc(meta["zip_name"])}</div>
+          <div class="dl-info">Size: {esc(meta["zip_size_human"])} | SHA-256: {esc(meta["zip_sha256"][:24])}...</div>
+        </div>
+        <a class="btn btn-secondary" href="/download/LlmodelBox-win-x64.zip">Download .zip</a>
+      </div>"""
+    else:
+        subtitle_html = (
+            "Built in <strong>Framework-Dependent (light)</strong> mode. "
+            "Extract <code>LlmodelBox-win-x64.zip</code> before running <code>LlmodelBox.exe</code> "
+            "(it requires <code>LlmodelBox.dll</code> and .NET 8 Desktop Runtime). "
+            "For a single clickable <code>.exe</code>, build with <code>--package standalone</code>."
+        )
+        downloads_html = f"""      <div class="dl-card">
+        <div>
+          <div class="dl-title">{esc(meta["zip_name"])} (Required Bundle)</div>
+          <div class="dl-info">Size: {esc(meta["zip_size_human"])} | SHA-256: {esc(meta["zip_sha256"][:24])}...</div>
+        </div>
+        <a class="btn" href="/download/LlmodelBox-win-x64.zip">Download .zip</a>
+      </div>"""
+
     page = f"""<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -353,7 +392,7 @@ def render_index_html(meta: dict) -> bytes:
     <div class="badge">LOCAL ARTIFACT SERVER // WIN-X64 // {esc(branch)}@{esc(commit)}</div>
     <h1>LlmodelBox Release Download</h1>
     <p class="subtitle">
-      Built and staged locally for Windows (x64). Download the standalone executable directly or grab the full release archive.
+      {subtitle_html}
     </p>
 
     <section class="meta-grid">
@@ -376,21 +415,7 @@ def render_index_html(meta: dict) -> bytes:
     </section>
 
     <section class="downloads">
-      <div class="dl-card">
-        <div>
-          <div class="dl-title">{esc(meta["exe_name"])}</div>
-          <div class="dl-info">Size: {esc(meta["exe_size_human"])} | SHA-256: {esc(meta["exe_sha256"][:24])}...</div>
-        </div>
-        <a class="btn" href="/download/LlmodelBox.exe">Download .exe</a>
-      </div>
-
-      <div class="dl-card">
-        <div>
-          <div class="dl-title">{esc(meta["zip_name"])}</div>
-          <div class="dl-info">Size: {esc(meta["zip_size_human"])} | SHA-256: {esc(meta["zip_sha256"][:24])}...</div>
-        </div>
-        <a class="btn btn-secondary" href="/download/LlmodelBox-win-x64.zip">Download .zip</a>
-      </div>
+{downloads_html}
     </section>
 
     <footer class="footer">
