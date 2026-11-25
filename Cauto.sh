@@ -333,18 +333,22 @@ get_remote_sha() {
   git ls-remote "$REPO_URL" "refs/heads/$BRANCH" 2>/dev/null | awk 'NR==1 {print $1}'
 }
 
+log_cauto() {
+  echo "[$(date -u '+%Y-%m-%d %H:%M:%S UTC')] [cauto] $*"
+}
+
 run_clean_build() {
   local target_sha="$1"
   local short_sha="${target_sha:0:7}"
 
   echo ""
   echo "=========================================="
-  echo "  [cauto] Clean Re-Clone & Build @ $short_sha"
+  log_cauto "Clean Re-Clone & Build @ $short_sha"
   echo "=========================================="
 
   # Clear previous clone completely
   rm -rf "$REPO_DIR"
-  echo "[cauto] Cloning $REPO_URL (branch: $BRANCH)..."
+  log_cauto "Cloning $REPO_URL (branch: $BRANCH)..."
   git clone --depth 1 --branch "$BRANCH" "$REPO_URL" "$REPO_DIR"
 
   local cloned_sha
@@ -357,7 +361,7 @@ run_clean_build() {
     build_args+=(--skip-tests)
   fi
 
-  echo "[cauto] Running build.sh (${build_args[*]})..."
+  log_cauto "Running build.sh (${build_args[*]})..."
   (cd "$REPO_DIR" && ./build.sh "${build_args[@]}")
 
   local out_dir pkg_label
@@ -380,7 +384,7 @@ run_clean_build() {
     --prepare-only
 
   printf '%s\n' "$cloned_sha" > "$STATE_FILE"
-  echo "[cauto] Release updated cleanly for commit $short_sha."
+  log_cauto "Release updated cleanly for commit $short_sha."
   start_server_if_needed
 }
 
@@ -388,6 +392,7 @@ echo ""
 echo "=========================================="
 echo "  LlmodelBox Cauto Watcher Active"
 echo "=========================================="
+echo "  Started:  $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
 echo "  Repo:     $REPO_URL"
 echo "  Branch:   $BRANCH"
 echo "  Package:  $PACKAGE"
@@ -402,7 +407,7 @@ start_server_if_needed
 while true; do
   remote_sha="$(get_remote_sha || true)"
   if [[ -z "$remote_sha" ]]; then
-    echo "[cauto] Warning: could not query $REPO_URL ($BRANCH). Retrying in ${INTERVAL}s..."
+    log_cauto "Warning: could not query $REPO_URL ($BRANCH). Retrying in ${INTERVAL}s..."
   else
     last_built=""
     last_attempted=""
@@ -419,10 +424,10 @@ while true; do
     if [[ "$needs_build" == "yes" ]]; then
       printf '%s\n' "$remote_sha" > "$ATTEMPT_FILE"
       if ! run_clean_build "$remote_sha"; then
-        echo "[cauto] Build FAILED for ${remote_sha:0:7}. Existing release (if any) remains online. Waiting for next commit..." >&2
+        log_cauto "Build FAILED for ${remote_sha:0:7}. Existing release (if any) remains online. Waiting for next commit..." >&2
       fi
     else
-      echo "[cauto] $(date -u '+%H:%M:%S UTC') - Up to date (${remote_sha:0:7})."
+      log_cauto "Up to date (${remote_sha:0:7})."
     fi
   fi
 

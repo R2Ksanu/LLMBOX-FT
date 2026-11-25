@@ -6,15 +6,16 @@ using System.Linq;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading;
-using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Media.Imaging;
 using LlmodelBox.Common;
 using LlmodelBox.Models;
 using LlmodelBox.Models.Ai;
 using LlmodelBox.Runtime.Context;
+using LlmodelBox.Runtime.Memory;
 using LlmodelBox.Services;
 
 namespace LlmodelBox
@@ -60,14 +61,19 @@ namespace LlmodelBox
     public partial class MainWindow
     {
         private readonly List<HomeChatThread> _homeThreads = new();
+        private readonly JsonChatHistoryStore _ideChatHistoryStore = new();
         private HomeChatThread? _activeHomeThread = null;
         private ProjectItem? _homeChatProject = null;
+        private ProjectItem? _sidebarFilterProject = null;
+        private bool _sidebarFilterGeneralOnly = false;
         private bool _homeChatBusy = false;
 
         private sealed class HomeWorkspaceOption
         {
             public string Name { get; set; } = "General Chat (No Workspace)";
             public ProjectItem? Project { get; set; }
+            public bool IsAll { get; set; }
+            public bool IsGeneralOnly { get; set; }
         }
 
         private string HomeThreadsFilePath => Path.Combine(AppConstants.ChatHistoryDir, "home_conversations.json");
@@ -75,6 +81,10 @@ namespace LlmodelBox
         private void InitHomeChat()
         {
             LoadHomeThreads();
+            foreach (var p in _projects)
+            {
+                EnsureProjectIdeHistoryImported(p);
+            }
             if (_activeHomeThread == null)
             {
                 _activeHomeThread = new HomeChatThread();
@@ -82,6 +92,7 @@ namespace LlmodelBox
             UpdateHomeGreetingAndLabels();
             RefreshHomeConversationsUi();
             RefreshHomeChatThreadUi();
+            RefreshProjectsUi();
         }
 
         private void LoadHomeThreads()
@@ -113,12 +124,61 @@ namespace LlmodelBox
             catch { }
         }
 
+        // Surfaces existing per-project IDE history (chat/<hash>.json) inside the project's
+        // conversation list if no HomeChatThread has been created for that project yet.
+        private void EnsureProjectIdeHistoryImported(ProjectItem project)
+        {
+            if (project == null || string.IsNullOrWhiteSpace(project.Path)) return;
+            bool hasAnyForProject = _homeThreads.Any(t => string.Equals(t.ProjectPath, project.Path, StringComparison.OrdinalIgnoreCase));
+            if (hasAnyForProject) return;
+
+            var legacy = _ideChatHistoryStore.Load(project.Path);
+            if (legacy.Count == 0) return;
+
+            var firstUser = legacy.FirstOrDefault(m => m.IsUser && !string.IsNullOrWhiteSpace(m.Content));
+            string title = firstUser != null
+                ? firstUser.Content.Replace("\r", " ").Replace("\n", " ").Trim()
+                : $"{project.Name} History";
+            if (title.Length > 48) title = title.Substring(0, 48).TrimEnd() + "...";
+
+            _homeThreads.Add(new HomeChatThread
+            {
+                Title = title,
+                ProjectPath = project.Path,
+                ProjectName = project.Name,
+                UpdatedAtUtc = DateTime.UtcNow,
+                Messages = legacy
+            });
+            SaveHomeThreads();
+        }
+
+        internal int GetConversationCountForProject(ProjectItem project)
+        {
+            if (project == null || string.IsNullOrWhiteSpace(project.Path)) return 0;
+            int count = _homeThreads.Count(t => string.Equals(t.ProjectPath, project.Path, StringComparison.OrdinalIgnoreCase));
+            if (count == 0 && _ideChatHistoryStore.Load(project.Path).Count > 0) count = 1;
+            return count;
+        }
+
         private void UpdateHomeGreetingAndLabels()
         {
             if (TxtHomeGreeting != null)
             {
                 string who = string.IsNullOrWhiteSpace(_settings?.ProfileName) ? "" : $", {_settings.ProfileName.Trim()}";
-                TxtHomeGreeting.Text = $"Welcome back{who}. Where should we pick up?";
+                if (_homeChatProject != null)
+                {
+                    TxtHomeGreeting.Text = $"Project: {_homeChatProject.Name}";
+                }
+                else
+                {
+                    TxtHomeGreeting.Text = $"Welcome back{who}. Where should we pick up?";
+                }
+            }
+            if (TxtHomeGreetingSub != null)
+            {
+                TxtHomeGreetingSub.Text = _homeChatProject != null
+                    ? "Start a new conversation inside this project or pick a previous one from the sidebar."
+                    : "Choose a workspace above or start a general conversation.";
             }
             if (TxtHomeModelLabel != null)
             {
@@ -130,20 +190,51 @@ namespace LlmodelBox
                     ? $"This Computer · {_homeChatProject.Name}"
                     : "This Computer · General Chat";
             }
+            if (TxtSidebarProjectFilter != null)
+            {
+                if (_sidebarFilterProject != null)
+                    TxtSidebarProjectFilter.Text = _sidebarFilterProject.Name;
+                else if (_sidebarFilterGeneralOnly)
+                    TxtSidebarProjectFilter.Text = "General Chat";
+                else
+                    TxtSidebarProjectFilter.Text = "All Projects";
+            }
+            if (BtnClearProjectFilter != null)
+            {
+                BtnClearProjectFilter.Visibility = (_sidebarFilterProject != null || _sidebarFilterGeneralOnly)
+                    ? Visibility.Visible
+                    : Visibility.Collapsed;
+            }
         }
 
         private void RefreshHomeConversationsUi()
         {
             if (HomeConversationsList == null) return;
-            foreach (var t in _homeThreads)
+
+            IEnumerable<HomeChatThread> filtered = _homeThreads;
+            if (_sidebarFilterProject != null)
+            {
+                filtered = _homeThreads.Where(t => string.Equals(t.ProjectPath, _sidebarFilterProject.Path, StringComparison.OrdinalIgnoreCase));
+            }
+            else if (_sidebarFilterGeneralOnly)
+            {
+                filtered = _homeThreads.Where(t => string.IsNullOrWhiteSpace(t.ProjectPath));
+            }
+
+            var list = filtered.OrderByDescending(t => t.UpdatedAtUtc).ToList();
+            foreach (var t in list)
             {
                 t.IsSelected = _activeHomeThread != null && string.Equals(t.Id, _activeHomeThread.Id, StringComparison.Ordinal);
             }
             HomeConversationsList.ItemsSource = null;
-            HomeConversationsList.ItemsSource = _homeThreads.ToList();
+            HomeConversationsList.ItemsSource = list;
+
             if (TxtNoConversationsHint != null)
             {
-                TxtNoConversationsHint.Visibility = _homeThreads.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+                TxtNoConversationsHint.Text = _sidebarFilterProject != null
+                    ? $"No conversations in {_sidebarFilterProject.Name} yet. Type below to start one."
+                    : "No conversations yet. Start typing on the right.";
+                TxtNoConversationsHint.Visibility = list.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
             }
         }
 
@@ -161,9 +252,113 @@ namespace LlmodelBox
 
             if (hasMessages)
             {
-                Dispatcher.BeginInvoke(new Action(() => HomeChatThreadScroller.ScrollToEnd()),
+                _ = Dispatcher.BeginInvoke(new Action(() => HomeChatThreadScroller.ScrollToEnd()),
                     System.Windows.Threading.DispatcherPriority.Background);
             }
+        }
+
+        private void SelectProjectForConversations(ProjectItem? project, bool openMostRecentThread = true)
+        {
+            _sidebarFilterGeneralOnly = false;
+            _sidebarFilterProject = project;
+            _homeChatProject = project;
+
+            if (project != null)
+            {
+                EnsureProjectIdeHistoryImported(project);
+                var projectThreads = _homeThreads
+                    .Where(t => string.Equals(t.ProjectPath, project.Path, StringComparison.OrdinalIgnoreCase))
+                    .OrderByDescending(t => t.UpdatedAtUtc)
+                    .ToList();
+
+                if (openMostRecentThread && projectThreads.Count > 0)
+                {
+                    _activeHomeThread = projectThreads[0];
+                }
+                else
+                {
+                    _activeHomeThread = new HomeChatThread
+                    {
+                        ProjectPath = project.Path,
+                        ProjectName = project.Name
+                    };
+                }
+            }
+
+            UpdateHomeGreetingAndLabels();
+            RefreshHomeConversationsUi();
+            RefreshHomeChatThreadUi();
+            ShowView(ViewChatHome, ChatHomeTranslate);
+            TxtHomePrompt?.Focus();
+        }
+
+        private void BtnOpenProjectChats_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is Button btn && btn.Tag is ProjectItem project)
+            {
+                SelectProjectForConversations(project, openMostRecentThread: true);
+            }
+        }
+
+        private void BtnSidebarProjectFilter_Click(object sender, RoutedEventArgs e)
+        {
+            if (SidebarProjectFilterPopup == null || SidebarProjectFilterList == null) return;
+            var options = new List<HomeWorkspaceOption>
+            {
+                new() { Name = "All Projects", IsAll = true },
+                new() { Name = "General Chat (No Project)", IsGeneralOnly = true }
+            };
+            foreach (var p in _projects)
+            {
+                options.Add(new HomeWorkspaceOption { Name = p.Name, Project = p });
+            }
+            SidebarProjectFilterList.ItemsSource = options;
+            SidebarProjectFilterPopup.IsOpen = !SidebarProjectFilterPopup.IsOpen;
+        }
+
+        private void SidebarProjectFilterList_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (SidebarProjectFilterList?.SelectedItem is not HomeWorkspaceOption opt) return;
+            SidebarProjectFilterPopup.IsOpen = false;
+
+            if (opt.IsAll)
+            {
+                _sidebarFilterProject = null;
+                _sidebarFilterGeneralOnly = false;
+                UpdateHomeGreetingAndLabels();
+                RefreshHomeConversationsUi();
+                return;
+            }
+
+            if (opt.IsGeneralOnly)
+            {
+                _sidebarFilterProject = null;
+                _sidebarFilterGeneralOnly = true;
+                _homeChatProject = null;
+                var generalThreads = _homeThreads
+                    .Where(t => string.IsNullOrWhiteSpace(t.ProjectPath))
+                    .OrderByDescending(t => t.UpdatedAtUtc)
+                    .ToList();
+                _activeHomeThread = generalThreads.FirstOrDefault() ?? new HomeChatThread();
+                UpdateHomeGreetingAndLabels();
+                RefreshHomeConversationsUi();
+                RefreshHomeChatThreadUi();
+                ShowView(ViewChatHome, ChatHomeTranslate);
+                return;
+            }
+
+            if (opt.Project != null)
+            {
+                SelectProjectForConversations(opt.Project, openMostRecentThread: true);
+            }
+        }
+
+        private void BtnClearProjectFilter_Click(object sender, RoutedEventArgs e)
+        {
+            _sidebarFilterProject = null;
+            _sidebarFilterGeneralOnly = false;
+            UpdateHomeGreetingAndLabels();
+            RefreshHomeConversationsUi();
         }
 
         private void BtnNavChat_Click(object sender, RoutedEventArgs e)
@@ -174,11 +369,14 @@ namespace LlmodelBox
 
         private void BtnNewConversation_Click(object sender, RoutedEventArgs e)
         {
+            var scopedProject = _sidebarFilterProject ?? _homeChatProject;
+            _homeChatProject = scopedProject;
             _activeHomeThread = new HomeChatThread
             {
-                ProjectPath = _homeChatProject?.Path ?? string.Empty,
-                ProjectName = _homeChatProject?.Name ?? string.Empty
+                ProjectPath = scopedProject?.Path ?? string.Empty,
+                ProjectName = scopedProject?.Name ?? string.Empty
             };
+            UpdateHomeGreetingAndLabels();
             ShowView(ViewChatHome, ChatHomeTranslate);
             RefreshHomeConversationsUi();
             RefreshHomeChatThreadUi();
@@ -209,10 +407,16 @@ namespace LlmodelBox
                 SaveHomeThreads();
                 if (_activeHomeThread?.Id == thread.Id)
                 {
-                    _activeHomeThread = new HomeChatThread();
+                    var scopedProject = _sidebarFilterProject ?? _homeChatProject;
+                    _activeHomeThread = new HomeChatThread
+                    {
+                        ProjectPath = scopedProject?.Path ?? string.Empty,
+                        ProjectName = scopedProject?.Name ?? string.Empty
+                    };
                     RefreshHomeChatThreadUi();
                 }
                 RefreshHomeConversationsUi();
+                RefreshProjectsUi();
             }
         }
 
@@ -236,7 +440,7 @@ namespace LlmodelBox
             if (HomeWorkspacePickerList?.SelectedItem is HomeWorkspaceOption opt)
             {
                 _homeChatProject = opt.Project;
-                if (_activeHomeThread != null)
+                if (_activeHomeThread != null && _activeHomeThread.Messages.Count == 0)
                 {
                     _activeHomeThread.ProjectPath = _homeChatProject?.Path ?? string.Empty;
                     _activeHomeThread.ProjectName = _homeChatProject?.Name ?? string.Empty;
@@ -294,9 +498,15 @@ namespace LlmodelBox
                 }
             }
 
-            if (_activeHomeThread == null) _activeHomeThread = new HomeChatThread();
+            if (_activeHomeThread == null)
+            {
+                _activeHomeThread = new HomeChatThread
+                {
+                    ProjectPath = _homeChatProject?.Path ?? string.Empty,
+                    ProjectName = _homeChatProject?.Name ?? string.Empty
+                };
+            }
 
-            // Persist thread in list on first message
             if (!_homeThreads.Any(t => t.Id == _activeHomeThread.Id))
             {
                 string title = prompt.Replace("\r", " ").Replace("\n", " ").Trim();
@@ -323,6 +533,7 @@ namespace LlmodelBox
             SaveHomeThreads();
             RefreshHomeConversationsUi();
             RefreshHomeChatThreadUi();
+            RefreshProjectsUi();
 
             var requestModel = _activeModel!;
             var history = new List<AiMessage>();
@@ -415,12 +626,90 @@ namespace LlmodelBox
             });
             _activeHomeThread.UpdatedAtUtc = DateTime.UtcNow;
 
-            // Keep most recently active thread near the top
             _homeThreads.RemoveAll(t => t.Id == _activeHomeThread.Id);
             _homeThreads.Insert(0, _activeHomeThread);
             SaveHomeThreads();
             RefreshHomeConversationsUi();
             RefreshHomeChatThreadUi();
+            RefreshProjectsUi();
+        }
+
+        // ===== Settings Storage Paths & Dynamic Provider Logos =====
+        private void PopulateStoragePathsUi()
+        {
+            if (TxtPathChatHistory != null)
+                TxtPathChatHistory.Text = AppConstants.ChatHistoryDir;
+            if (TxtPathAgentMemory != null)
+                TxtPathAgentMemory.Text = Path.Combine(AppConstants.ChatHistoryDir, "<project-hash>.mem.json");
+            if (TxtPathDataRoot != null)
+                TxtPathDataRoot.Text = AppConstants.SettingsFilePath;
+        }
+
+        private void LoadSettingsProviderLogos()
+        {
+            TryBindCachedLogo(ImgLogoOpenAI, "openai.com.png");
+            TryBindCachedLogo(ImgLogoAnthropic, "anthropic.com.png");
+            TryBindCachedLogo(ImgLogoGrok, "x.ai.png");
+            TryBindCachedLogo(ImgLogoGemini, "google.com.png");
+            TryBindCachedLogo(ImgLogoDeepSeek, "deepseek.com.png");
+        }
+
+        private static void TryBindCachedLogo(Image? target, string fileName)
+        {
+            if (target == null) return;
+            try
+            {
+                string path = Path.Combine(AppConstants.CacheDir, fileName);
+                if (!File.Exists(path))
+                {
+                    target.Source = null;
+                    return;
+                }
+                var bmp = new BitmapImage();
+                bmp.BeginInit();
+                bmp.CacheOption = BitmapCacheOption.OnLoad;
+                bmp.UriSource = new Uri(path, UriKind.Absolute);
+                bmp.EndInit();
+                target.Source = bmp;
+            }
+            catch
+            {
+                target.Source = null;
+            }
+        }
+
+        private static void EnsureAndOpenFolder(string folderPath)
+        {
+            try
+            {
+                Directory.CreateDirectory(folderPath);
+                Process.Start(new ProcessStartInfo("explorer.exe", $"\"{folderPath}\"") { UseShellExecute = true });
+            }
+            catch { }
+        }
+
+        private void BtnOpenChatHistoryPath_Click(object sender, RoutedEventArgs e)
+            => EnsureAndOpenFolder(AppConstants.ChatHistoryDir);
+
+        private void BtnCopyChatHistoryPath_Click(object sender, RoutedEventArgs e)
+        {
+            try { Clipboard.SetText(AppConstants.ChatHistoryDir); } catch { }
+        }
+
+        private void BtnOpenAgentMemoryPath_Click(object sender, RoutedEventArgs e)
+            => EnsureAndOpenFolder(AppConstants.ChatHistoryDir);
+
+        private void BtnCopyAgentMemoryPath_Click(object sender, RoutedEventArgs e)
+        {
+            try { Clipboard.SetText(Path.Combine(AppConstants.ChatHistoryDir, "*.mem.json")); } catch { }
+        }
+
+        private void BtnOpenDataRootPath_Click(object sender, RoutedEventArgs e)
+            => EnsureAndOpenFolder(AppConstants.DataDirectory);
+
+        private void BtnCopyDataRootPath_Click(object sender, RoutedEventArgs e)
+        {
+            try { Clipboard.SetText(AppConstants.SettingsFilePath); } catch { }
         }
     }
 }

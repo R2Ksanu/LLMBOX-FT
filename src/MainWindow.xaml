@@ -759,8 +759,57 @@
                                 <RowDefinition Height="*"/>
                             </Grid.RowDefinitions>
 
-                            <Grid Grid.Row="0" Margin="8,4,6,6">
-                                <TextBlock Text="Conversations" FontSize="11" FontWeight="Medium" Foreground="{DynamicResource BrushTextMuted}" VerticalAlignment="Center"/>
+                            <Grid Grid.Row="0" Margin="6,4,4,8">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+                                <TextBlock Grid.Row="0" Text="Conversations" FontSize="11" FontWeight="Medium" Foreground="{DynamicResource BrushTextMuted}" Margin="2,0,0,6"/>
+                                <Grid Grid.Row="1">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Grid Grid.Column="0">
+                                        <Button x:Name="BtnSidebarProjectFilter" Click="BtnSidebarProjectFilter_Click" HorizontalContentAlignment="Stretch"
+                                                Background="{DynamicResource BrushCardInnerBg}" BorderBrush="{DynamicResource BrushBorderSubtle}" BorderThickness="1"
+                                                Padding="8,5" Cursor="Hand" ToolTip="Filter conversations by project">
+                                            <Button.Template>
+                                                <ControlTemplate TargetType="Button">
+                                                    <Border x:Name="fb" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="6" Padding="{TemplateBinding Padding}">
+                                                        <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" VerticalAlignment="Center"/>
+                                                    </Border>
+                                                    <ControlTemplate.Triggers>
+                                                        <Trigger Property="IsMouseOver" Value="True">
+                                                            <Setter TargetName="fb" Property="BorderBrush" Value="{DynamicResource BrushBorderHover}"/>
+                                                        </Trigger>
+                                                    </ControlTemplate.Triggers>
+                                                </ControlTemplate>
+                                            </Button.Template>
+                                            <Grid>
+                                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                    <Path Data="{StaticResource IconFolder}" Fill="{DynamicResource BrushAccentLight}" Stretch="Uniform" Width="11" Height="11" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                                    <TextBlock x:Name="TxtSidebarProjectFilter" Text="All Projects" FontSize="11.5" Foreground="{DynamicResource BrushTextPrimary}" TextTrimming="CharacterEllipsis" MaxWidth="148"/>
+                                                </StackPanel>
+                                                <TextBlock Text="⌄" FontSize="10" Foreground="{DynamicResource BrushTextDim}" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                                            </Grid>
+                                        </Button>
+                                        <Popup x:Name="SidebarProjectFilterPopup" PlacementTarget="{Binding ElementName=BtnSidebarProjectFilter}" Placement="Bottom" StaysOpen="False" AllowsTransparency="True" VerticalOffset="4">
+                                            <Border Background="{DynamicResource BrushCardInnerBg}" BorderBrush="{DynamicResource BrushBorder}" BorderThickness="1" CornerRadius="8" Padding="4" MinWidth="220" MaxHeight="280">
+                                                <ListBox x:Name="SidebarProjectFilterList" Background="Transparent" BorderThickness="0" SelectionChanged="SidebarProjectFilterList_SelectionChanged">
+                                                    <ListBox.ItemTemplate>
+                                                        <DataTemplate>
+                                                            <TextBlock Text="{Binding Name}" FontSize="12" Foreground="{DynamicResource BrushTextPrimary}" Padding="8,6"/>
+                                                        </DataTemplate>
+                                                    </ListBox.ItemTemplate>
+                                                </ListBox>
+                                            </Border>
+                                        </Popup>
+                                    </Grid>
+                                    <Button x:Name="BtnClearProjectFilter" Grid.Column="1" Content="✕" Width="24" Height="24" Margin="4,0,0,0"
+                                            Background="Transparent" BorderThickness="0" Foreground="{DynamicResource BrushTextMuted}" FontSize="10"
+                                            Cursor="Hand" ToolTip="Show all projects" Visibility="Collapsed" Click="BtnClearProjectFilter_Click"/>
+                                </Grid>
                             </Grid>
 
                             <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
@@ -861,6 +910,9 @@
                             <TextBlock x:Name="TxtHomeGreeting" Text="Welcome back. Where should we pick up?"
                                        FontSize="22" FontWeight="SemiBold" Foreground="{DynamicResource BrushTextPrimary}"
                                        HorizontalAlignment="Center" TextAlignment="Center"/>
+                            <TextBlock x:Name="TxtHomeGreetingSub" Text="Choose a workspace above or start a general conversation."
+                                       FontSize="12.5" Foreground="{DynamicResource BrushTextMuted}" Margin="0,8,0,0"
+                                       HorizontalAlignment="Center" TextAlignment="Center" MaxWidth="460" TextWrapping="Wrap"/>
                         </StackPanel>
 
                         <!-- Active Chat Messages Thread -->
@@ -1017,7 +1069,7 @@
                     </Grid>
 
                     <!-- VIEW A: HOMEPAGE (PROJECT WORKSPACE PORTAL) -->
-                    <Grid x:Name="ViewHomepage" Visibility="Collapsed" Margin="22,16" RenderTransformOrigin="0.5,0.5">
+                    <Grid x:Name="ViewHomepage" Visibility="Collapsed" Margin="28,22" RenderTransformOrigin="0.5,0.5">
                         <Grid.RenderTransform>
                             <TranslateTransform x:Name="HomepageTranslate" Y="0"/>
                         </Grid.RenderTransform>
@@ -1027,20 +1079,20 @@
                         </Grid.RowDefinitions>
 
                         <!-- Welcome & Action Cards Section -->
-                        <Grid Grid.Row="0" Margin="0,0,0,16">
+                        <Grid Grid.Row="0" Margin="0,0,0,22">
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="Auto"/>
                                 <RowDefinition Height="Auto"/>
                             </Grid.RowDefinitions>
 
-                            <Grid Grid.Row="0" Margin="0,0,0,14">
+                            <Grid Grid.Row="0" Margin="0,0,0,16">
                                 <StackPanel>
-                                    <TextBlock Text="WORKSPACE PORTAL" FontSize="20" FontWeight="Bold" Foreground="{DynamicResource BrushTextPrimary}"/>
-                                    <TextBlock Text="Create a new model project or launch existing workspaces" FontSize="12" Foreground="{DynamicResource BrushTextDim}" Margin="0,4,0,0"/>
+                                    <TextBlock Text="Workspaces" FontSize="22" FontWeight="SemiBold" Foreground="{DynamicResource BrushTextPrimary}"/>
+                                    <TextBlock Text="Select a project to browse its conversations, start a scoped chat, or launch the IDE." FontSize="12.5" Foreground="{DynamicResource BrushTextMuted}" Margin="0,4,0,0"/>
                                 </StackPanel>
                                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
-                                    <Border Background="{DynamicResource BrushCardInnerBg}" BorderBrush="{DynamicResource BrushBorderSubtle}" BorderThickness="1" CornerRadius="6" Padding="10,6">
-                                        <TextBlock x:Name="TxtProjectCountBadge" Text="2 Projects Found" FontSize="12" Foreground="{DynamicResource BrushAccentLight}" FontWeight="SemiBold"/>
+                                    <Border Background="{DynamicResource BrushCardBg}" BorderBrush="{DynamicResource BrushBorder}" BorderThickness="1" CornerRadius="8" Padding="12,6">
+                                        <TextBlock x:Name="TxtProjectCountBadge" Text="2 Projects Found" FontSize="11.5" Foreground="{DynamicResource BrushTextSecondary}" FontWeight="Medium"/>
                                     </Border>
                                 </StackPanel>
                             </Grid>
@@ -1053,8 +1105,17 @@
                                 </Grid.ColumnDefinitions>
 
                                 <!-- Hero Card 1: Make New Project -->
-                                <Border Grid.Column="0" Background="{DynamicResource BrushCardInnerBg}" BorderBrush="{DynamicResource BrushAccent}" BorderThickness="1.5" CornerRadius="10" Padding="16" Cursor="Hand"
+                                <Border Grid.Column="0" Background="{DynamicResource BrushCardBg}" BorderBrush="{DynamicResource BrushBorder}" BorderThickness="1" CornerRadius="12" Padding="18,16" Cursor="Hand"
                                         RenderTransformOrigin="0.5,0.5" MouseLeftButtonUp="CardNewProject_Click">
+                                    <Border.Style>
+                                        <Style TargetType="Border">
+                                            <Style.Triggers>
+                                                <Trigger Property="IsMouseOver" Value="True">
+                                                    <Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}"/>
+                                                </Trigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Border.Style>
                                     <Grid>
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="Auto"/>
@@ -1062,22 +1123,31 @@
                                             <ColumnDefinition Width="Auto"/>
                                         </Grid.ColumnDefinitions>
 
-                                        <Border Grid.Column="0" Width="44" Height="44" Background="{DynamicResource BrushAccent}" CornerRadius="8" VerticalAlignment="Center">
-                                            <TextBlock Text="+" FontSize="26" FontWeight="Bold" Foreground="{DynamicResource BrushTextPrimary}" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,-2,0,0"/>
+                                        <Border Grid.Column="0" Width="42" Height="42" Background="{DynamicResource BrushAccentGlow}" BorderBrush="{DynamicResource BrushAccent}" BorderThickness="1" CornerRadius="10" VerticalAlignment="Center">
+                                            <TextBlock Text="+" FontSize="22" FontWeight="SemiBold" Foreground="{DynamicResource BrushAccentLight}" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,-2,0,0"/>
                                         </Border>
 
-                                        <StackPanel Grid.Column="1" Margin="14,0,0,0" VerticalAlignment="Center">
-                                            <TextBlock Text="Make New Project" FontSize="15" FontWeight="Bold" Foreground="{DynamicResource BrushTextPrimary}"/>
-                                            <TextBlock Text="Custom folder path with suggested name" FontSize="11" Foreground="{DynamicResource BrushTextMuted}" Margin="0,3,0,0" TextWrapping="Wrap"/>
+                                        <StackPanel Grid.Column="1" Margin="14,0,12,0" VerticalAlignment="Center">
+                                            <TextBlock Text="New Project Workspace" FontSize="14.5" FontWeight="SemiBold" Foreground="{DynamicResource BrushTextPrimary}"/>
+                                            <TextBlock Text="Initialize a dedicated project folder with scoped memory &amp; chat history" FontSize="11.5" Foreground="{DynamicResource BrushTextMuted}" Margin="0,3,0,0" TextWrapping="Wrap"/>
                                         </StackPanel>
 
-                                        <Button Grid.Column="2" Content="Create" Style="{StaticResource PrimaryActionBtn}" VerticalAlignment="Center" Click="BtnOpenNewProjectModal_Click"/>
+                                        <Button Grid.Column="2" Content="Create" Style="{StaticResource PrimaryActionBtn}" Padding="16,7" VerticalAlignment="Center" Click="BtnOpenNewProjectModal_Click"/>
                                     </Grid>
                                 </Border>
 
                                 <!-- Hero Card 2: Open Existing Folder -->
-                                <Border Grid.Column="2" Background="{DynamicResource BrushCardInnerBg}" BorderBrush="{DynamicResource BrushBorderSubtle}" BorderThickness="1.5" CornerRadius="10" Padding="16" Cursor="Hand"
+                                <Border Grid.Column="2" Background="{DynamicResource BrushCardBg}" BorderBrush="{DynamicResource BrushBorder}" BorderThickness="1" CornerRadius="12" Padding="18,16" Cursor="Hand"
                                         RenderTransformOrigin="0.5,0.5" MouseLeftButtonUp="CardBrowseFolder_Click">
+                                    <Border.Style>
+                                        <Style TargetType="Border">
+                                            <Style.Triggers>
+                                                <Trigger Property="IsMouseOver" Value="True">
+                                                    <Setter Property="BorderBrush" Value="{DynamicResource BrushBorderHover}"/>
+                                                </Trigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Border.Style>
                                     <Grid>
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="Auto"/>
@@ -1085,16 +1155,16 @@
                                             <ColumnDefinition Width="Auto"/>
                                         </Grid.ColumnDefinitions>
 
-                                        <Border Grid.Column="0" Width="44" Height="44" Background="{DynamicResource BrushInputBg}" CornerRadius="8" VerticalAlignment="Center">
-                                            <TextBlock Text="📂" FontSize="20" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                        <Border Grid.Column="0" Width="42" Height="42" Background="{DynamicResource BrushCardInnerBg}" BorderBrush="{DynamicResource BrushBorder}" BorderThickness="1" CornerRadius="10" VerticalAlignment="Center">
+                                            <Path Data="{StaticResource IconFolder}" Fill="{DynamicResource BrushTextSecondary}" Stretch="Uniform" Width="18" Height="18" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                         </Border>
 
-                                        <StackPanel Grid.Column="1" Margin="14,0,0,0" VerticalAlignment="Center">
-                                            <TextBlock Text="Open Existing Project" FontSize="15" FontWeight="Bold" Foreground="{DynamicResource BrushTextPrimary}"/>
-                                            <TextBlock Text="Browse local storage and link folder" FontSize="11" Foreground="{DynamicResource BrushTextDim}" Margin="0,3,0,0" TextWrapping="Wrap"/>
+                                        <StackPanel Grid.Column="1" Margin="14,0,12,0" VerticalAlignment="Center">
+                                            <TextBlock Text="Open Existing Folder" FontSize="14.5" FontWeight="SemiBold" Foreground="{DynamicResource BrushTextPrimary}"/>
+                                            <TextBlock Text="Link any repository on disk to chat with its codebase &amp; files" FontSize="11.5" Foreground="{DynamicResource BrushTextMuted}" Margin="0,3,0,0" TextWrapping="Wrap"/>
                                         </StackPanel>
 
-                                        <Button Grid.Column="2" Content="Browse..." Style="{StaticResource BlackBoxActionBtn}" VerticalAlignment="Center" Click="BtnBrowseExistingFolder_Click"/>
+                                        <Button Grid.Column="2" Content="Browse..." Style="{StaticResource BlackBoxActionBtn}" Padding="14,7" VerticalAlignment="Center" Click="BtnBrowseExistingFolder_Click"/>
                                     </Grid>
                                 </Border>
                             </Grid>
@@ -1107,13 +1177,13 @@
                                 <RowDefinition Height="*"/>
                             </Grid.RowDefinitions>
 
-                            <TextBlock Grid.Row="0" Text="EXISTING PROJECTS" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource BrushTextDim}" Margin="0,0,0,8" FontFamily="Consolas"/>
+                            <TextBlock Grid.Row="0" Text="PROJECT WORKSPACES" FontSize="10.5" FontWeight="SemiBold" Foreground="{DynamicResource BrushTextDim}" Margin="2,0,0,10" FontFamily="Consolas"/>
 
                             <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
                                 <ItemsControl x:Name="ProjectsItemsControl">
                                     <ItemsControl.ItemTemplate>
                                         <DataTemplate>
-                                            <Border Background="{DynamicResource BrushCardInnerBg}" BorderBrush="{DynamicResource BrushBorderSubtle}" BorderThickness="1" CornerRadius="10" Padding="16,14" Margin="0,0,0,10">
+                                            <Border x:Name="ProjCard" Background="{DynamicResource BrushCardBg}" BorderBrush="{DynamicResource BrushBorder}" BorderThickness="1" CornerRadius="12" Padding="18,15" Margin="0,0,0,10">
                                                 <Grid>
                                                     <Grid.ColumnDefinitions>
                                                         <ColumnDefinition Width="Auto"/>
@@ -1121,28 +1191,37 @@
                                                         <ColumnDefinition Width="Auto"/>
                                                     </Grid.ColumnDefinitions>
 
-                                                    <Border Grid.Column="0" Width="42" Height="42" Background="{DynamicResource BrushCardInnerBg}" BorderBrush="{DynamicResource BrushBorder}" BorderThickness="1" CornerRadius="10" VerticalAlignment="Center">
-                                                        <TextBlock Text="▣" FontSize="19" FontWeight="Bold" Foreground="{DynamicResource BrushAccentLight}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                    <Border Grid.Column="0" Width="44" Height="44" Background="{DynamicResource BrushCardInnerBg}" BorderBrush="{DynamicResource BrushBorder}" BorderThickness="1" CornerRadius="10" VerticalAlignment="Center">
+                                                        <Path Data="{StaticResource IconCube}" Fill="{DynamicResource BrushAccentLight}" Stretch="Uniform" Width="19" Height="19" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                                     </Border>
 
-                                                    <StackPanel Grid.Column="1" Margin="14,0,0,0" VerticalAlignment="Center">
+                                                    <StackPanel Grid.Column="1" Margin="16,0,16,0" VerticalAlignment="Center">
                                                         <StackPanel Orientation="Horizontal">
-                                                            <TextBlock Text="{Binding Name}" FontWeight="Bold" FontSize="14.5" Foreground="{DynamicResource BrushTextPrimary}" VerticalAlignment="Center"/>
-                                                            <Border Background="{DynamicResource BrushInputBg}" BorderBrush="{DynamicResource BrushBorder}" BorderThickness="1" CornerRadius="4" Margin="8,0,0,0" Padding="6,1" VerticalAlignment="Center">
-                                                                <TextBlock Text="{Binding CreatedAt, StringFormat='{}{0}'}" FontSize="9.5" Foreground="{DynamicResource BrushTextMuted}" FontFamily="Consolas"/>
+                                                            <TextBlock Text="{Binding Name}" FontWeight="SemiBold" FontSize="15" Foreground="{DynamicResource BrushTextPrimary}" VerticalAlignment="Center"/>
+                                                            <Border Background="{DynamicResource BrushAccentGlow}" BorderBrush="{DynamicResource BrushAccentMuted}" BorderThickness="1" CornerRadius="999" Margin="10,0,0,0" Padding="8,2" VerticalAlignment="Center">
+                                                                <TextBlock Text="{Binding ConversationSummary}" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource BrushAccentLight}"/>
+                                                            </Border>
+                                                            <Border Background="{DynamicResource BrushCardInnerBg}" BorderBrush="{DynamicResource BrushBorderSubtle}" BorderThickness="1" CornerRadius="6" Margin="8,0,0,0" Padding="7,2" VerticalAlignment="Center">
+                                                                <TextBlock Text="{Binding CreatedAt}" FontSize="10" Foreground="{DynamicResource BrushTextMuted}" FontFamily="Consolas"/>
                                                             </Border>
                                                         </StackPanel>
-                                                        <TextBlock Text="{Binding Path}" FontSize="10.5" Foreground="{DynamicResource BrushTextDim}" Margin="0,4,0,0" TextTrimming="CharacterEllipsis" FontFamily="Consolas"/>
-                                                        <TextBlock Text="{Binding Description}" FontSize="11" Foreground="{DynamicResource BrushTextMuted}" Margin="0,3,0,0" TextTrimming="CharacterEllipsis"/>
+                                                        <TextBlock Text="{Binding Path}" FontSize="11" Foreground="{DynamicResource BrushTextDim}" Margin="0,5,0,0" TextTrimming="CharacterEllipsis" FontFamily="Consolas"/>
+                                                        <TextBlock Text="{Binding Description}" FontSize="11.5" Foreground="{DynamicResource BrushTextSecondary}" Margin="0,3,0,0" TextTrimming="CharacterEllipsis"/>
                                                     </StackPanel>
 
                                                     <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
-                                                        <Button Content="Open" Style="{StaticResource PrimaryActionBtn}" Margin="0,0,8,0" Padding="18,8" Tag="{Binding}" Click="BtnOpenProjectCard_Click"/>
-                                                        <Button Content="Explorer" Style="{StaticResource BlackBoxActionBtn}" Margin="0,0,8,0" Tag="{Binding}" Click="BtnOpenInExplorer_Click"/>
-                                                        <Button Content="✕" Style="{StaticResource FileRowIconBtn}" Width="28" Height="28" FontSize="13" ToolTip="Remove project from list" Tag="{Binding}" Click="BtnRemoveProject_Click"/>
+                                                        <Button Content="Chats" Style="{StaticResource PrimaryActionBtn}" Margin="0,0,8,0" Padding="15,7" ToolTip="View project conversation history or start a new chat in this project" Tag="{Binding}" Click="BtnOpenProjectChats_Click"/>
+                                                        <Button Content="Open IDE" Style="{StaticResource BlackBoxActionBtn}" Margin="0,0,8,0" Padding="12,7" ToolTip="Open 3-column code editor &amp; tools" Tag="{Binding}" Click="BtnOpenProjectCard_Click"/>
+                                                        <Button Content="Folder" Style="{StaticResource BlackBoxActionBtn}" Margin="0,0,8,0" Padding="10,7" Tag="{Binding}" Click="BtnOpenInExplorer_Click"/>
+                                                        <Button Content="✕" Style="{StaticResource FileRowIconBtn}" Width="28" Height="28" FontSize="12" ToolTip="Remove project from list" Tag="{Binding}" Click="BtnRemoveProject_Click"/>
                                                     </StackPanel>
                                                 </Grid>
                                             </Border>
+                                            <DataTemplate.Triggers>
+                                                <Trigger SourceName="ProjCard" Property="IsMouseOver" Value="True">
+                                                    <Setter TargetName="ProjCard" Property="BorderBrush" Value="{DynamicResource BrushBorderHover}"/>
+                                                </Trigger>
+                                            </DataTemplate.Triggers>
                                         </DataTemplate>
                                     </ItemsControl.ItemTemplate>
                                 </ItemsControl>
@@ -1667,9 +1746,12 @@
                 </Grid>
 
                 <!-- ================= MODAL OVERLAY 2: LLMODELBOX SETTINGS & PROVIDER STUDIO ================= -->
-                <Grid x:Name="ModalSettings" Visibility="Collapsed" Background="#aa040406" Grid.ColumnSpan="2" Grid.RowSpan="3" Panel.ZIndex="60">
-                    <Border x:Name="SettingsModalBox" Width="820" Height="650" Background="{DynamicResource BrushCardBg}" BorderBrush="{DynamicResource BrushAccent}" BorderThickness="1.5" CornerRadius="8" Padding="22,18,22,18" 
+                <Grid x:Name="ModalSettings" Visibility="Collapsed" Background="#bb030306" Grid.ColumnSpan="2" Grid.RowSpan="3" Panel.ZIndex="60">
+                    <Border x:Name="SettingsModalBox" Width="840" Height="660" Background="{DynamicResource BrushCardBg}" BorderBrush="{DynamicResource BrushBorder}" BorderThickness="1" CornerRadius="12" Padding="24,20"
                             HorizontalAlignment="Center" VerticalAlignment="Center" RenderTransformOrigin="0.5,0.5">
+                        <Border.Effect>
+                            <DropShadowEffect Color="#000000" BlurRadius="36" ShadowDepth="0" Opacity="0.65"/>
+                        </Border.Effect>
                         <Border.RenderTransform>
                             <ScaleTransform x:Name="SettingsModalScale" ScaleX="1.0" ScaleY="1.0"/>
                         </Border.RenderTransform>
@@ -1682,32 +1764,31 @@
                             </Grid.RowDefinitions>
 
                             <!-- Modal Header -->
-                            <Grid Grid.Row="0" Margin="0,0,0,12">
+                            <Grid Grid.Row="0" Margin="0,0,0,14">
                                 <StackPanel>
                                     <StackPanel Orientation="Horizontal">
-                                        <TextBlock Text="⚙" FontSize="18" Foreground="{DynamicResource BrushAccentLight}" Margin="0,0,8,0"/>
-                                        <TextBlock Text="SETTINGS &amp; PROVIDER STUDIO" FontSize="18" FontWeight="Bold" Foreground="{DynamicResource BrushTextPrimary}"/>
-                                        <Border Background="{DynamicResource BrushCardInnerBg}" CornerRadius="3" Margin="10,0,0,0" Padding="6,1" VerticalAlignment="Center">
-                                            <TextBlock Text="ONLINE LOGO SYNC ACTIVE" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource BrushAccentLight}"/>
+                                        <TextBlock Text="Settings &amp; Providers" FontSize="19" FontWeight="SemiBold" Foreground="{DynamicResource BrushTextPrimary}" VerticalAlignment="Center"/>
+                                        <Border Background="{DynamicResource BrushSuccessGlow}" BorderBrush="{DynamicResource BrushSuccess}" BorderThickness="1" CornerRadius="999" Margin="10,0,0,0" Padding="8,2" VerticalAlignment="Center">
+                                            <TextBlock Text="DIRECT HTTPS" FontSize="9.5" FontWeight="SemiBold" Foreground="{DynamicResource BrushSuccess}" FontFamily="Consolas"/>
                                         </Border>
                                     </StackPanel>
-                                    <TextBlock Text="Configure frontier APIs, add custom providers with online company logos, and customize operator profile" FontSize="12" Foreground="{DynamicResource BrushTextDim}" Margin="0,3,0,0"/>
+                                    <TextBlock Text="Manage API keys, custom endpoints, storage paths, chat history, AI agent memory, and appearance." FontSize="12" Foreground="{DynamicResource BrushTextMuted}" Margin="0,4,0,0"/>
                                 </StackPanel>
-                                <Button Content="✕" Style="{StaticResource CaptionSysButtonStyle}" Width="32" Height="32" HorizontalAlignment="Right" Click="BtnCloseSettings_Click"/>
+                                <Button Content="✕" Style="{StaticResource CaptionSysButtonStyle}" Width="30" Height="30" HorizontalAlignment="Right" VerticalAlignment="Top" Click="BtnCloseSettings_Click"/>
                             </Grid>
 
                             <!-- Tab Navigation Bar -->
-                            <Border Grid.Row="1" Background="{DynamicResource BrushCardBg}" BorderBrush="{DynamicResource BrushBorder}" BorderThickness="1" CornerRadius="6" Padding="4" Margin="0,0,0,12">
+                            <Border Grid.Row="1" Background="{DynamicResource BrushCardInnerBg}" BorderBrush="{DynamicResource BrushBorderSubtle}" BorderThickness="1" CornerRadius="8" Padding="4" Margin="0,0,0,14">
                                 <Grid>
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*"/>
                                         <ColumnDefinition Width="*"/>
                                         <ColumnDefinition Width="*"/>
                                     </Grid.ColumnDefinitions>
-                                    
-                                    <Button x:Name="TabBtnStandardApis" Grid.Column="0" Content="🌐 Standard Cloud APIs" Style="{StaticResource SettingsTabBtnActive}" Click="TabBtnStandardApis_Click"/>
-                                    <Button x:Name="TabBtnCustomProviders" Grid.Column="1" Content="⚡ Custom Providers (+ Add)" Style="{StaticResource SettingsTabBtn}" Click="TabBtnCustomProviders_Click"/>
-                                    <Button x:Name="TabBtnOperatorProfile" Grid.Column="2" Content="👤 Operator &amp; System" Style="{StaticResource SettingsTabBtn}" Click="TabBtnOperatorProfile_Click"/>
+
+                                    <Button x:Name="TabBtnStandardApis" Grid.Column="0" Content="Cloud APIs" Style="{StaticResource SettingsTabBtnActive}" Click="TabBtnStandardApis_Click"/>
+                                    <Button x:Name="TabBtnCustomProviders" Grid.Column="1" Content="Custom Providers" Style="{StaticResource SettingsTabBtn}" Click="TabBtnCustomProviders_Click"/>
+                                    <Button x:Name="TabBtnOperatorProfile" Grid.Column="2" Content="Profile, Storage &amp; Memory" Style="{StaticResource SettingsTabBtn}" Click="TabBtnOperatorProfile_Click"/>
                                 </Grid>
                             </Border>
 
@@ -1716,188 +1797,167 @@
                                 <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Padding="0,0,8,0">
                                     <StackPanel>
                                         <!-- Header Banner -->
-                                        <Border Background="{DynamicResource BrushCardBg}" BorderBrush="{DynamicResource BrushBorder}" BorderThickness="1" CornerRadius="6" Padding="12,10" Margin="0,0,0,12">
+                                        <Border Background="{DynamicResource BrushCardInnerBg}" BorderBrush="{DynamicResource BrushBorderSubtle}" BorderThickness="1" CornerRadius="8" Padding="14,10" Margin="0,0,0,12">
                                             <Grid>
                                                 <StackPanel>
-                                                    <TextBlock Text="OFFICIAL FRONTIER CLOUD PROVIDERS" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource BrushAccentLight}" FontFamily="Consolas"/>
-                                                    <TextBlock Text="Real company logos fetched online. Keys are persisted in settings.json with environment variable fallback." FontSize="11" Foreground="{DynamicResource BrushTextMuted}" Margin="0,2,0,0"/>
+                                                    <TextBlock Text="FRONTIER CLOUD PROVIDERS" FontSize="10.5" FontWeight="Bold" Foreground="{DynamicResource BrushAccentLight}" FontFamily="Consolas"/>
+                                                    <TextBlock Text="Stored locally in settings.json. Leave blank to fall back to environment variables (OPENAI_API_KEY, etc.)." FontSize="11.5" Foreground="{DynamicResource BrushTextMuted}" Margin="0,3,0,0"/>
                                                 </StackPanel>
-                                                <TextBlock Text="● DIRECT HTTPS" HorizontalAlignment="Right" VerticalAlignment="Center" FontSize="10" Foreground="{DynamicResource BrushSuccess}" FontWeight="Bold" FontFamily="Consolas"/>
                                             </Grid>
                                         </Border>
 
                                         <!-- Provider 1: OpenAI -->
-                                        <Border Background="{DynamicResource BrushCardInnerBg}" BorderBrush="{DynamicResource BrushBorder}" BorderThickness="1" CornerRadius="6" Padding="12,10" Margin="0,0,0,8">
+                                        <Border Background="{DynamicResource BrushCardInnerBg}" BorderBrush="{DynamicResource BrushBorder}" BorderThickness="1" CornerRadius="8" Padding="12,10" Margin="0,0,0,8">
                                             <Grid>
                                                 <Grid.ColumnDefinitions>
                                                     <ColumnDefinition Width="Auto"/>
-                                                    <ColumnDefinition Width="150"/>
+                                                    <ColumnDefinition Width="165"/>
                                                     <ColumnDefinition Width="*"/>
                                                     <ColumnDefinition Width="Auto"/>
                                                 </Grid.ColumnDefinitions>
-                                                <Border Grid.Column="0" Width="36" Height="36" Background="{DynamicResource BrushCardBg}" BorderBrush="{DynamicResource BrushSuccess}" BorderThickness="1.2" CornerRadius="{DynamicResource ProviderLogoSmallCornerRadius}" Margin="0,0,10,0" SnapsToDevicePixels="True">
-                                                    <Border CornerRadius="{DynamicResource ProviderLogoSmallInnerCornerRadius}">
-                                                        <Border.OpacityMask>
-                                                            <VisualBrush Stretch="Fill">
-                                                                <VisualBrush.Visual>
-                                                                    <Border Background="Black" CornerRadius="{DynamicResource ProviderLogoSmallInnerCornerRadius}" Width="36" Height="36"/>
-                                                                </VisualBrush.Visual>
-                                                            </VisualBrush>
-                                                        </Border.OpacityMask>
-                                                        <Grid>
-                                                            <TextBlock Text="🟢" FontSize="16" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                                            <Image Source="G:\tools\LlmodelBox\cache\logos\openai.com.png" Stretch="Uniform" Margin="3" RenderOptions.BitmapScalingMode="HighQuality"/>
-                                                        </Grid>
-                                                    </Border>
+                                                <Border Grid.Column="0" Width="36" Height="36" Background="{DynamicResource BrushCardBg}" BorderBrush="{DynamicResource BrushBorder}" BorderThickness="1" CornerRadius="{DynamicResource ProviderLogoSmallCornerRadius}" Margin="0,0,12,0" SnapsToDevicePixels="True">
+                                                    <Grid>
+                                                        <TextBlock Text="O" FontSize="14" FontWeight="Bold" Foreground="{DynamicResource BrushSuccess}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                        <Image x:Name="ImgLogoOpenAI" Stretch="Uniform" Margin="4" RenderOptions.BitmapScalingMode="HighQuality"/>
+                                                    </Grid>
                                                 </Border>
                                                 <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                                                    <TextBlock Text="OpenAI API" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource BrushTextPrimary}"/>
-                                                    <TextBlock Text="openai.com | gpt-4o, o1" FontSize="10" Foreground="{DynamicResource BrushTextDim}" FontFamily="Consolas"/>
+                                                    <TextBlock Text="OpenAI" FontSize="12.5" FontWeight="SemiBold" Foreground="{DynamicResource BrushTextPrimary}"/>
+                                                    <TextBlock Text="OPENAI_API_KEY · gpt-4o, o1" FontSize="10" Foreground="{DynamicResource BrushTextDim}" FontFamily="Consolas"/>
                                                 </StackPanel>
-                                                <Border Grid.Column="2" Background="{DynamicResource BrushCardBg}" BorderBrush="{DynamicResource BrushBorder}" BorderThickness="1" CornerRadius="4" Padding="8,6" Margin="0,0,8,0">
-                                                    <TextBox x:Name="TxtApiKeyOpenAI" Background="Transparent" Foreground="{DynamicResource BrushTextPrimary}" BorderThickness="0" FontSize="11" FontFamily="Consolas"/>
+                                                <Border Grid.Column="2" Background="{DynamicResource BrushInputBg}" BorderBrush="{DynamicResource BrushBorder}" BorderThickness="1" CornerRadius="6" Padding="10,7" Margin="0,0,8,0">
+                                                    <Grid>
+                                                        <TextBlock Text="Paste OpenAI key (sk-...) or leave empty for env" FontSize="11" Foreground="{DynamicResource BrushTextDim}" IsHitTestVisible="False" VerticalAlignment="Center">
+                                                            <TextBlock.Style><Style TargetType="TextBlock"><Setter Property="Visibility" Value="Collapsed"/><Style.Triggers><DataTrigger Binding="{Binding Text, ElementName=TxtApiKeyOpenAI}" Value=""><Setter Property="Visibility" Value="Visible"/></DataTrigger></Style.Triggers></Style></TextBlock.Style>
+                                                        </TextBlock>
+                                                        <TextBox x:Name="TxtApiKeyOpenAI" Background="Transparent" Foreground="{DynamicResource BrushTextPrimary}" CaretBrush="{DynamicResource BrushAccentLight}" BorderThickness="0" FontSize="11.5" FontFamily="Consolas" VerticalAlignment="Center"/>
+                                                    </Grid>
                                                 </Border>
-                                                <Button Grid.Column="3" Content="⚡ Test" Style="{StaticResource BlackBoxActionBtn}" Padding="10,4" Tag="OpenAI" Click="BtnTestSingleKey_Click"/>
+                                                <Button Grid.Column="3" Content="Test" Style="{StaticResource BlackBoxActionBtn}" Padding="14,6" Tag="OpenAI" Click="BtnTestSingleKey_Click"/>
                                             </Grid>
                                         </Border>
 
                                         <!-- Provider 2: Anthropic Claude -->
-                                        <Border Background="{DynamicResource BrushCardInnerBg}" BorderBrush="{DynamicResource BrushBorder}" BorderThickness="1" CornerRadius="6" Padding="12,10" Margin="0,0,0,8">
+                                        <Border Background="{DynamicResource BrushCardInnerBg}" BorderBrush="{DynamicResource BrushBorder}" BorderThickness="1" CornerRadius="8" Padding="12,10" Margin="0,0,0,8">
                                             <Grid>
                                                 <Grid.ColumnDefinitions>
                                                     <ColumnDefinition Width="Auto"/>
-                                                    <ColumnDefinition Width="150"/>
+                                                    <ColumnDefinition Width="165"/>
                                                     <ColumnDefinition Width="*"/>
                                                     <ColumnDefinition Width="Auto"/>
                                                 </Grid.ColumnDefinitions>
-                                                <Border Grid.Column="0" Width="36" Height="36" Background="{DynamicResource BrushCardBg}" BorderBrush="{DynamicResource BrushWarning}" BorderThickness="1.2" CornerRadius="{DynamicResource ProviderLogoSmallCornerRadius}" Margin="0,0,10,0" SnapsToDevicePixels="True">
-                                                    <Border CornerRadius="{DynamicResource ProviderLogoSmallInnerCornerRadius}">
-                                                        <Border.OpacityMask>
-                                                            <VisualBrush Stretch="Fill">
-                                                                <VisualBrush.Visual>
-                                                                    <Border Background="Black" CornerRadius="{DynamicResource ProviderLogoSmallInnerCornerRadius}" Width="36" Height="36"/>
-                                                                </VisualBrush.Visual>
-                                                            </VisualBrush>
-                                                        </Border.OpacityMask>
-                                                        <Grid>
-                                                            <TextBlock Text="🟠" FontSize="16" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                                            <Image Source="G:\tools\LlmodelBox\cache\logos\anthropic.com.png" Stretch="Uniform" Margin="3" RenderOptions.BitmapScalingMode="HighQuality"/>
-                                                        </Grid>
-                                                    </Border>
+                                                <Border Grid.Column="0" Width="36" Height="36" Background="{DynamicResource BrushCardBg}" BorderBrush="{DynamicResource BrushBorder}" BorderThickness="1" CornerRadius="{DynamicResource ProviderLogoSmallCornerRadius}" Margin="0,0,12,0" SnapsToDevicePixels="True">
+                                                    <Grid>
+                                                        <TextBlock Text="A" FontSize="14" FontWeight="Bold" Foreground="{DynamicResource BrushWarning}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                        <Image x:Name="ImgLogoAnthropic" Stretch="Uniform" Margin="4" RenderOptions.BitmapScalingMode="HighQuality"/>
+                                                    </Grid>
                                                 </Border>
                                                 <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                                                    <TextBlock Text="Anthropic Claude" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource BrushTextPrimary}"/>
-                                                    <TextBlock Text="anthropic.com | sonnet 3.5" FontSize="10" Foreground="{DynamicResource BrushTextDim}" FontFamily="Consolas"/>
+                                                    <TextBlock Text="Anthropic Claude" FontSize="12.5" FontWeight="SemiBold" Foreground="{DynamicResource BrushTextPrimary}"/>
+                                                    <TextBlock Text="ANTHROPIC_API_KEY · claude" FontSize="10" Foreground="{DynamicResource BrushTextDim}" FontFamily="Consolas"/>
                                                 </StackPanel>
-                                                <Border Grid.Column="2" Background="{DynamicResource BrushCardBg}" BorderBrush="{DynamicResource BrushBorder}" BorderThickness="1" CornerRadius="4" Padding="8,6" Margin="0,0,8,0">
-                                                    <TextBox x:Name="TxtApiKeyAnthropic" Background="Transparent" Foreground="{DynamicResource BrushTextPrimary}" BorderThickness="0" FontSize="11" FontFamily="Consolas"/>
+                                                <Border Grid.Column="2" Background="{DynamicResource BrushInputBg}" BorderBrush="{DynamicResource BrushBorder}" BorderThickness="1" CornerRadius="6" Padding="10,7" Margin="0,0,8,0">
+                                                    <Grid>
+                                                        <TextBlock Text="Paste Anthropic key (sk-ant-...) or leave empty for env" FontSize="11" Foreground="{DynamicResource BrushTextDim}" IsHitTestVisible="False" VerticalAlignment="Center">
+                                                            <TextBlock.Style><Style TargetType="TextBlock"><Setter Property="Visibility" Value="Collapsed"/><Style.Triggers><DataTrigger Binding="{Binding Text, ElementName=TxtApiKeyAnthropic}" Value=""><Setter Property="Visibility" Value="Visible"/></DataTrigger></Style.Triggers></Style></TextBlock.Style>
+                                                        </TextBlock>
+                                                        <TextBox x:Name="TxtApiKeyAnthropic" Background="Transparent" Foreground="{DynamicResource BrushTextPrimary}" CaretBrush="{DynamicResource BrushAccentLight}" BorderThickness="0" FontSize="11.5" FontFamily="Consolas" VerticalAlignment="Center"/>
+                                                    </Grid>
                                                 </Border>
-                                                <Button Grid.Column="3" Content="⚡ Test" Style="{StaticResource BlackBoxActionBtn}" Padding="10,4" Tag="Anthropic" Click="BtnTestSingleKey_Click"/>
+                                                <Button Grid.Column="3" Content="Test" Style="{StaticResource BlackBoxActionBtn}" Padding="14,6" Tag="Anthropic" Click="BtnTestSingleKey_Click"/>
                                             </Grid>
                                         </Border>
 
                                         <!-- Provider 3: xAI Grok -->
-                                        <Border Background="{DynamicResource BrushCardInnerBg}" BorderBrush="{DynamicResource BrushBorder}" BorderThickness="1" CornerRadius="6" Padding="12,10" Margin="0,0,0,8">
+                                        <Border Background="{DynamicResource BrushCardInnerBg}" BorderBrush="{DynamicResource BrushBorder}" BorderThickness="1" CornerRadius="8" Padding="12,10" Margin="0,0,0,8">
                                             <Grid>
                                                 <Grid.ColumnDefinitions>
                                                     <ColumnDefinition Width="Auto"/>
-                                                    <ColumnDefinition Width="150"/>
+                                                    <ColumnDefinition Width="165"/>
                                                     <ColumnDefinition Width="*"/>
                                                     <ColumnDefinition Width="Auto"/>
                                                 </Grid.ColumnDefinitions>
-                                                <Border Grid.Column="0" Width="36" Height="36" Background="{DynamicResource BrushCardBg}" BorderBrush="{DynamicResource BrushBorder}" BorderThickness="1.2" CornerRadius="{DynamicResource ProviderLogoSmallCornerRadius}" Margin="0,0,10,0" SnapsToDevicePixels="True">
-                                                    <Border CornerRadius="{DynamicResource ProviderLogoSmallInnerCornerRadius}">
-                                                        <Border.OpacityMask>
-                                                            <VisualBrush Stretch="Fill">
-                                                                <VisualBrush.Visual>
-                                                                    <Border Background="Black" CornerRadius="{DynamicResource ProviderLogoSmallInnerCornerRadius}" Width="36" Height="36"/>
-                                                                </VisualBrush.Visual>
-                                                            </VisualBrush>
-                                                        </Border.OpacityMask>
-                                                        <Grid>
-                                                            <TextBlock Text="⚪" FontSize="16" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                                            <Image Source="G:\tools\LlmodelBox\cache\logos\x.ai.png" Stretch="Uniform" Margin="3" RenderOptions.BitmapScalingMode="HighQuality"/>
-                                                        </Grid>
-                                                    </Border>
+                                                <Border Grid.Column="0" Width="36" Height="36" Background="{DynamicResource BrushCardBg}" BorderBrush="{DynamicResource BrushBorder}" BorderThickness="1" CornerRadius="{DynamicResource ProviderLogoSmallCornerRadius}" Margin="0,0,12,0" SnapsToDevicePixels="True">
+                                                    <Grid>
+                                                        <TextBlock Text="X" FontSize="14" FontWeight="Bold" Foreground="{DynamicResource BrushTextPrimary}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                        <Image x:Name="ImgLogoGrok" Stretch="Uniform" Margin="4" RenderOptions.BitmapScalingMode="HighQuality"/>
+                                                    </Grid>
                                                 </Border>
                                                 <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                                                    <TextBlock Text="xAI Grok API" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource BrushTextPrimary}"/>
-                                                    <TextBlock Text="x.ai | grok-2, grok-beta" FontSize="10" Foreground="{DynamicResource BrushTextDim}" FontFamily="Consolas"/>
+                                                    <TextBlock Text="xAI Grok" FontSize="12.5" FontWeight="SemiBold" Foreground="{DynamicResource BrushTextPrimary}"/>
+                                                    <TextBlock Text="XAI_API_KEY · grok-2" FontSize="10" Foreground="{DynamicResource BrushTextDim}" FontFamily="Consolas"/>
                                                 </StackPanel>
-                                                <Border Grid.Column="2" Background="{DynamicResource BrushCardBg}" BorderBrush="{DynamicResource BrushBorder}" BorderThickness="1" CornerRadius="4" Padding="8,6" Margin="0,0,8,0">
-                                                    <TextBox x:Name="TxtApiKeyGrok" Background="Transparent" Foreground="{DynamicResource BrushTextPrimary}" BorderThickness="0" FontSize="11" FontFamily="Consolas"/>
+                                                <Border Grid.Column="2" Background="{DynamicResource BrushInputBg}" BorderBrush="{DynamicResource BrushBorder}" BorderThickness="1" CornerRadius="6" Padding="10,7" Margin="0,0,8,0">
+                                                    <Grid>
+                                                        <TextBlock Text="Paste xAI key (xai-...) or leave empty for env" FontSize="11" Foreground="{DynamicResource BrushTextDim}" IsHitTestVisible="False" VerticalAlignment="Center">
+                                                            <TextBlock.Style><Style TargetType="TextBlock"><Setter Property="Visibility" Value="Collapsed"/><Style.Triggers><DataTrigger Binding="{Binding Text, ElementName=TxtApiKeyGrok}" Value=""><Setter Property="Visibility" Value="Visible"/></DataTrigger></Style.Triggers></Style></TextBlock.Style>
+                                                        </TextBlock>
+                                                        <TextBox x:Name="TxtApiKeyGrok" Background="Transparent" Foreground="{DynamicResource BrushTextPrimary}" CaretBrush="{DynamicResource BrushAccentLight}" BorderThickness="0" FontSize="11.5" FontFamily="Consolas" VerticalAlignment="Center"/>
+                                                    </Grid>
                                                 </Border>
-                                                <Button Grid.Column="3" Content="⚡ Test" Style="{StaticResource BlackBoxActionBtn}" Padding="10,4" Tag="Grok" Click="BtnTestSingleKey_Click"/>
+                                                <Button Grid.Column="3" Content="Test" Style="{StaticResource BlackBoxActionBtn}" Padding="14,6" Tag="Grok" Click="BtnTestSingleKey_Click"/>
                                             </Grid>
                                         </Border>
 
                                         <!-- Provider 4: Google Gemini -->
-                                        <Border Background="{DynamicResource BrushCardInnerBg}" BorderBrush="{DynamicResource BrushBorder}" BorderThickness="1" CornerRadius="6" Padding="12,10" Margin="0,0,0,8">
+                                        <Border Background="{DynamicResource BrushCardInnerBg}" BorderBrush="{DynamicResource BrushBorder}" BorderThickness="1" CornerRadius="8" Padding="12,10" Margin="0,0,0,8">
                                             <Grid>
                                                 <Grid.ColumnDefinitions>
                                                     <ColumnDefinition Width="Auto"/>
-                                                    <ColumnDefinition Width="150"/>
+                                                    <ColumnDefinition Width="165"/>
                                                     <ColumnDefinition Width="*"/>
                                                     <ColumnDefinition Width="Auto"/>
                                                 </Grid.ColumnDefinitions>
-                                                <Border Grid.Column="0" Width="36" Height="36" Background="{DynamicResource BrushCardBg}" BorderBrush="{DynamicResource BrushAccent}" BorderThickness="1.2" CornerRadius="{DynamicResource ProviderLogoSmallCornerRadius}" Margin="0,0,10,0" SnapsToDevicePixels="True">
-                                                    <Border CornerRadius="{DynamicResource ProviderLogoSmallInnerCornerRadius}">
-                                                        <Border.OpacityMask>
-                                                            <VisualBrush Stretch="Fill">
-                                                                <VisualBrush.Visual>
-                                                                    <Border Background="Black" CornerRadius="{DynamicResource ProviderLogoSmallInnerCornerRadius}" Width="36" Height="36"/>
-                                                                </VisualBrush.Visual>
-                                                            </VisualBrush>
-                                                        </Border.OpacityMask>
-                                                        <Grid>
-                                                            <TextBlock Text="🔵" FontSize="16" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                                            <Image Source="G:\tools\LlmodelBox\cache\logos\google.com.png" Stretch="Uniform" Margin="3" RenderOptions.BitmapScalingMode="HighQuality"/>
-                                                        </Grid>
-                                                    </Border>
+                                                <Border Grid.Column="0" Width="36" Height="36" Background="{DynamicResource BrushCardBg}" BorderBrush="{DynamicResource BrushBorder}" BorderThickness="1" CornerRadius="{DynamicResource ProviderLogoSmallCornerRadius}" Margin="0,0,12,0" SnapsToDevicePixels="True">
+                                                    <Grid>
+                                                        <TextBlock Text="G" FontSize="14" FontWeight="Bold" Foreground="{DynamicResource BrushAccentLight}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                        <Image x:Name="ImgLogoGemini" Stretch="Uniform" Margin="4" RenderOptions.BitmapScalingMode="HighQuality"/>
+                                                    </Grid>
                                                 </Border>
                                                 <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                                                    <TextBlock Text="Google Gemini" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource BrushTextPrimary}"/>
-                                                    <TextBlock Text="google.com | 1.5 pro/flash" FontSize="10" Foreground="{DynamicResource BrushTextDim}" FontFamily="Consolas"/>
+                                                    <TextBlock Text="Google Gemini" FontSize="12.5" FontWeight="SemiBold" Foreground="{DynamicResource BrushTextPrimary}"/>
+                                                    <TextBlock Text="GEMINI_API_KEY · flash/pro" FontSize="10" Foreground="{DynamicResource BrushTextDim}" FontFamily="Consolas"/>
                                                 </StackPanel>
-                                                <Border Grid.Column="2" Background="{DynamicResource BrushCardBg}" BorderBrush="{DynamicResource BrushBorder}" BorderThickness="1" CornerRadius="4" Padding="8,6" Margin="0,0,8,0">
-                                                    <TextBox x:Name="TxtApiKeyGemini" Background="Transparent" Foreground="{DynamicResource BrushTextPrimary}" BorderThickness="0" FontSize="11" FontFamily="Consolas"/>
+                                                <Border Grid.Column="2" Background="{DynamicResource BrushInputBg}" BorderBrush="{DynamicResource BrushBorder}" BorderThickness="1" CornerRadius="6" Padding="10,7" Margin="0,0,8,0">
+                                                    <Grid>
+                                                        <TextBlock Text="Paste Gemini key (AIza...) or leave empty for env" FontSize="11" Foreground="{DynamicResource BrushTextDim}" IsHitTestVisible="False" VerticalAlignment="Center">
+                                                            <TextBlock.Style><Style TargetType="TextBlock"><Setter Property="Visibility" Value="Collapsed"/><Style.Triggers><DataTrigger Binding="{Binding Text, ElementName=TxtApiKeyGemini}" Value=""><Setter Property="Visibility" Value="Visible"/></DataTrigger></Style.Triggers></Style></TextBlock.Style>
+                                                        </TextBlock>
+                                                        <TextBox x:Name="TxtApiKeyGemini" Background="Transparent" Foreground="{DynamicResource BrushTextPrimary}" CaretBrush="{DynamicResource BrushAccentLight}" BorderThickness="0" FontSize="11.5" FontFamily="Consolas" VerticalAlignment="Center"/>
+                                                    </Grid>
                                                 </Border>
-                                                <Button Grid.Column="3" Content="⚡ Test" Style="{StaticResource BlackBoxActionBtn}" Padding="10,4" Tag="Gemini" Click="BtnTestSingleKey_Click"/>
+                                                <Button Grid.Column="3" Content="Test" Style="{StaticResource BlackBoxActionBtn}" Padding="14,6" Tag="Gemini" Click="BtnTestSingleKey_Click"/>
                                             </Grid>
                                         </Border>
 
                                         <!-- Provider 5: DeepSeek -->
-                                        <Border Background="{DynamicResource BrushCardInnerBg}" BorderBrush="{DynamicResource BrushBorder}" BorderThickness="1" CornerRadius="6" Padding="12,10" Margin="0,0,0,8">
+                                        <Border Background="{DynamicResource BrushCardInnerBg}" BorderBrush="{DynamicResource BrushBorder}" BorderThickness="1" CornerRadius="8" Padding="12,10" Margin="0,0,0,8">
                                             <Grid>
                                                 <Grid.ColumnDefinitions>
                                                     <ColumnDefinition Width="Auto"/>
-                                                    <ColumnDefinition Width="150"/>
+                                                    <ColumnDefinition Width="165"/>
                                                     <ColumnDefinition Width="*"/>
                                                     <ColumnDefinition Width="Auto"/>
                                                 </Grid.ColumnDefinitions>
-                                                <Border Grid.Column="0" Width="36" Height="36" Background="{DynamicResource BrushCardBg}" BorderBrush="{DynamicResource BrushAccent}" BorderThickness="1.2" CornerRadius="{DynamicResource ProviderLogoSmallCornerRadius}" Margin="0,0,10,0" SnapsToDevicePixels="True">
-                                                    <Border CornerRadius="{DynamicResource ProviderLogoSmallInnerCornerRadius}">
-                                                        <Border.OpacityMask>
-                                                            <VisualBrush Stretch="Fill">
-                                                                <VisualBrush.Visual>
-                                                                    <Border Background="Black" CornerRadius="{DynamicResource ProviderLogoSmallInnerCornerRadius}" Width="36" Height="36"/>
-                                                                </VisualBrush.Visual>
-                                                            </VisualBrush>
-                                                        </Border.OpacityMask>
-                                                        <Grid>
-                                                            <TextBlock Text="🟣" FontSize="16" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                                            <Image Source="G:\tools\LlmodelBox\cache\logos\deepseek.com.png" Stretch="Uniform" Margin="3" RenderOptions.BitmapScalingMode="HighQuality"/>
-                                                        </Grid>
-                                                    </Border>
+                                                <Border Grid.Column="0" Width="36" Height="36" Background="{DynamicResource BrushCardBg}" BorderBrush="{DynamicResource BrushBorder}" BorderThickness="1" CornerRadius="{DynamicResource ProviderLogoSmallCornerRadius}" Margin="0,0,12,0" SnapsToDevicePixels="True">
+                                                    <Grid>
+                                                        <TextBlock Text="D" FontSize="14" FontWeight="Bold" Foreground="{DynamicResource BrushAccentLight}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                        <Image x:Name="ImgLogoDeepSeek" Stretch="Uniform" Margin="4" RenderOptions.BitmapScalingMode="HighQuality"/>
+                                                    </Grid>
                                                 </Border>
                                                 <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                                                    <TextBlock Text="DeepSeek API" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource BrushTextPrimary}"/>
-                                                    <TextBlock Text="deepseek.com | v3, r1" FontSize="10" Foreground="{DynamicResource BrushTextDim}" FontFamily="Consolas"/>
+                                                    <TextBlock Text="DeepSeek" FontSize="12.5" FontWeight="SemiBold" Foreground="{DynamicResource BrushTextPrimary}"/>
+                                                    <TextBlock Text="DEEPSEEK_API_KEY · v3, r1" FontSize="10" Foreground="{DynamicResource BrushTextDim}" FontFamily="Consolas"/>
                                                 </StackPanel>
-                                                <Border Grid.Column="2" Background="{DynamicResource BrushCardBg}" BorderBrush="{DynamicResource BrushBorder}" BorderThickness="1" CornerRadius="4" Padding="8,6" Margin="0,0,8,0">
-                                                    <TextBox x:Name="TxtApiKeyDeepSeek" Background="Transparent" Foreground="{DynamicResource BrushTextPrimary}" BorderThickness="0" FontSize="11" FontFamily="Consolas"/>
+                                                <Border Grid.Column="2" Background="{DynamicResource BrushInputBg}" BorderBrush="{DynamicResource BrushBorder}" BorderThickness="1" CornerRadius="6" Padding="10,7" Margin="0,0,8,0">
+                                                    <Grid>
+                                                        <TextBlock Text="Paste DeepSeek key (sk-...) or leave empty for env" FontSize="11" Foreground="{DynamicResource BrushTextDim}" IsHitTestVisible="False" VerticalAlignment="Center">
+                                                            <TextBlock.Style><Style TargetType="TextBlock"><Setter Property="Visibility" Value="Collapsed"/><Style.Triggers><DataTrigger Binding="{Binding Text, ElementName=TxtApiKeyDeepSeek}" Value=""><Setter Property="Visibility" Value="Visible"/></DataTrigger></Style.Triggers></Style></TextBlock.Style>
+                                                        </TextBlock>
+                                                        <TextBox x:Name="TxtApiKeyDeepSeek" Background="Transparent" Foreground="{DynamicResource BrushTextPrimary}" CaretBrush="{DynamicResource BrushAccentLight}" BorderThickness="0" FontSize="11.5" FontFamily="Consolas" VerticalAlignment="Center"/>
+                                                    </Grid>
                                                 </Border>
-                                                <Button Grid.Column="3" Content="⚡ Test" Style="{StaticResource BlackBoxActionBtn}" Padding="10,4" Tag="DeepSeek" Click="BtnTestSingleKey_Click"/>
+                                                <Button Grid.Column="3" Content="Test" Style="{StaticResource BlackBoxActionBtn}" Padding="14,6" Tag="DeepSeek" Click="BtnTestSingleKey_Click"/>
                                             </Grid>
                                         </Border>
                                     </StackPanel>
@@ -1909,14 +1969,14 @@
                                 <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Padding="0,0,8,0">
                                     <StackPanel>
                                         <!-- ADD NEW CUSTOM PROVIDER CARD -->
-                                        <Border Background="{DynamicResource BrushCardInnerBg}" BorderBrush="{DynamicResource BrushBorder}" BorderThickness="1.5" CornerRadius="8" Padding="14" Margin="0,0,0,14">
+                                        <Border Background="{DynamicResource BrushCardInnerBg}" BorderBrush="{DynamicResource BrushBorder}" BorderThickness="1" CornerRadius="8" Padding="14" Margin="0,0,0,14">
                                             <StackPanel>
                                                 <Grid Margin="0,0,0,10">
                                                     <StackPanel>
                                                         <TextBlock Text="ADD CUSTOM LLM PROVIDER" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource BrushAccentLight}" FontFamily="Consolas"/>
                                                         <TextBlock Text="Connect OpenRouter, Groq, Together, Mistral, Perplexity, Ollama, or vLLM endpoints" FontSize="11" Foreground="{DynamicResource BrushTextDim}" Margin="0,2,0,0"/>
                                                     </StackPanel>
-                                                    <Border Background="{DynamicResource BrushCardInnerBg}" CornerRadius="3" Padding="6,2" HorizontalAlignment="Right" VerticalAlignment="Center">
+                                                    <Border Background="{DynamicResource BrushCardBg}" BorderBrush="{DynamicResource BrushBorderSubtle}" BorderThickness="1" CornerRadius="4" Padding="6,2" HorizontalAlignment="Right" VerticalAlignment="Center">
                                                         <TextBlock Text="AUTO LOGO FETCH" FontSize="9" FontWeight="Bold" Foreground="{DynamicResource BrushAccentLight}"/>
                                                     </Border>
                                                 </Grid>
@@ -1929,15 +1989,15 @@
                                                         <ColumnDefinition Width="*"/>
                                                     </Grid.ColumnDefinitions>
                                                     <StackPanel Grid.Column="0">
-                                                        <TextBlock Text="Provider Name:" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource BrushTextSecondary}" Margin="0,0,0,4"/>
-                                                        <Border Background="{DynamicResource BrushCardBg}" BorderBrush="{DynamicResource BrushBorder}" BorderThickness="1" CornerRadius="4" Padding="8,5">
-                                                            <TextBox x:Name="TxtCustomProviderName" Background="Transparent" Foreground="{DynamicResource BrushTextPrimary}" BorderThickness="0" FontSize="11" Text="OpenRouter"/>
+                                                        <TextBlock Text="Provider Name" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource BrushTextSecondary}" Margin="0,0,0,4"/>
+                                                        <Border Background="{DynamicResource BrushInputBg}" BorderBrush="{DynamicResource BrushBorder}" BorderThickness="1" CornerRadius="6" Padding="8,6">
+                                                            <TextBox x:Name="TxtCustomProviderName" Background="Transparent" Foreground="{DynamicResource BrushTextPrimary}" BorderThickness="0" FontSize="11.5" Text="OpenRouter"/>
                                                         </Border>
                                                     </StackPanel>
                                                     <StackPanel Grid.Column="2">
-                                                        <TextBlock Text="Model ID / Slug:" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource BrushTextSecondary}" Margin="0,0,0,4"/>
-                                                        <Border Background="{DynamicResource BrushCardBg}" BorderBrush="{DynamicResource BrushBorder}" BorderThickness="1" CornerRadius="4" Padding="8,5">
-                                                            <TextBox x:Name="TxtCustomModelId" Background="Transparent" Foreground="{DynamicResource BrushTextPrimary}" BorderThickness="0" FontSize="11" FontFamily="Consolas" Text="anthropic/claude-3.5-sonnet"/>
+                                                        <TextBlock Text="Model ID / Slug" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource BrushTextSecondary}" Margin="0,0,0,4"/>
+                                                        <Border Background="{DynamicResource BrushInputBg}" BorderBrush="{DynamicResource BrushBorder}" BorderThickness="1" CornerRadius="6" Padding="8,6">
+                                                            <TextBox x:Name="TxtCustomModelId" Background="Transparent" Foreground="{DynamicResource BrushTextPrimary}" BorderThickness="0" FontSize="11.5" FontFamily="Consolas" Text="anthropic/claude-3.5-sonnet"/>
                                                         </Border>
                                                     </StackPanel>
                                                 </Grid>
@@ -1950,15 +2010,15 @@
                                                         <ColumnDefinition Width="*"/>
                                                     </Grid.ColumnDefinitions>
                                                     <StackPanel Grid.Column="0">
-                                                        <TextBlock Text="Web URL (Company Website):" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource BrushTextSecondary}" Margin="0,0,0,4"/>
-                                                        <Border Background="{DynamicResource BrushCardBg}" BorderBrush="{DynamicResource BrushBorder}" BorderThickness="1" CornerRadius="4" Padding="8,5">
-                                                            <TextBox x:Name="TxtCustomWebUrl" Background="Transparent" Foreground="{DynamicResource BrushAccentLight}" BorderThickness="0" FontSize="11" FontFamily="Consolas" Text="https://openrouter.ai" LostFocus="TxtCustomWebUrl_LostFocus"/>
+                                                        <TextBlock Text="Web URL (Company Website)" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource BrushTextSecondary}" Margin="0,0,0,4"/>
+                                                        <Border Background="{DynamicResource BrushInputBg}" BorderBrush="{DynamicResource BrushBorder}" BorderThickness="1" CornerRadius="6" Padding="8,6">
+                                                            <TextBox x:Name="TxtCustomWebUrl" Background="Transparent" Foreground="{DynamicResource BrushAccentLight}" BorderThickness="0" FontSize="11.5" FontFamily="Consolas" Text="https://openrouter.ai" LostFocus="TxtCustomWebUrl_LostFocus"/>
                                                         </Border>
                                                     </StackPanel>
                                                     <StackPanel Grid.Column="2">
-                                                        <TextBlock Text="Base URL / Endpoint:" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource BrushTextSecondary}" Margin="0,0,0,4"/>
-                                                        <Border Background="{DynamicResource BrushCardBg}" BorderBrush="{DynamicResource BrushBorder}" BorderThickness="1" CornerRadius="4" Padding="8,5">
-                                                            <TextBox x:Name="TxtCustomBaseUrl" Background="Transparent" Foreground="{DynamicResource BrushAccentLight}" BorderThickness="0" FontSize="11" FontFamily="Consolas" Text="https://openrouter.ai/api/v1/chat/completions" LostFocus="TxtCustomBaseUrl_LostFocus"/>
+                                                        <TextBlock Text="Base URL / Endpoint" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource BrushTextSecondary}" Margin="0,0,0,4"/>
+                                                        <Border Background="{DynamicResource BrushInputBg}" BorderBrush="{DynamicResource BrushBorder}" BorderThickness="1" CornerRadius="6" Padding="8,6">
+                                                            <TextBox x:Name="TxtCustomBaseUrl" Background="Transparent" Foreground="{DynamicResource BrushAccentLight}" BorderThickness="0" FontSize="11.5" FontFamily="Consolas" Text="https://openrouter.ai/api/v1/chat/completions" LostFocus="TxtCustomBaseUrl_LostFocus"/>
                                                         </Border>
                                                     </StackPanel>
                                                 </Grid>
@@ -1971,37 +2031,28 @@
                                                         <ColumnDefinition Width="*"/>
                                                     </Grid.ColumnDefinitions>
                                                     <StackPanel Grid.Column="0">
-                                                        <TextBlock Text="API Key:" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource BrushTextSecondary}" Margin="0,0,0,4"/>
-                                                        <Border Background="{DynamicResource BrushCardBg}" BorderBrush="{DynamicResource BrushBorder}" BorderThickness="1" CornerRadius="4" Padding="8,5">
-                                                            <TextBox x:Name="TxtCustomApiKey" Background="Transparent" Foreground="{DynamicResource BrushTextPrimary}" BorderThickness="0" FontSize="11" FontFamily="Consolas"/>
+                                                        <TextBlock Text="API Key" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource BrushTextSecondary}" Margin="0,0,0,4"/>
+                                                        <Border Background="{DynamicResource BrushInputBg}" BorderBrush="{DynamicResource BrushBorder}" BorderThickness="1" CornerRadius="6" Padding="8,6">
+                                                            <TextBox x:Name="TxtCustomApiKey" Background="Transparent" Foreground="{DynamicResource BrushTextPrimary}" BorderThickness="0" FontSize="11.5" FontFamily="Consolas"/>
                                                         </Border>
                                                     </StackPanel>
 
                                                     <!-- Online Logo Preview Box -->
                                                     <StackPanel Grid.Column="2">
-                                                        <TextBlock Text="Online Company Logo:" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource BrushTextSecondary}" Margin="0,0,0,4"/>
+                                                        <TextBlock Text="Company Logo" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource BrushTextSecondary}" Margin="0,0,0,4"/>
                                                         <Grid>
                                                             <Grid.ColumnDefinitions>
                                                                 <ColumnDefinition Width="Auto"/>
                                                                 <ColumnDefinition Width="*"/>
                                                             </Grid.ColumnDefinitions>
-                                                            <Border Grid.Column="0" Width="36" Height="36" Background="{DynamicResource BrushWindowBg}" BorderBrush="{DynamicResource BrushBorder}" BorderThickness="1.2" CornerRadius="{DynamicResource ProviderLogoSmallCornerRadius}" Margin="0,0,10,0" SnapsToDevicePixels="True">
-                                                                <Border CornerRadius="{DynamicResource ProviderLogoSmallInnerCornerRadius}">
-                                                                    <Border.OpacityMask>
-                                                                        <VisualBrush Stretch="Fill">
-                                                                            <VisualBrush.Visual>
-                                                                                <Border Background="Black" CornerRadius="{DynamicResource ProviderLogoSmallInnerCornerRadius}" Width="36" Height="36"/>
-                                                                            </VisualBrush.Visual>
-                                                                        </VisualBrush>
-                                                                    </Border.OpacityMask>
-                                                                    <Grid>
-                                                                        <TextBlock x:Name="TxtCustomLogoFallback" Text="🌐" FontSize="18" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                                                        <Image x:Name="ImgCustomLogoPreview" Visibility="Collapsed" Stretch="Uniform" Margin="3" RenderOptions.BitmapScalingMode="HighQuality"/>
-                                                                    </Grid>
-                                                                </Border>
+                                                            <Border Grid.Column="0" Width="36" Height="36" Background="{DynamicResource BrushWindowBg}" BorderBrush="{DynamicResource BrushBorder}" BorderThickness="1" CornerRadius="{DynamicResource ProviderLogoSmallCornerRadius}" Margin="0,0,10,0" SnapsToDevicePixels="True">
+                                                                <Grid>
+                                                                    <TextBlock x:Name="TxtCustomLogoFallback" Text="API" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource BrushTextMuted}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                                    <Image x:Name="ImgCustomLogoPreview" Visibility="Collapsed" Stretch="Uniform" Margin="3" RenderOptions.BitmapScalingMode="HighQuality"/>
+                                                                </Grid>
                                                             </Border>
                                                             <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                                                                <Button x:Name="BtnFetchLogo" Content="⚡ Fetch Logo Online" Style="{StaticResource BlackBoxActionBtn}" HorizontalAlignment="Left" Padding="10,4" Click="BtnFetchCustomLogo_Click"/>
+                                                                <Button x:Name="BtnFetchLogo" Content="Fetch Logo" Style="{StaticResource BlackBoxActionBtn}" HorizontalAlignment="Left" Padding="10,4" Click="BtnFetchCustomLogo_Click"/>
                                                                 <TextBlock x:Name="TxtCustomLogoStatus" Text="Auto-fetches from Web URL" FontSize="10" Foreground="{DynamicResource BrushTextMuted}" Margin="0,3,0,0" TextTrimming="CharacterEllipsis"/>
                                                             </StackPanel>
                                                         </Grid>
@@ -2009,16 +2060,16 @@
                                                 </Grid>
 
                                                 <!-- Add Button -->
-                                                <Button Content="+ Add &amp; Register Custom Provider" Style="{StaticResource PrimaryActionBtn}" HorizontalAlignment="Right" Click="BtnAddCustomProvider_Click"/>
+                                                <Button Content="+ Add Custom Provider" Style="{StaticResource PrimaryActionBtn}" HorizontalAlignment="Right" Click="BtnAddCustomProvider_Click"/>
                                             </StackPanel>
                                         </Border>
 
                                         <!-- CONFIGURED CUSTOM PROVIDERS LIST -->
-                                        <TextBlock Text="CONFIGURED CUSTOM PROVIDERS" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource BrushTextDim}" FontFamily="Consolas" Margin="0,0,0,8"/>
+                                        <TextBlock Text="CONFIGURED CUSTOM PROVIDERS" FontSize="10.5" FontWeight="Bold" Foreground="{DynamicResource BrushTextDim}" FontFamily="Consolas" Margin="0,0,0,8"/>
                                         <ItemsControl x:Name="CustomProvidersItemsControl">
                                             <ItemsControl.ItemTemplate>
                                                 <DataTemplate>
-                                                    <Border Background="{DynamicResource BrushCardBg}" BorderBrush="{DynamicResource BrushBorder}" BorderThickness="1" CornerRadius="6" Padding="12,10" Margin="0,0,0,8">
+                                                    <Border Background="{DynamicResource BrushCardInnerBg}" BorderBrush="{DynamicResource BrushBorder}" BorderThickness="1" CornerRadius="8" Padding="12,10" Margin="0,0,0,8">
                                                         <Grid>
                                                             <Grid.ColumnDefinitions>
                                                                 <ColumnDefinition Width="Auto"/>
@@ -2027,27 +2078,18 @@
                                                             </Grid.ColumnDefinitions>
 
                                                             <!-- Logo -->
-                                                            <Border Grid.Column="0" Width="36" Height="36" Background="{DynamicResource BrushCardInnerBg}" BorderBrush="{DynamicResource BrushBorder}" BorderThickness="1" CornerRadius="{DynamicResource ProviderLogoSmallCornerRadius}" Margin="0,0,10,0" SnapsToDevicePixels="True">
-                                                                <Border CornerRadius="{DynamicResource ProviderLogoSmallInnerCornerRadius}">
-                                                                    <Border.OpacityMask>
-                                                                        <VisualBrush Stretch="Fill">
-                                                                            <VisualBrush.Visual>
-                                                                                <Border Background="Black" CornerRadius="{DynamicResource ProviderLogoSmallInnerCornerRadius}" Width="36" Height="36"/>
-                                                                            </VisualBrush.Visual>
-                                                                        </VisualBrush>
-                                                                    </Border.OpacityMask>
-                                                                    <Grid>
-                                                                        <TextBlock Text="⚡" Visibility="{Binding FallbackIconVisibility}" FontSize="18" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                                                        <Image Source="{Binding LocalLogoPath}" Visibility="{Binding LogoVisibility}" Stretch="Uniform" Margin="3" RenderOptions.BitmapScalingMode="HighQuality"/>
-                                                                    </Grid>
-                                                                </Border>
+                                                            <Border Grid.Column="0" Width="36" Height="36" Background="{DynamicResource BrushCardBg}" BorderBrush="{DynamicResource BrushBorder}" BorderThickness="1" CornerRadius="{DynamicResource ProviderLogoSmallCornerRadius}" Margin="0,0,10,0" SnapsToDevicePixels="True">
+                                                                <Grid>
+                                                                    <TextBlock Text="API" Visibility="{Binding FallbackIconVisibility}" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource BrushTextMuted}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                                    <Image Source="{Binding LocalLogoPath}" Visibility="{Binding LogoVisibility}" Stretch="Uniform" Margin="3" RenderOptions.BitmapScalingMode="HighQuality"/>
+                                                                </Grid>
                                                             </Border>
 
                                                             <!-- Details -->
                                                             <StackPanel Grid.Column="1" VerticalAlignment="Center">
                                                                 <StackPanel Orientation="Horizontal">
-                                                                    <TextBlock Text="{Binding Name}" FontWeight="Bold" FontSize="13" Foreground="{DynamicResource BrushTextPrimary}"/>
-                                                                    <Border Background="{DynamicResource BrushCardInnerBg}" CornerRadius="3" Margin="8,0,0,0" Padding="5,1">
+                                                                    <TextBlock Text="{Binding Name}" FontWeight="SemiBold" FontSize="13" Foreground="{DynamicResource BrushTextPrimary}"/>
+                                                                    <Border Background="{DynamicResource BrushCardBg}" CornerRadius="4" Margin="8,0,0,0" Padding="6,1">
                                                                         <TextBlock Text="{Binding Model}" FontSize="10" Foreground="{DynamicResource BrushAccentLight}" FontFamily="Consolas"/>
                                                                     </Border>
                                                                 </StackPanel>
@@ -2056,8 +2098,8 @@
 
                                                             <!-- Actions -->
                                                             <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
-                                                                <Button Content="⚡ Test" Style="{StaticResource BlackBoxActionBtn}" Margin="0,0,6,0" Padding="8,4" Tag="{Binding}" Click="BtnTestCustomProvider_Click"/>
-                                                                <Button Content="⭐ Activate" Style="{StaticResource PrimaryActionBtn}" Margin="0,0,6,0" Padding="8,4" Tag="{Binding}" Click="BtnActivateCustomProvider_Click"/>
+                                                                <Button Content="Test" Style="{StaticResource BlackBoxActionBtn}" Margin="0,0,6,0" Padding="10,4" Tag="{Binding}" Click="BtnTestCustomProvider_Click"/>
+                                                                <Button Content="Activate" Style="{StaticResource PrimaryActionBtn}" Margin="0,0,6,0" Padding="10,4" Tag="{Binding}" Click="BtnActivateCustomProvider_Click"/>
                                                                 <Button Content="✕" Style="{StaticResource BlackBoxActionBtn}" Width="28" Padding="0" Tag="{Binding}" Click="BtnDeleteCustomProvider_Click" ToolTip="Delete Custom Provider"/>
                                                             </StackPanel>
                                                         </Grid>
@@ -2069,14 +2111,66 @@
                                 </ScrollViewer>
                             </Grid>
 
-                            <!-- Tab 3: Operator & System -->
+                            <!-- Tab 3: Profile, Storage & Memory -->
                             <Grid Grid.Row="2" x:Name="TabContentOperatorProfile" Visibility="Collapsed">
                                 <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Padding="0,0,8,0">
                                     <StackPanel>
-                                        <!-- User Profile Section -->
-                                        <Border Background="{DynamicResource BrushCardInnerBg}" BorderBrush="{DynamicResource BrushBorder}" BorderThickness="1" CornerRadius="6" Padding="14" Margin="0,0,0,12">
+                                        <!-- Storage, Chat History & AI Agent Memory Paths -->
+                                        <Border Background="{DynamicResource BrushCardInnerBg}" BorderBrush="{DynamicResource BrushBorder}" BorderThickness="1" CornerRadius="8" Padding="14" Margin="0,0,0,12">
                                             <StackPanel>
-                                                <TextBlock Text="OPERATOR PROFILE" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource BrushAccentLight}" FontFamily="Consolas" Margin="0,0,0,10"/>
+                                                <TextBlock Text="CHAT HISTORY &amp; AI AGENT MEMORY PATHS" FontSize="10.5" FontWeight="Bold" Foreground="{DynamicResource BrushAccentLight}" FontFamily="Consolas" Margin="0,0,0,10"/>
+
+                                                <!-- Chat History Path -->
+                                                <TextBlock Text="Chat History Saved Path (Home &amp; Workspace Transcripts)" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource BrushTextSecondary}" Margin="0,0,0,4"/>
+                                                <Grid Margin="0,0,0,10">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="*"/>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                    </Grid.ColumnDefinitions>
+                                                    <Border Grid.Column="0" Background="{DynamicResource BrushInputBg}" BorderBrush="{DynamicResource BrushBorder}" BorderThickness="1" CornerRadius="6" Padding="10,6" Margin="0,0,6,0">
+                                                        <TextBox x:Name="TxtPathChatHistory" IsReadOnly="True" Background="Transparent" Foreground="{DynamicResource BrushTextPrimary}" BorderThickness="0" FontSize="11" FontFamily="Consolas"/>
+                                                    </Border>
+                                                    <Button Grid.Column="1" Content="Copy" Style="{StaticResource BlackBoxActionBtn}" Padding="10,5" Margin="0,0,6,0" Click="BtnCopyChatHistoryPath_Click"/>
+                                                    <Button Grid.Column="2" Content="Open" Style="{StaticResource BlackBoxActionBtn}" Padding="10,5" Click="BtnOpenChatHistoryPath_Click"/>
+                                                </Grid>
+
+                                                <!-- AI Agent Memory Path -->
+                                                <TextBlock Text="AI Agent Memory Saved Path (Per-Project Durable Memory)" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource BrushTextSecondary}" Margin="0,0,0,4"/>
+                                                <Grid Margin="0,0,0,10">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="*"/>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                    </Grid.ColumnDefinitions>
+                                                    <Border Grid.Column="0" Background="{DynamicResource BrushInputBg}" BorderBrush="{DynamicResource BrushBorder}" BorderThickness="1" CornerRadius="6" Padding="10,6" Margin="0,0,6,0">
+                                                        <TextBox x:Name="TxtPathAgentMemory" IsReadOnly="True" Background="Transparent" Foreground="{DynamicResource BrushTextPrimary}" BorderThickness="0" FontSize="11" FontFamily="Consolas"/>
+                                                    </Border>
+                                                    <Button Grid.Column="1" Content="Copy" Style="{StaticResource BlackBoxActionBtn}" Padding="10,5" Margin="0,0,6,0" Click="BtnCopyAgentMemoryPath_Click"/>
+                                                    <Button Grid.Column="2" Content="Open" Style="{StaticResource BlackBoxActionBtn}" Padding="10,5" Click="BtnOpenAgentMemoryPath_Click"/>
+                                                </Grid>
+
+                                                <!-- Settings & App Data Path -->
+                                                <TextBlock Text="Settings &amp; Registry File (settings.json)" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource BrushTextSecondary}" Margin="0,0,0,4"/>
+                                                <Grid>
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="*"/>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                    </Grid.ColumnDefinitions>
+                                                    <Border Grid.Column="0" Background="{DynamicResource BrushInputBg}" BorderBrush="{DynamicResource BrushBorder}" BorderThickness="1" CornerRadius="6" Padding="10,6" Margin="0,0,6,0">
+                                                        <TextBox x:Name="TxtPathDataRoot" IsReadOnly="True" Background="Transparent" Foreground="{DynamicResource BrushTextMuted}" BorderThickness="0" FontSize="11" FontFamily="Consolas"/>
+                                                    </Border>
+                                                    <Button Grid.Column="1" Content="Copy" Style="{StaticResource BlackBoxActionBtn}" Padding="10,5" Margin="0,0,6,0" Click="BtnCopyDataRootPath_Click"/>
+                                                    <Button Grid.Column="2" Content="Open" Style="{StaticResource BlackBoxActionBtn}" Padding="10,5" Click="BtnOpenDataRootPath_Click"/>
+                                                </Grid>
+                                            </StackPanel>
+                                        </Border>
+
+                                        <!-- User Profile Section -->
+                                        <Border Background="{DynamicResource BrushCardInnerBg}" BorderBrush="{DynamicResource BrushBorder}" BorderThickness="1" CornerRadius="8" Padding="14" Margin="0,0,0,12">
+                                            <StackPanel>
+                                                <TextBlock Text="OPERATOR PROFILE" FontSize="10.5" FontWeight="Bold" Foreground="{DynamicResource BrushAccentLight}" FontFamily="Consolas" Margin="0,0,0,10"/>
                                                 <Grid>
                                                     <Grid.ColumnDefinitions>
                                                         <ColumnDefinition Width="*"/>
@@ -2084,14 +2178,14 @@
                                                         <ColumnDefinition Width="*"/>
                                                     </Grid.ColumnDefinitions>
                                                     <StackPanel Grid.Column="0">
-                                                        <TextBlock Text="Profile Display Name:" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource BrushTextSecondary}" Margin="0,0,0,4"/>
-                                                        <Border Background="{DynamicResource BrushCardBg}" BorderBrush="{DynamicResource BrushBorder}" BorderThickness="1" CornerRadius="4" Padding="8,5">
+                                                        <TextBlock Text="Display Name" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource BrushTextSecondary}" Margin="0,0,0,4"/>
+                                                        <Border Background="{DynamicResource BrushInputBg}" BorderBrush="{DynamicResource BrushBorder}" BorderThickness="1" CornerRadius="6" Padding="10,6">
                                                             <TextBox x:Name="TxtSettingsProfileName" Background="Transparent" Foreground="{DynamicResource BrushTextPrimary}" BorderThickness="0" FontSize="12" Text="Axion"/>
                                                         </Border>
                                                     </StackPanel>
                                                     <StackPanel Grid.Column="2">
-                                                        <TextBlock Text="Status / Role Label:" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource BrushTextSecondary}" Margin="0,0,0,4"/>
-                                                        <Border Background="{DynamicResource BrushCardBg}" BorderBrush="{DynamicResource BrushBorder}" BorderThickness="1" CornerRadius="4" Padding="8,5">
+                                                        <TextBlock Text="Status / Role Label" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource BrushTextSecondary}" Margin="0,0,0,4"/>
+                                                        <Border Background="{DynamicResource BrushInputBg}" BorderBrush="{DynamicResource BrushBorder}" BorderThickness="1" CornerRadius="6" Padding="10,6">
                                                             <TextBox x:Name="TxtSettingsProfileRole" Background="Transparent" Foreground="{DynamicResource BrushTextPrimary}" BorderThickness="0" FontSize="12" Text="Operator // Online"/>
                                                         </Border>
                                                     </StackPanel>
@@ -2100,39 +2194,54 @@
                                         </Border>
 
                                         <!-- Projects Directory -->
-                                        <Border Background="{DynamicResource BrushCardInnerBg}" BorderBrush="{DynamicResource BrushBorder}" BorderThickness="1" CornerRadius="6" Padding="14" Margin="0,0,0,12">
+                                        <Border Background="{DynamicResource BrushCardInnerBg}" BorderBrush="{DynamicResource BrushBorder}" BorderThickness="1" CornerRadius="8" Padding="14" Margin="0,0,0,12">
                                             <StackPanel>
-                                                <TextBlock Text="DEFAULT WORKSPACE DIRECTORY" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource BrushAccentLight}" FontFamily="Consolas" Margin="0,0,0,8"/>
-                                                <Grid Margin="0,0,0,4">
+                                                <TextBlock Text="DEFAULT WORKSPACE DIRECTORY" FontSize="10.5" FontWeight="Bold" Foreground="{DynamicResource BrushAccentLight}" FontFamily="Consolas" Margin="0,0,0,8"/>
+                                                <Grid>
                                                     <Grid.ColumnDefinitions>
                                                         <ColumnDefinition Width="*"/>
                                                         <ColumnDefinition Width="Auto"/>
                                                     </Grid.ColumnDefinitions>
-                                                    <Border Grid.Column="0" Background="{DynamicResource BrushCardBg}" BorderBrush="{DynamicResource BrushBorder}" BorderThickness="1" CornerRadius="4" Padding="8,5" Margin="0,0,8,0">
+                                                    <Border Grid.Column="0" Background="{DynamicResource BrushInputBg}" BorderBrush="{DynamicResource BrushBorder}" BorderThickness="1" CornerRadius="6" Padding="10,6" Margin="0,0,8,0">
                                                         <TextBox x:Name="TxtSettingsProjectsDir" Background="Transparent" Foreground="{DynamicResource BrushAccentLight}" BorderThickness="0" FontSize="11" FontFamily="Consolas, Segoe UI"/>
                                                     </Border>
-                                                    <Button Grid.Column="1" Content="📁 Change..." Style="{StaticResource BlackBoxActionBtn}" Click="BtnBrowseSettingsFolder_Click"/>
+                                                    <Button Grid.Column="1" Content="Change..." Style="{StaticResource BlackBoxActionBtn}" Click="BtnBrowseSettingsFolder_Click"/>
                                                 </Grid>
                                             </StackPanel>
                                         </Border>
 
+                                        <!-- Active Color Theme (Daylight / Slate / Midnight) + accent -->
+                                        <Border Background="{DynamicResource BrushCardInnerBg}" BorderBrush="{DynamicResource BrushBorder}" BorderThickness="1" CornerRadius="8" Padding="14" Margin="0,0,0,12">
+                                            <StackPanel>
+                                                <TextBlock Text="COLOR THEME &amp; ACCENT" FontSize="10.5" FontWeight="Bold" Foreground="{DynamicResource BrushAccentLight}" FontFamily="Consolas" Margin="0,0,0,6"/>
+                                                <TextBlock Text="Select a base theme and accent color. Applies immediately." FontSize="11" Foreground="{DynamicResource BrushTextMuted}" Margin="0,0,0,10"/>
+                                                <StackPanel Orientation="Horizontal">
+                                                    <Button x:Name="BtnSettingsThemeOled" Content="Midnight" Tag="Midnight" Click="BtnThemeSelect_Click" Style="{StaticResource BlackBoxActionBtn}" Margin="0,0,8,0"/>
+                                                    <Button x:Name="BtnSettingsThemeMidnight" Content="Slate" Tag="Slate" Click="BtnThemeSelect_Click" Style="{StaticResource BlackBoxActionBtn}" Margin="0,0,8,0"/>
+                                                    <Button x:Name="BtnSettingsThemeCarbon" Content="Daylight" Tag="Daylight" Click="BtnThemeSelect_Click" Style="{StaticResource BlackBoxActionBtn}"/>
+                                                </StackPanel>
+                                                <TextBlock Text="ACCENT" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource BrushTextDim}" FontFamily="Consolas" Margin="0,12,0,8"/>
+                                                <StackPanel x:Name="AccentSwatchRow" Orientation="Horizontal"/>
+                                            </StackPanel>
+                                        </Border>
+
                                         <!-- Performance & Hardware Acceleration -->
-                                        <Border Background="{DynamicResource BrushCardInnerBg}" BorderBrush="{DynamicResource BrushBorder}" BorderThickness="1" CornerRadius="6" Padding="14" Margin="0,0,0,12">
+                                        <Border Background="{DynamicResource BrushCardInnerBg}" BorderBrush="{DynamicResource BrushBorder}" BorderThickness="1" CornerRadius="8" Padding="14" Margin="0,0,0,12">
                                             <Grid>
                                                 <Grid.ColumnDefinitions>
                                                     <ColumnDefinition Width="*"/>
                                                     <ColumnDefinition Width="Auto"/>
                                                 </Grid.ColumnDefinitions>
                                                 <StackPanel Grid.Column="0">
-                                                    <TextBlock Text="DirectComposition Hardware Acceleration" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource BrushTextPrimary}"/>
-                                                    <TextBlock Text="Enables smooth vector scaling, fluid transitions &amp; 60+ FPS motion" FontSize="11" Foreground="{DynamicResource BrushTextDim}" Margin="0,2,0,0"/>
+                                                    <TextBlock Text="Hardware Acceleration" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource BrushTextPrimary}"/>
+                                                    <TextBlock Text="Smooth vector scaling and fluid transitions" FontSize="11" Foreground="{DynamicResource BrushTextDim}" Margin="0,2,0,0"/>
                                                 </StackPanel>
                                                 <CheckBox Grid.Column="1" x:Name="ChkHardwareAccel" IsChecked="True" VerticalAlignment="Center"/>
                                             </Grid>
                                         </Border>
 
                                         <!-- Discord Rich Presence -->
-                                        <Border Background="{DynamicResource BrushCardInnerBg}" BorderBrush="{DynamicResource BrushBorder}" BorderThickness="1" CornerRadius="6" Padding="14" Margin="0,0,0,12">
+                                        <Border Background="{DynamicResource BrushCardInnerBg}" BorderBrush="{DynamicResource BrushBorder}" BorderThickness="1" CornerRadius="8" Padding="14" Margin="0,0,0,12">
                                             <StackPanel>
                                                 <Grid>
                                                     <Grid.ColumnDefinitions>
@@ -2141,57 +2250,32 @@
                                                     </Grid.ColumnDefinitions>
                                                     <StackPanel Grid.Column="0">
                                                         <TextBlock Text="Discord Rich Presence" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource BrushTextPrimary}"/>
-                                                        <TextBlock Text="Shows LlmodelBox, the live Neural Net activity and elapsed session time on your Discord profile" FontSize="11" Foreground="{DynamicResource BrushTextDim}" TextWrapping="Wrap" Margin="0,2,0,0"/>
+                                                        <TextBlock Text="Publishes live Neural Net activity and session timer to your local Discord client" FontSize="11" Foreground="{DynamicResource BrushTextDim}" TextWrapping="Wrap" Margin="0,2,0,0"/>
                                                     </StackPanel>
                                                     <CheckBox Grid.Column="1" x:Name="ChkDiscordPresence" IsChecked="False" VerticalAlignment="Center"/>
                                                 </Grid>
-                                                <TextBlock Text="Discord Application (Client) ID" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource BrushTextSecondary}" Margin="0,12,0,4"/>
-                                                <Border Background="{DynamicResource BrushCardBg}" BorderBrush="{DynamicResource BrushBorder}" BorderThickness="1" CornerRadius="4" Padding="8,5">
+                                                <TextBlock Text="Discord Application (Client) ID" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource BrushTextSecondary}" Margin="0,10,0,4"/>
+                                                <Border Background="{DynamicResource BrushInputBg}" BorderBrush="{DynamicResource BrushBorder}" BorderThickness="1" CornerRadius="6" Padding="10,6">
                                                     <TextBox x:Name="TxtDiscordClientId" Background="Transparent" Foreground="{DynamicResource BrushAccentLight}" BorderThickness="0" FontSize="11" FontFamily="Consolas, Segoe UI"/>
                                                 </Border>
-                                                <TextBlock Text="Create an app at discord.com/developers/applications and paste its Application ID here. The Discord desktop client must be running for presence to appear." FontSize="10.5" Foreground="{DynamicResource BrushTextDim}" TextWrapping="Wrap" Margin="0,6,0,0"/>
                                             </StackPanel>
                                         </Border>
 
-                                        <!-- Active Color Theme (Daylight / Slate / Midnight) + accent -->
-                                        <Border Background="{DynamicResource BrushCardBg}" BorderBrush="{DynamicResource BrushBorder}" BorderThickness="1" CornerRadius="6" Padding="14" Margin="0,0,0,12">
-                                            <StackPanel>
-                                                <TextBlock Text="COLOR THEME" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource BrushAccentLight}" FontFamily="Consolas" Margin="0,0,0,8"/>
-                                                <TextBlock Text="Pick a base theme, then an accent color. Both apply instantly and persist." FontSize="11" Foreground="{DynamicResource BrushTextSecondary}" Margin="0,0,0,10"/>
-                                                <StackPanel Orientation="Horizontal">
-                                                    <Button x:Name="BtnSettingsThemeOled" Content="🌘 Midnight" Tag="Midnight" Click="BtnThemeSelect_Click" Style="{StaticResource BlackBoxActionBtn}" Margin="0,0,10,0"/>
-                                                    <Button x:Name="BtnSettingsThemeMidnight" Content="🌊 Slate" Tag="Slate" Click="BtnThemeSelect_Click" Style="{StaticResource BlackBoxActionBtn}" Margin="0,0,10,0"/>
-                                                    <Button x:Name="BtnSettingsThemeCarbon" Content="☀ Daylight" Tag="Daylight" Click="BtnThemeSelect_Click" Style="{StaticResource BlackBoxActionBtn}"/>
-                                                </StackPanel>
-                                                <TextBlock Text="ACCENT" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource BrushAccentLight}" FontFamily="Consolas" Margin="0,14,0,8"/>
-                                                <StackPanel x:Name="AccentSwatchRow" Orientation="Horizontal"/>
-                                            </StackPanel>
-                                        </Border>
-
-                                        <!-- Provider Icon Badge Geometry -->
-                                        <Border Background="{DynamicResource BrushCardInnerBg}" BorderBrush="{DynamicResource BrushBorder}" BorderThickness="1" CornerRadius="6" Padding="14" Margin="0,0,0,12">
-                                            <StackPanel>
-                                                <TextBlock Text="PROVIDER ICON BADGE GEOMETRY" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource BrushAccentLight}" FontFamily="Consolas" Margin="0,0,0,8"/>
-                                                <TextBlock Text="Select the container shape and mask geometry for all model and provider logo badges:" FontSize="11" Foreground="{DynamicResource BrushTextMuted}" Margin="0,0,0,10"/>
-                                                <StackPanel Orientation="Horizontal">
-                                                    <RadioButton x:Name="RbIconSquircle" Content="■ Squircle (Rounded Square)" Foreground="{DynamicResource BrushTextPrimary}" FontSize="12" Margin="0,0,24,0" IsChecked="True" Checked="RbIconShape_Checked"/>
-                                                    <RadioButton x:Name="RbIconCircle" Content="● Circle (Round Badge)" Foreground="{DynamicResource BrushTextPrimary}" FontSize="12" Checked="RbIconShape_Checked"/>
-                                                </StackPanel>
-                                            </StackPanel>
-                                        </Border>
-
-                                        <!-- Logo Cache Folder -->
-                                        <Border Background="{DynamicResource BrushCardInnerBg}" BorderBrush="{DynamicResource BrushBorder}" BorderThickness="1" CornerRadius="6" Padding="14">
+                                        <!-- Provider Icon Badge Geometry + Logo Cache -->
+                                        <Border Background="{DynamicResource BrushCardInnerBg}" BorderBrush="{DynamicResource BrushBorder}" BorderThickness="1" CornerRadius="8" Padding="14">
                                             <Grid>
                                                 <Grid.ColumnDefinitions>
                                                     <ColumnDefinition Width="*"/>
                                                     <ColumnDefinition Width="Auto"/>
                                                 </Grid.ColumnDefinitions>
                                                 <StackPanel Grid.Column="0">
-                                                    <TextBlock Text="Company Logo Cache" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource BrushTextPrimary}"/>
-                                                    <TextBlock Text="Offline cache storage for fetched provider icons and company badges" FontSize="11" Foreground="{DynamicResource BrushTextDim}" Margin="0,2,0,0"/>
+                                                    <TextBlock Text="Provider Badge Shape" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource BrushTextPrimary}" Margin="0,0,0,8"/>
+                                                    <StackPanel Orientation="Horizontal">
+                                                        <RadioButton x:Name="RbIconSquircle" Content="Squircle" Foreground="{DynamicResource BrushTextPrimary}" FontSize="12" Margin="0,0,20,0" IsChecked="True" Checked="RbIconShape_Checked"/>
+                                                        <RadioButton x:Name="RbIconCircle" Content="Circle" Foreground="{DynamicResource BrushTextPrimary}" FontSize="12" Checked="RbIconShape_Checked"/>
+                                                    </StackPanel>
                                                 </StackPanel>
-                                                <Button Grid.Column="1" Content="📁 Open Cache Folder" Style="{StaticResource BlackBoxActionBtn}" Click="BtnOpenLogoCache_Click"/>
+                                                <Button Grid.Column="1" Content="Open Logo Cache" Style="{StaticResource BlackBoxActionBtn}" VerticalAlignment="Center" Click="BtnOpenLogoCache_Click"/>
                                             </Grid>
                                         </Border>
                                     </StackPanel>
@@ -2199,11 +2283,11 @@
                             </Grid>
 
                             <!-- Bottom Action Bar -->
-                            <Grid Grid.Row="3" Margin="0,10,0,0">
-                                <Button Content="⚡ Test All Connections" Style="{StaticResource BlackBoxActionBtn}" HorizontalAlignment="Left" Click="BtnTestApiKeys_Click"/>
+                            <Grid Grid.Row="3" Margin="0,12,0,0">
+                                <Button Content="Test All Connections" Style="{StaticResource BlackBoxActionBtn}" HorizontalAlignment="Left" Click="BtnTestApiKeys_Click"/>
                                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
                                     <Button Content="Cancel" Style="{StaticResource BlackBoxActionBtn}" Margin="0,0,8,0" Click="BtnCloseSettings_Click"/>
-                                    <Button Content="Save &amp; Apply Settings" Style="{StaticResource PrimaryActionBtn}" Click="BtnSaveSettings_Click"/>
+                                    <Button Content="Save &amp; Apply" Style="{StaticResource PrimaryActionBtn}" Click="BtnSaveSettings_Click"/>
                                 </StackPanel>
                             </Grid>
                         </Grid>

@@ -435,9 +435,32 @@ class ReleaseHandler(http.server.BaseHTTPRequestHandler):
         self.fallback_meta = fallback_meta
         super().__init__(*args, **kwargs)
 
+    @staticmethod
+    def _now_str() -> str:
+        return datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+
     def log_message(self, format: str, *args) -> None:
-        sys.stdout.write(f"[http] {self.address_string()} - {format % args}\n")
+        msg = format % args if args else format
+        safe_msg = "".join(ch if 32 <= ord(ch) < 127 else "?" for ch in msg)
+        sys.stdout.write(f"[{self._now_str()}] [http] {self.address_string()} - {safe_msg}\n")
         sys.stdout.flush()
+
+    def log_error(self, format: str, *args) -> None:
+        raw = getattr(self, "raw_requestline", b"")
+        if raw and (raw[0] in (0x16, 0x15, 0x17) or any(b < 32 and b not in (9, 10, 13) for b in raw[:16])):
+            sys.stdout.write(
+                f"[{self._now_str()}] [http] {self.address_string()} - "
+                "Ignored TLS/non-HTTP request (connect via http:// or terminate TLS at proxy)\n"
+            )
+            sys.stdout.flush()
+            return
+        self.log_message(format, *args)
+
+    def log_request(self, code: int | str = "-", size: int | str = "-") -> None:
+        req_line = getattr(self, "requestline", "") or ""
+        if any(ord(ch) < 32 or ord(ch) >= 127 for ch in req_line):
+            return
+        self.log_message('"%s" %s %s', req_line, str(code), str(size))
 
     def _send_bytes(self, status: int, content_type: str, body: bytes, send_body: bool = True) -> None:
         self.send_response(status)
@@ -487,10 +510,16 @@ class ReleaseHandler(http.server.BaseHTTPRequestHandler):
         self.send_error(404, "Not found")
 
     def do_GET(self) -> None:
-        self._handle_request(send_body=True)
+        try:
+            self._handle_request(send_body=True)
+        except (BrokenPipeError, ConnectionResetError):
+            pass
 
     def do_HEAD(self) -> None:
-        self._handle_request(send_body=False)
+        try:
+            self._handle_request(send_body=False)
+        except (BrokenPipeError, ConnectionResetError):
+            pass
 
 
 class ReusableTCPServer(socketserver.ThreadingMixIn, socketserver.TCPServer):

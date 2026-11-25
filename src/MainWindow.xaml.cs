@@ -443,6 +443,8 @@ namespace LlmodelBox
 
             SwitchSettingsTab(0);
             RefreshCustomProvidersUi();
+            PopulateStoragePathsUi();
+            LoadSettingsProviderLogos();
 
             ModalSettings.Visibility = Visibility.Visible;
             ModalSettings.Opacity = 0.0;
@@ -531,6 +533,7 @@ namespace LlmodelBox
             SaveSettings();
             ApplyDiscordPresence();
             UpdateProfileCardUi();
+            PopulateStoragePathsUi();
             RefreshCompanyCategoriesUi();
             CloseSettingsModal();
             AppendLog("[SETTINGS] Profile card updated and cloud API credentials saved to settings.json.");
@@ -1115,9 +1118,13 @@ namespace LlmodelBox
 
         private void RefreshProjectsUi()
         {
+            foreach (var p in _projects)
+            {
+                p.ConversationCount = GetConversationCountForProject(p);
+            }
             ProjectsItemsControl.ItemsSource = null;
             ProjectsItemsControl.ItemsSource = _projects;
-            TxtProjectCountBadge.Text = $"{_projects.Count} Projects Found";
+            TxtProjectCountBadge.Text = _projects.Count == 1 ? "1 Project" : $"{_projects.Count} Projects";
         }
         #endregion
 
