@@ -355,7 +355,7 @@ namespace LlmodelBox.Controls.RichChat
                         {
                             var label = new Span();
                             AddInlines(label.Inlines, link, host);
-                            if (WebLink.TryParse(link.Url, out var uri))
+                            if (WebLink.TryParse(link.Url, out var uri) && uri != null)
                             {
                                 var hl = new Hyperlink(label)
                                 {
@@ -397,7 +397,7 @@ namespace LlmodelBox.Controls.RichChat
 
         private static void AddSafeHyperlink(InlineCollection target, string label, string? url, FrameworkElement host)
         {
-            if (WebLink.TryParse(url, out var uri))
+            if (WebLink.TryParse(url, out var uri) && uri != null)
             {
                 var hl = new Hyperlink(new Run(label))
                 {

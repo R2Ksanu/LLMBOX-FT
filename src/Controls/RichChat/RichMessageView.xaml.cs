@@ -1646,7 +1646,7 @@ namespace LlmodelBox.Controls.RichChat
                     });
                 }
 
-                if (WebLink.TryParse(src.Url, out var safeUri))
+                if (WebLink.TryParse(src.Url, out var safeUri) && safeUri != null)
                 {
                     var linkBtn = new Button
                     {
@@ -2009,7 +2009,7 @@ namespace LlmodelBox.Controls.RichChat
 
         private static string ExtractDomain(string? url)
         {
-            if (WebLink.TryParse(url, out var uri))
+            if (WebLink.TryParse(url, out var uri) && uri != null)
             {
                 return uri.Host;
             }

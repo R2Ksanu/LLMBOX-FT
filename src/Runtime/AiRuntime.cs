@@ -158,7 +158,7 @@ namespace LlmodelBox.Runtime
                 catch { /* retrieval is best-effort; never fail the turn on it */ }
             }
 
-            var probe = new AiRequest { Model = request.Model, Settings = request.Settings };
+            var probe = new AiRequest { Model = request.Model ?? new Models.ModelItem(), Settings = request.Settings ?? new Models.UserSettings() };
             probe.Messages.Add(AiMessage.User(request.UserPrompt ?? string.Empty));
 
             var provider = _router.Select(probe);
@@ -273,7 +273,7 @@ namespace LlmodelBox.Runtime
                 catch { }
             }
 
-            var probe = new AiRequest { Model = request.Model, Settings = request.Settings };
+            var probe = new AiRequest { Model = request.Model ?? new Models.ModelItem(), Settings = request.Settings ?? new Models.UserSettings() };
             probe.Messages.Add(AiMessage.User(request.UserPrompt ?? string.Empty));
 
             var provider = _router.Select(probe);
