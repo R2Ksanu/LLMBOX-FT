@@ -68,11 +68,17 @@ flowchart LR
 
 Run `run.bat` from the repository root. It prefers the release build under `app\improved\LlmodelBox.exe` and falls back to `LlmodelBox.exe` or local build outputs.
 
-### Dual Builder (Windows & Linux Cross-Build + Local Download Portal)
+### Dual Builder & Continuous Auto-Deploy (`build.sh`, `build.ps1`, `Cauto.sh`)
 
-`Directory.Build.props` enables `EnableWindowsTargeting`, so you can compile the Windows `win-x64` `.exe` on **either Windows or Linux** and choose between a portable self-contained single-file `.exe` or a lightweight framework-dependent build. When serving is enabled, the builder stages `LlmodelBox.exe`, `LlmodelBox-win-x64.zip`, and `SHA256SUMS.txt` under `dist/release/` and starts a local HTTP download website (`http://localhost:8080/`).
+`Directory.Build.props` enables `EnableWindowsTargeting`, so you can compile the Windows `win-x64` `.exe` on **either Windows or Linux** and choose between a portable self-contained single-file `.exe` or a lightweight framework-dependent build. When serving is enabled, `tools/local-download-server.py` stages `LlmodelBox.exe`, `LlmodelBox-win-x64.zip`, and `SHA256SUMS.txt` and starts a local HTTP download website (`http://localhost:8080/`).
 
-**Windows:**
+| Script | Platform | Purpose |
+| :--- | :--- | :--- |
+| `build.sh` | Linux | Auto-installs missing requirements (`dotnet` 8, `curl`, `python3`), builds `win-x64`, and launches the local download website |
+| `build.ps1` / `build.bat` | Windows | Runs tests, builds `win-x64` (standalone or `app\improved`), and optionally hosts the local download website |
+| `Cauto.sh` | Linux VPS | Polls GitHub for new commits, clears & freshly clones the repo, rebuilds via `build.sh`, and hot-swaps the live download website |
+
+**Windows (`build.ps1` / `build.bat`):**
 
 ```powershell
 # Interactive menu (choose profile, standalone vs framework-dependent, and optional local web portal)
@@ -83,7 +89,7 @@ Run `run.bat` from the repository root. It prefers the release build under `app\
 .\build.ps1 -Mode linux -Package standalone -Serve -Port 8080
 ```
 
-**Linux (auto-checks & installs `.NET 8 SDK`, `curl`, and `python3` if missing, then retries on restore failures):**
+**Linux (`build.sh` — auto-checks & installs `.NET 8 SDK`, `curl`, and `python3` if missing):**
 
 ```bash
 chmod +x build.sh
@@ -94,6 +100,16 @@ chmod +x build.sh
 
 # Check requirements without auto-installing missing tools
 ./build.sh --no-auto-install --mode linux --package standalone
+```
+
+**Linux VPS Continuous Auto-Builder (`Cauto.sh`):**
+
+```bash
+chmod +x Cauto.sh
+./Cauto.sh
+
+# Unattended VPS mode (polls every 30s, clean-clones on new commits, keeps download site live on :8080)
+./Cauto.sh --repo https://github.com/R2Ksanu/LLMBOX-FT.git --branch main --package standalone --port 8080 --interval 30 --yes
 ```
 
 > **Note:** Building on Linux cross-compiles the Windows WPF executable (`win-x64`), packages it, and serves it over HTTP so you can download `LlmodelBox.exe` from any Windows machine on your network. Running `LlmodelBox.exe` natively requires Windows (or Wine).

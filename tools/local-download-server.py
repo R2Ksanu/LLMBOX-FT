@@ -19,6 +19,7 @@ import platform
 import shutil
 import socket
 import socketserver
+import subprocess
 import sys
 import zipfile
 from pathlib import Path
@@ -53,11 +54,51 @@ def detect_lan_ip() -> str:
         sock.close()
 
 
+def detect_git_commit(repo_root: Path) -> str:
+    try:
+        out = subprocess.check_output(
+            ["git", "-C", str(repo_root), "rev-parse", "--short", "HEAD"],
+            stderr=subprocess.DEVNULL,
+            text=True,
+        ).strip()
+        return out or "local"
+    except Exception:
+        return "local"
+
+
+def atomic_copy(src: Path, dst: Path) -> None:
+    tmp = dst.with_name(f".{dst.name}.{os.getpid()}.tmp")
+    try:
+        shutil.copy2(src, tmp)
+        os.replace(tmp, dst)
+    finally:
+        if tmp.exists():
+            try:
+                tmp.unlink()
+            except OSError:
+                pass
+
+
+def atomic_write_text(dst: Path, content: str) -> None:
+    tmp = dst.with_name(f".{dst.name}.{os.getpid()}.tmp")
+    try:
+        tmp.write_text(content, encoding="utf-8")
+        os.replace(tmp, dst)
+    finally:
+        if tmp.exists():
+            try:
+                tmp.unlink()
+            except OSError:
+                pass
+
+
 def prepare_release(
     build_dir: Path,
     release_dir: Path,
     repo_root: Path,
     package_label: str,
+    commit: str = "",
+    branch: str = "main",
 ) -> dict:
     exe_source = build_dir / "LlmodelBox.exe"
     if not exe_source.is_file():
@@ -67,48 +108,95 @@ def prepare_release(
 
     exe_target = release_dir / "LlmodelBox.exe"
     if exe_source.resolve() != exe_target.resolve():
-        shutil.copy2(exe_source, exe_target)
+        atomic_copy(exe_source, exe_target)
 
-    zip_path = release_dir / "LlmodelBox-win-x64.zip"
-    with zipfile.ZipFile(zip_path, "w", compression=zipfile.ZIP_DEFLATED) as zf:
-        for item in sorted(build_dir.rglob("*")):
-            if item.is_file() and item.suffix.lower() != ".pdb":
-                rel = item.relative_to(build_dir)
-                zf.write(item, arcname=str(rel).replace("\\", "/"))
+    zip_target = release_dir / "LlmodelBox-win-x64.zip"
+    zip_tmp = release_dir / f".LlmodelBox-win-x64.{os.getpid()}.zip.tmp"
+    try:
+        with zipfile.ZipFile(zip_tmp, "w", compression=zipfile.ZIP_DEFLATED) as zf:
+            for item in sorted(build_dir.rglob("*")):
+                if item.is_file() and item.suffix.lower() != ".pdb":
+                    rel = item.relative_to(build_dir)
+                    zf.write(item, arcname=str(rel).replace("\\", "/"))
 
-        # Include clean runtime catalog & docs if present (never personal settings/chat/logs)
-        for extra_name in ("models.json", "README.md"):
-            extra = repo_root / extra_name
-            if extra.is_file():
-                zf.write(extra, arcname=extra_name)
+            # Include clean runtime catalog & docs if present (never personal settings/chat/logs)
+            for extra_name in ("models.json", "README.md"):
+                extra = repo_root / extra_name
+                if extra.is_file():
+                    zf.write(extra, arcname=extra_name)
+        os.replace(zip_tmp, zip_target)
+    finally:
+        if zip_tmp.exists():
+            try:
+                zip_tmp.unlink()
+            except OSError:
+                pass
 
     exe_sha = sha256_file(exe_target)
-    zip_sha = sha256_file(zip_path)
+    zip_sha = sha256_file(zip_target)
 
-    checksums_path = release_dir / "SHA256SUMS.txt"
-    checksums_path.write_text(
+    atomic_write_text(
+        release_dir / "SHA256SUMS.txt",
         f"{exe_sha}  LlmodelBox.exe\n{zip_sha}  LlmodelBox-win-x64.zip\n",
-        encoding="utf-8",
     )
 
-    return {
+    resolved_commit = commit.strip() if commit and commit.strip() else detect_git_commit(repo_root)
+    meta = {
         "package_label": package_label,
         "build_host": f"{platform.system()} ({platform.machine()})",
         "target_rid": "win-x64",
+        "branch": branch or "main",
+        "commit": resolved_commit,
         "built_at": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC"),
         "exe_name": exe_target.name,
         "exe_size": exe_target.stat().st_size,
         "exe_size_human": format_bytes(exe_target.stat().st_size),
         "exe_sha256": exe_sha,
-        "zip_name": zip_path.name,
-        "zip_size": zip_path.stat().st_size,
-        "zip_size_human": format_bytes(zip_path.stat().st_size),
+        "zip_name": zip_target.name,
+        "zip_size": zip_target.stat().st_size,
+        "zip_size_human": format_bytes(zip_target.stat().st_size),
         "zip_sha256": zip_sha,
     }
+    atomic_write_text(release_dir / "release_meta.json", json.dumps(meta, indent=2) + "\n")
+    return meta
+
+
+def load_release_meta(release_dir: Path, fallback: dict | None = None) -> dict:
+    meta_file = release_dir / "release_meta.json"
+    if meta_file.is_file():
+        try:
+            return json.loads(meta_file.read_text(encoding="utf-8"))
+        except Exception:
+            pass
+    if fallback is not None:
+        return fallback
+
+    exe_target = release_dir / "LlmodelBox.exe"
+    zip_target = release_dir / "LlmodelBox-win-x64.zip"
+    if exe_target.is_file() and zip_target.is_file():
+        return {
+            "package_label": "win-x64 Release",
+            "build_host": f"{platform.system()} ({platform.machine()})",
+            "target_rid": "win-x64",
+            "branch": "main",
+            "commit": "local",
+            "built_at": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC"),
+            "exe_name": exe_target.name,
+            "exe_size": exe_target.stat().st_size,
+            "exe_size_human": format_bytes(exe_target.stat().st_size),
+            "exe_sha256": sha256_file(exe_target),
+            "zip_name": zip_target.name,
+            "zip_size": zip_target.stat().st_size,
+            "zip_size_human": format_bytes(zip_target.stat().st_size),
+            "zip_sha256": sha256_file(zip_target),
+        }
+    raise FileNotFoundError(f"No release artifacts found in: {release_dir}")
 
 
 def render_index_html(meta: dict) -> bytes:
     esc = html.escape
+    branch = meta.get("branch", "main")
+    commit = meta.get("commit", "local")
     page = f"""<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -142,7 +230,7 @@ def render_index_html(meta: dict) -> bytes:
     }}
     .wrap {{
       width: 100%;
-      max-width: 760px;
+      max-width: 780px;
       background: var(--card);
       border: 1px solid var(--border);
       border-radius: 14px;
@@ -173,7 +261,7 @@ def render_index_html(meta: dict) -> bytes:
     }}
     .meta-grid {{
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
       gap: 12px;
       margin-bottom: 22px;
     }}
@@ -262,7 +350,7 @@ def render_index_html(meta: dict) -> bytes:
 </head>
 <body>
   <main class="wrap">
-    <div class="badge">LOCAL ARTIFACT SERVER // WIN-X64</div>
+    <div class="badge">LOCAL ARTIFACT SERVER // WIN-X64 // {esc(branch)}@{esc(commit)}</div>
     <h1>LlmodelBox Release Download</h1>
     <p class="subtitle">
       Built and staged locally for Windows (x64). Download the standalone executable directly or grab the full release archive.
@@ -274,12 +362,12 @@ def render_index_html(meta: dict) -> bytes:
         <div class="meta-value">{esc(meta["package_label"])}</div>
       </div>
       <div class="meta-box">
-        <div class="meta-label">Build Host</div>
-        <div class="meta-value">{esc(meta["build_host"])}</div>
+        <div class="meta-label">Source Commit</div>
+        <div class="meta-value">{esc(branch)} ({esc(commit)})</div>
       </div>
       <div class="meta-box">
-        <div class="meta-label">Target</div>
-        <div class="meta-value">{esc(meta["target_rid"])}</div>
+        <div class="meta-label">Build Host</div>
+        <div class="meta-value">{esc(meta["build_host"])}</div>
       </div>
       <div class="meta-box">
         <div class="meta-label">Built At</div>
@@ -317,9 +405,9 @@ def render_index_html(meta: dict) -> bytes:
 
 
 class ReleaseHandler(http.server.BaseHTTPRequestHandler):
-    def __init__(self, *args, release_dir: Path, meta: dict, **kwargs):
+    def __init__(self, *args, release_dir: Path, fallback_meta: dict | None, **kwargs):
         self.release_dir = release_dir
-        self.meta = meta
+        self.fallback_meta = fallback_meta
         super().__init__(*args, **kwargs)
 
     def log_message(self, format: str, *args) -> None:
@@ -337,11 +425,13 @@ class ReleaseHandler(http.server.BaseHTTPRequestHandler):
     def _handle_request(self, send_body: bool) -> None:
         path = self.path.split("?", 1)[0]
         if path in ("/", "/index.html"):
-            self._send_bytes(200, "text/html; charset=utf-8", render_index_html(self.meta), send_body)
+            meta = load_release_meta(self.release_dir, self.fallback_meta)
+            self._send_bytes(200, "text/html; charset=utf-8", render_index_html(meta), send_body)
             return
 
         if path == "/health":
-            body = json.dumps(self.meta, indent=2).encode("utf-8")
+            meta = load_release_meta(self.release_dir, self.fallback_meta)
+            body = json.dumps(meta, indent=2).encode("utf-8")
             self._send_bytes(200, "application/json; charset=utf-8", body, send_body)
             return
 
@@ -385,28 +475,44 @@ class ReusableTCPServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Package and serve LlmodelBox release artifacts locally.")
-    parser.add_argument("--build-dir", required=True, help="Directory containing the built LlmodelBox.exe")
+    parser.add_argument("--build-dir", default="", help="Directory containing the built LlmodelBox.exe")
     parser.add_argument("--release-dir", required=True, help="Directory to stage release artifacts")
     parser.add_argument("--repo-root", default=".", help="Repository root directory")
     parser.add_argument("--package-label", default="win-x64 Release", help="Human-readable packaging label")
+    parser.add_argument("--commit", default="", help="Git commit hash for display")
+    parser.add_argument("--branch", default="main", help="Git branch name for display")
     parser.add_argument("--host", default="0.0.0.0", help="Bind address (default: 0.0.0.0)")
     parser.add_argument("--port", type=int, default=8080, help="HTTP port (default: 8080)")
     parser.add_argument("--prepare-only", action="store_true", help="Only create zip and checksums, do not start server")
+    parser.add_argument("--serve-only", action="store_true", help="Serve an existing release directory without repackaging")
     args = parser.parse_args()
 
-    build_dir = Path(args.build_dir).resolve()
     release_dir = Path(args.release_dir).resolve()
     repo_root = Path(args.repo_root).resolve()
 
-    meta = prepare_release(build_dir, release_dir, repo_root, args.package_label)
-    print(f"Prepared release in: {release_dir}")
-    print(f"  - {meta['exe_name']} ({meta['exe_size_human']}) SHA-256: {meta['exe_sha256']}")
-    print(f"  - {meta['zip_name']} ({meta['zip_size_human']}) SHA-256: {meta['zip_sha256']}")
+    meta: dict | None = None
+    if not args.serve_only:
+        if not args.build_dir:
+            parser.error("--build-dir is required unless --serve-only is set")
+        build_dir = Path(args.build_dir).resolve()
+        meta = prepare_release(
+            build_dir=build_dir,
+            release_dir=release_dir,
+            repo_root=repo_root,
+            package_label=args.package_label,
+            commit=args.commit,
+            branch=args.branch,
+        )
+        print(f"Prepared release in: {release_dir}")
+        print(f"  - {meta['exe_name']} ({meta['exe_size_human']}) SHA-256: {meta['exe_sha256']}")
+        print(f"  - {meta['zip_name']} ({meta['zip_size_human']}) SHA-256: {meta['zip_sha256']}")
 
-    if args.prepare_only:
-        return 0
+        if args.prepare_only:
+            return 0
+    else:
+        meta = load_release_meta(release_dir)
 
-    handler_cls = functools.partial(ReleaseHandler, release_dir=release_dir, meta=meta)
+    handler_cls = functools.partial(ReleaseHandler, release_dir=release_dir, fallback_meta=meta)
     lan_ip = detect_lan_ip()
     with ReusableTCPServer((args.host, args.port), handler_cls) as httpd:
         print("")
