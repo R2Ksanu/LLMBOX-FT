@@ -14,9 +14,11 @@ using System.Windows.Media.Imaging;
 using LlmodelBox.Common;
 using LlmodelBox.Models;
 using LlmodelBox.Models.Ai;
+using LlmodelBox.Providers;
 using LlmodelBox.Runtime.Context;
 using LlmodelBox.Runtime.Memory;
 using LlmodelBox.Services;
+using Microsoft.Win32;
 
 namespace LlmodelBox
 {
@@ -62,11 +64,20 @@ namespace LlmodelBox
     {
         private readonly List<HomeChatThread> _homeThreads = new();
         private readonly JsonChatHistoryStore _ideChatHistoryStore = new();
+        private readonly List<HomeAttachedContextItem> _attachedHomeFiles = new();
         private HomeChatThread? _activeHomeThread = null;
         private ProjectItem? _homeChatProject = null;
         private ProjectItem? _sidebarFilterProject = null;
         private bool _sidebarFilterGeneralOnly = false;
+        private string _homeModelFilter = "All";
         private bool _homeChatBusy = false;
+
+        private sealed class HomeAttachedContextItem
+        {
+            public string FullPath { get; set; } = string.Empty;
+            public string DisplayName { get; set; } = string.Empty;
+            public string CachedContent { get; set; } = string.Empty;
+        }
 
         private sealed class HomeWorkspaceOption
         {
@@ -93,6 +104,7 @@ namespace LlmodelBox
             RefreshHomeConversationsUi();
             RefreshHomeChatThreadUi();
             RefreshProjectsUi();
+            UpdateHomeContextRing();
         }
 
         private void LoadHomeThreads()
@@ -184,6 +196,29 @@ namespace LlmodelBox
             {
                 TxtHomeModelLabel.Text = _activeModel != null ? _activeModel.Name : "Select Model";
             }
+            if (TxtHomeModelTier != null && HomeModelTierBadge != null)
+            {
+                if (_activeModel != null)
+                {
+                    TxtHomeModelTier.Text = _activeModel.TierBadgeText;
+                    try
+                    {
+                        TxtHomeModelTier.Foreground = new SolidColorBrush((Color)ColorConverter.ConvertFromString(_activeModel.TierBadgeColor));
+                        HomeModelTierBadge.Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString(_activeModel.TierBadgeBg));
+                    }
+                    catch { }
+                    HomeModelTierBadge.Visibility = Visibility.Visible;
+                }
+                else
+                {
+                    HomeModelTierBadge.Visibility = Visibility.Collapsed;
+                }
+            }
+            if (TxtHomeModelCap != null)
+            {
+                TxtHomeModelCap.Text = _activeModel != null ? _activeModel.PrimaryCategoryTag : "TEXT";
+            }
+            UpdateHomeContextRing();
             if (TxtHomeWorkspaceCtx != null)
             {
                 TxtHomeWorkspaceCtx.Text = _homeChatProject != null
@@ -450,17 +485,69 @@ namespace LlmodelBox
             }
         }
 
+        private IEnumerable<ModelItem> GetAllKnownModels()
+        {
+            var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var cat in _allCompanyCategories)
+            {
+                if (cat.Models == null) continue;
+                foreach (var m in cat.Models)
+                {
+                    if (seen.Add($"{m.Provider}|{m.Id}")) yield return m;
+                }
+            }
+            foreach (var m in _allModels)
+            {
+                if (seen.Add($"{m.Provider}|{m.Id}")) yield return m;
+            }
+        }
+
+        private void RefreshHomeModelPickerList()
+        {
+            if (HomeModelPickerList == null) return;
+            string search = (TxtHomeModelSearch?.Text ?? string.Empty).Trim().ToLowerInvariant();
+
+            var filtered = GetAllKnownModels()
+                .Where(m => m.MatchesCapabilityFilter(_homeModelFilter))
+                .Where(m => string.IsNullOrEmpty(search) ||
+                            m.Name.ToLowerInvariant().Contains(search) ||
+                            m.Id.ToLowerInvariant().Contains(search) ||
+                            m.Provider.ToLowerInvariant().Contains(search) ||
+                            m.CategoryBadgeText.ToLowerInvariant().Contains(search) ||
+                            m.TierBadgeText.ToLowerInvariant().Contains(search))
+                .OrderByDescending(m => !string.IsNullOrWhiteSpace(_cloudApiService.GetApiKeyForProvider(m.Provider, _settings)) || (m.IsCustom && !string.IsNullOrWhiteSpace(m.CustomApiKey)))
+                .ThenByDescending(m => m.IsFree)
+                .ThenBy(m => m.Provider)
+                .ThenBy(m => m.Name)
+                .ToList();
+
+            HomeModelPickerList.ItemsSource = filtered;
+            if (TxtHomeModelPopupCount != null)
+            {
+                TxtHomeModelPopupCount.Text = filtered.Count == 1 ? "1 model" : $"{filtered.Count} models";
+            }
+        }
+
         private void BtnHomeModelPicker_Click(object sender, RoutedEventArgs e)
         {
             if (HomeModelPopup == null || HomeModelPickerList == null) return;
-            var sorted = _allModels
-                .OrderByDescending(m => !string.IsNullOrWhiteSpace(_cloudApiService.GetApiKeyForProvider(m.Provider, _settings)) || (m.IsCustom && !string.IsNullOrWhiteSpace(m.CustomApiKey)))
-                .ThenBy(m => m.Provider)
-                .ThenBy(m => m.Name)
-                .Take(120)
-                .ToList();
-            HomeModelPickerList.ItemsSource = sorted;
+            RefreshHomeModelPickerList();
             HomeModelPopup.IsOpen = !HomeModelPopup.IsOpen;
+            if (HomeModelPopup.IsOpen) TxtHomeModelSearch?.Focus();
+        }
+
+        private void TxtHomeModelSearch_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            RefreshHomeModelPickerList();
+        }
+
+        private void BtnHomeModelFilter_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is Button btn && btn.Tag is string tag)
+            {
+                _homeModelFilter = tag;
+                RefreshHomeModelPickerList();
+            }
         }
 
         private void HomeModelPickerList_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -471,6 +558,250 @@ namespace LlmodelBox
                 UpdateHomeGreetingAndLabels();
                 HomeModelPopup.IsOpen = false;
             }
+        }
+
+        // ===== + Add Context Menu & Attached Files =====
+        private void RefreshHomeAttachedFilesUi()
+        {
+            if (HomeAttachedFilesList == null) return;
+            HomeAttachedFilesList.ItemsSource = null;
+            HomeAttachedFilesList.ItemsSource = _attachedHomeFiles.ToList();
+            HomeAttachedFilesList.Visibility = _attachedHomeFiles.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
+            UpdateHomeContextRing();
+        }
+
+        private void AttachHomeFile(string path)
+        {
+            if (string.IsNullOrWhiteSpace(path) || !File.Exists(path)) return;
+            if (_attachedHomeFiles.Any(f => string.Equals(f.FullPath, path, StringComparison.OrdinalIgnoreCase))) return;
+
+            string content = string.Empty;
+            try
+            {
+                const int maxChars = 24000;
+                using var fs = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+                using var sr = new StreamReader(fs);
+                char[] buf = new char[maxChars];
+                int read = sr.Read(buf, 0, maxChars);
+                content = new string(buf, 0, read);
+                if (!sr.EndOfStream) content += "\n... (truncated)";
+            }
+            catch { }
+
+            _attachedHomeFiles.Add(new HomeAttachedContextItem
+            {
+                FullPath = path,
+                DisplayName = Path.GetFileName(path),
+                CachedContent = content
+            });
+            RefreshHomeAttachedFilesUi();
+        }
+
+        private void BtnHomeAddContext_Click(object sender, RoutedEventArgs e)
+        {
+            if (HomeAddContextPopup == null) return;
+            HomeAddContextPopup.IsOpen = !HomeAddContextPopup.IsOpen;
+        }
+
+        private void BtnCtxFiles_Click(object sender, RoutedEventArgs e)
+        {
+            if (HomeAddContextPopup != null) HomeAddContextPopup.IsOpen = false;
+            var dlg = new OpenFileDialog
+            {
+                Title = "Attach Files to Conversation Context",
+                Multiselect = true,
+                Filter = "All Files (*.*)|*.*|Code & Text (*.cs;*.xaml;*.py;*.js;*.ts;*.json;*.md;*.txt)|*.cs;*.xaml;*.py;*.js;*.ts;*.json;*.md;*.txt"
+            };
+            if (dlg.ShowDialog() == true)
+            {
+                foreach (var f in dlg.FileNames) AttachHomeFile(f);
+            }
+        }
+
+        private void BtnCtxFolder_Click(object sender, RoutedEventArgs e)
+        {
+            if (HomeAddContextPopup != null) HomeAddContextPopup.IsOpen = false;
+            var dlg = new OpenFolderDialog
+            {
+                Title = "Select Workspace Folder for Context",
+                Multiselect = false
+            };
+            if (dlg.ShowDialog() == true)
+            {
+                string folder = dlg.FolderName;
+                var existing = _projects.FirstOrDefault(p => string.Equals(p.Path, folder, StringComparison.OrdinalIgnoreCase));
+                if (existing == null)
+                {
+                    existing = new ProjectItem
+                    {
+                        Name = Path.GetFileName(folder.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)),
+                        Path = folder,
+                        Description = "Linked workspace folder",
+                        CreatedAt = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"),
+                        LastOpened = DateTime.Now.ToString("yyyy-MM-dd HH:mm")
+                    };
+                    _projects.Insert(0, existing);
+                    SaveProjects();
+                    RefreshProjectsUi();
+                }
+                _homeChatProject = existing;
+                if (_activeHomeThread != null && _activeHomeThread.Messages.Count == 0)
+                {
+                    _activeHomeThread.ProjectPath = existing.Path;
+                    _activeHomeThread.ProjectName = existing.Name;
+                }
+                UpdateHomeGreetingAndLabels();
+            }
+        }
+
+        private void BtnCtxMentions_Click(object sender, RoutedEventArgs e)
+        {
+            if (HomeAddContextPopup != null) HomeAddContextPopup.IsOpen = false;
+            if (HomeMentionsPopup == null || HomeMentionsList == null) return;
+
+            var items = new List<string>();
+            if (_homeChatProject != null && Directory.Exists(_homeChatProject.Path))
+            {
+                try
+                {
+                    items.AddRange(Directory.EnumerateFiles(_homeChatProject.Path, "*", SearchOption.AllDirectories)
+                        .Where(p => !p.Contains("\\bin\\", StringComparison.OrdinalIgnoreCase)
+                                 && !p.Contains("\\obj\\", StringComparison.OrdinalIgnoreCase)
+                                 && !p.Contains("\\.git\\", StringComparison.OrdinalIgnoreCase))
+                        .Take(60)
+                        .Select(p => Path.GetRelativePath(_homeChatProject.Path, p)));
+                }
+                catch { }
+            }
+            if (items.Count == 0)
+            {
+                items.Add("(Attach a workspace folder first to mention project files)");
+            }
+            HomeMentionsList.ItemsSource = items;
+            HomeMentionsPopup.IsOpen = true;
+        }
+
+        private void HomeMentionsList_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (HomeMentionsList?.SelectedItem is not string rel) return;
+            if (HomeMentionsPopup != null) HomeMentionsPopup.IsOpen = false;
+            if (_homeChatProject != null && !rel.StartsWith("("))
+            {
+                string full = Path.Combine(_homeChatProject.Path, rel);
+                AttachHomeFile(full);
+                if (TxtHomePrompt != null)
+                {
+                    string insert = $"@{rel} ";
+                    TxtHomePrompt.Text = (TxtHomePrompt.Text ?? string.Empty) + insert;
+                    TxtHomePrompt.CaretIndex = TxtHomePrompt.Text.Length;
+                    TxtHomePrompt.Focus();
+                }
+            }
+        }
+
+        private void BtnCtxActions_Click(object sender, RoutedEventArgs e)
+        {
+            if (HomeAddContextPopup != null) HomeAddContextPopup.IsOpen = false;
+            if (HomePresetsPopup == null || HomePresetsList == null) return;
+            HomePresetsList.ItemsSource = _settings.SystemInstructionPresets;
+            HomePresetsPopup.IsOpen = true;
+        }
+
+        private void HomePresetsList_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (HomePresetsList?.SelectedItem is SystemInstructionPreset preset)
+            {
+                _settings.SystemInstructionEnabled = true;
+                _settings.SystemInstruction = preset.Text;
+                SaveSettings();
+                UpdateHomeContextRing();
+                if (HomePresetsPopup != null) HomePresetsPopup.IsOpen = false;
+            }
+        }
+
+        private void BtnCtxClear_Click(object sender, RoutedEventArgs e)
+        {
+            if (HomeAddContextPopup != null) HomeAddContextPopup.IsOpen = false;
+            _attachedHomeFiles.Clear();
+            RefreshHomeAttachedFilesUi();
+        }
+
+        private void BtnRemoveHomeContextFile_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is Button btn && btn.Tag is HomeAttachedContextItem item)
+            {
+                _attachedHomeFiles.Remove(item);
+                RefreshHomeAttachedFilesUi();
+            }
+        }
+
+        // ===== Tiny Context Window Circle Bar =====
+        private void TxtHomePrompt_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            UpdateHomeContextRing();
+        }
+
+        private static string FormatCompactTokens(int tokens)
+        {
+            if (tokens >= 1_000_000) return $"{tokens / 1_000_000.0:0.#}M";
+            if (tokens >= 1_000) return $"{tokens / 1_000.0:0.#}k";
+            return tokens.ToString();
+        }
+
+        private void UpdateHomeContextRing()
+        {
+            if (HomeContextArcPath == null || TxtHomeContextLabel == null) return;
+
+            var caps = ModelCapabilityResolver.Resolve(_activeModel);
+            int maxCtx = Math.Max(4096, caps.ContextWindow);
+
+            int used = 0;
+            if (_settings.SystemInstructionEnabled && !string.IsNullOrWhiteSpace(_settings.SystemInstruction))
+                used += TokenHelper.CountTokens(_settings.SystemInstruction);
+            if (_activeHomeThread != null)
+            {
+                foreach (var m in _activeHomeThread.Messages)
+                    used += TokenHelper.CountTokens(m.Content);
+            }
+            if (TxtHomePrompt != null && !string.IsNullOrEmpty(TxtHomePrompt.Text))
+                used += TokenHelper.CountTokens(TxtHomePrompt.Text);
+            foreach (var f in _attachedHomeFiles)
+                used += TokenHelper.CountTokens(f.CachedContent);
+
+            double ratio = Math.Clamp((double)used / maxCtx, 0.0, 1.0);
+            int pct = (int)Math.Round(ratio * 100.0);
+
+            TxtHomeContextLabel.Text = $"{pct}% · {FormatCompactTokens(maxCtx)}";
+            if (HomeContextRingContainer != null)
+            {
+                HomeContextRingContainer.ToolTip = $"Context window: {used:N0} / {maxCtx:N0} tokens ({pct}%)";
+            }
+
+            string brushKey = ratio >= 0.90 ? "BrushDanger" : (ratio >= 0.70 ? "BrushWarning" : "BrushAccentLight");
+            if (TryFindResource(brushKey) is Brush strokeBrush)
+            {
+                HomeContextArcPath.Stroke = strokeBrush;
+            }
+
+            if (ratio <= 0.005)
+            {
+                HomeContextArcPath.Data = null;
+                return;
+            }
+
+            // Draw arc on 16x16 circle (center 8,8, radius 6.5)
+            double angle = Math.Min(359.5, ratio * 360.0);
+            double rad = (angle - 90.0) * Math.PI / 180.0;
+            const double cx = 8.0, cy = 8.0, r = 6.5;
+            var start = new Point(cx, cy - r);
+            var end = new Point(cx + r * Math.Cos(rad), cy + r * Math.Sin(rad));
+            bool largeArc = angle > 180.0;
+
+            var fig = new PathFigure { StartPoint = start, IsClosed = false };
+            fig.Segments.Add(new ArcSegment(end, new Size(r, r), 0, largeArc, SweepDirection.Clockwise, true));
+            var geo = new PathGeometry();
+            geo.Figures.Add(fig);
+            HomeContextArcPath.Data = geo;
         }
 
         private void TxtHomePrompt_PreviewKeyDown(object sender, KeyEventArgs e)
@@ -545,11 +876,28 @@ namespace LlmodelBox
                 else if (cm.IsAssistant && !cm.IsError) history.Add(AiMessage.Assistant(cm.Content));
             }
 
+            string effectivePrompt = prompt;
+            if (_attachedHomeFiles.Count > 0)
+            {
+                var sb = new System.Text.StringBuilder(prompt);
+                sb.AppendLine();
+                sb.AppendLine();
+                foreach (var f in _attachedHomeFiles)
+                {
+                    sb.AppendLine($"[Attached Context: {f.DisplayName}]");
+                    sb.AppendLine(f.CachedContent);
+                    sb.AppendLine();
+                }
+                effectivePrompt = sb.ToString();
+                _attachedHomeFiles.Clear();
+                RefreshHomeAttachedFilesUi();
+            }
+
             var ctxRequest = new ContextRequest
             {
                 Model = requestModel,
                 Settings = _settings,
-                UserPrompt = prompt,
+                UserPrompt = effectivePrompt,
                 SystemInstruction = (_settings.SystemInstructionEnabled && !string.IsNullOrWhiteSpace(_settings.SystemInstruction))
                     ? _settings.SystemInstruction : null,
                 History = history,
@@ -632,6 +980,7 @@ namespace LlmodelBox
             RefreshHomeConversationsUi();
             RefreshHomeChatThreadUi();
             RefreshProjectsUi();
+            UpdateHomeContextRing();
         }
 
         // ===== Settings Storage Paths & Dynamic Provider Logos =====

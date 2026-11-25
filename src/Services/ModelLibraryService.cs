@@ -217,9 +217,16 @@ namespace LlmodelBox.Services
 
             bool freeFilter = string.Equals(filterPill, "Free", StringComparison.OrdinalIgnoreCase);
             bool paidFilter = string.Equals(filterPill, "Paid", StringComparison.OrdinalIgnoreCase);
-            bool tierFilter = freeFilter || paidFilter;
+            bool capabilityFilter =
+                string.Equals(filterPill, "Coding", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(filterPill, "Vision", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(filterPill, "Video", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(filterPill, "Audio", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(filterPill, "Reasoning", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(filterPill, "Text", StringComparison.OrdinalIgnoreCase);
+            bool modelLevelFilter = freeFilter || paidFilter || capabilityFilter;
 
-            if (!tierFilter && !string.Equals(filterPill, "All", StringComparison.OrdinalIgnoreCase) && !string.IsNullOrWhiteSpace(filterPill))
+            if (!modelLevelFilter && !string.Equals(filterPill, "All", StringComparison.OrdinalIgnoreCase) && !string.IsNullOrWhiteSpace(filterPill))
             {
                 if (string.Equals(filterPill, "Custom", StringComparison.OrdinalIgnoreCase))
                 {
@@ -239,7 +246,7 @@ namespace LlmodelBox.Services
                 {
                     bool catMatches = c.Name.ToLowerInvariant().Contains(s) || c.Tagline.ToLowerInvariant().Contains(s);
                     var matchingModels = (c.Models ?? new List<ModelItem>())
-                        .Where(m => catMatches || m.Name.ToLowerInvariant().Contains(s) || m.Id.ToLowerInvariant().Contains(s) || m.Description.ToLowerInvariant().Contains(s))
+                        .Where(m => catMatches || m.Name.ToLowerInvariant().Contains(s) || m.Id.ToLowerInvariant().Contains(s) || m.Description.ToLowerInvariant().Contains(s) || m.CategoryBadgeText.ToLowerInvariant().Contains(s))
                         .ToList();
                     if (matchingModels.Count > 0)
                     {
@@ -249,15 +256,14 @@ namespace LlmodelBox.Services
                 query = searchProjected;
             }
 
-            // Free / Paid pills filter at the MODEL level: project each category down to just its free
-            // (or paid) models and drop categories left with none. Copies the category so the shared
-            // aggregator cache and the unfiltered list are never mutated.
-            if (tierFilter)
+            // Free / Paid / Capability pills filter at the MODEL level: project each category down
+            // to matching models and drop categories left with none.
+            if (modelLevelFilter)
             {
                 var projected = new List<CompanyCategoryItem>();
                 foreach (var c in query)
                 {
-                    var models = (c.Models ?? new List<ModelItem>()).Where(m => m.IsFree == freeFilter).ToList();
+                    var models = (c.Models ?? new List<ModelItem>()).Where(m => m.MatchesCapabilityFilter(filterPill)).ToList();
                     if (models.Count == 0) continue;
                     projected.Add(CloneCategoryWithModels(c, models));
                 }

@@ -990,47 +990,213 @@
                                     </StackPanel>
                                 </Border>
 
-                                <!-- Input Prompt Area -->
-                                <Grid Grid.Row="1" Margin="14,10,14,6">
-                                    <TextBlock Text="Ask anything, or attach a workspace above..." FontSize="13.5" Foreground="{DynamicResource BrushTextDim}" IsHitTestVisible="False" VerticalAlignment="Top" Margin="2,2,0,0">
-                                        <TextBlock.Style>
-                                            <Style TargetType="TextBlock">
-                                                <Setter Property="Visibility" Value="Collapsed"/>
-                                                <Style.Triggers>
-                                                    <DataTrigger Binding="{Binding Text, ElementName=TxtHomePrompt}" Value="">
-                                                        <Setter Property="Visibility" Value="Visible"/>
-                                                    </DataTrigger>
-                                                </Style.Triggers>
-                                            </Style>
-                                        </TextBlock.Style>
-                                    </TextBlock>
-                                    <TextBox x:Name="TxtHomePrompt" Background="Transparent" BorderThickness="0"
-                                             Foreground="{DynamicResource BrushTextPrimary}" CaretBrush="{DynamicResource BrushAccentLight}"
-                                             FontSize="13.5" AcceptsReturn="True" TextWrapping="Wrap" MinHeight="42" MaxHeight="160"
-                                             VerticalScrollBarVisibility="Auto" PreviewKeyDown="TxtHomePrompt_PreviewKeyDown"/>
-                                </Grid>
+                                <!-- Input Prompt Area + Attached Context Chips -->
+                                <StackPanel Grid.Row="1" Margin="14,8,14,6">
+                                    <ItemsControl x:Name="HomeAttachedFilesList" Visibility="Collapsed" Margin="0,0,0,6">
+                                        <ItemsControl.ItemsPanel>
+                                            <ItemsPanelTemplate>
+                                                <WrapPanel/>
+                                            </ItemsPanelTemplate>
+                                        </ItemsControl.ItemsPanel>
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <Border Background="{DynamicResource BrushCardInnerBg}" BorderBrush="{DynamicResource BrushBorder}" BorderThickness="1" CornerRadius="6" Padding="7,3" Margin="0,0,6,4">
+                                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                        <Path Data="{StaticResource IconFolder}" Fill="{DynamicResource BrushAccentLight}" Stretch="Uniform" Width="10" Height="10" Margin="0,0,5,0" VerticalAlignment="Center"/>
+                                                        <TextBlock Text="{Binding DisplayName}" FontSize="11" Foreground="{DynamicResource BrushTextPrimary}" VerticalAlignment="Center"/>
+                                                        <Button Content="✕" Background="Transparent" BorderThickness="0" Foreground="{DynamicResource BrushTextMuted}" FontSize="9.5" Margin="6,0,0,0" Padding="2,0" Cursor="Hand" Tag="{Binding}" Click="BtnRemoveHomeContextFile_Click"/>
+                                                    </StackPanel>
+                                                </Border>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
 
-                                <!-- Bottom Composer Bar: Model Picker + Circular Send Button -->
+                                    <Grid>
+                                        <TextBlock Text="Ask anything, @ to mention, or + to add context..." FontSize="13.5" Foreground="{DynamicResource BrushTextDim}" IsHitTestVisible="False" VerticalAlignment="Top" Margin="2,2,0,0">
+                                            <TextBlock.Style>
+                                                <Style TargetType="TextBlock">
+                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding Text, ElementName=TxtHomePrompt}" Value="">
+                                                            <Setter Property="Visibility" Value="Visible"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </TextBlock.Style>
+                                        </TextBlock>
+                                        <TextBox x:Name="TxtHomePrompt" Background="Transparent" BorderThickness="0"
+                                                 Foreground="{DynamicResource BrushTextPrimary}" CaretBrush="{DynamicResource BrushAccentLight}"
+                                                 FontSize="13.5" AcceptsReturn="True" TextWrapping="Wrap" MinHeight="42" MaxHeight="160"
+                                                 VerticalScrollBarVisibility="Auto" PreviewKeyDown="TxtHomePrompt_PreviewKeyDown"
+                                                 TextChanged="TxtHomePrompt_TextChanged"/>
+                                    </Grid>
+                                </StackPanel>
+
+                                <!-- Bottom Composer Bar: + Add Context, Model Picker (Free/Paid + Specialty), Context Ring, Send -->
                                 <Grid Grid.Row="2" Margin="12,2,12,10">
                                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center" HorizontalAlignment="Left">
+                                        <!-- + Add Context Button & Menu (Antigravity-style) -->
+                                        <Grid Margin="0,0,6,0">
+                                            <Button x:Name="BtnHomeAddContext" Click="BtnHomeAddContext_Click" Width="26" Height="26" Cursor="Hand" ToolTip="Add Context (Files, Folder, @ Mentions, Presets)">
+                                                <Button.Template>
+                                                    <ControlTemplate TargetType="Button">
+                                                        <Border x:Name="pb" Background="{DynamicResource BrushCardInnerBg}" BorderBrush="{DynamicResource BrushBorder}" BorderThickness="1" CornerRadius="13">
+                                                            <TextBlock Text="+" FontSize="15" FontWeight="SemiBold" Foreground="{DynamicResource BrushTextSecondary}" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,-2,0,0"/>
+                                                        </Border>
+                                                        <ControlTemplate.Triggers>
+                                                            <Trigger Property="IsMouseOver" Value="True">
+                                                                <Setter TargetName="pb" Property="BorderBrush" Value="{DynamicResource BrushBorderHover}"/>
+                                                            </Trigger>
+                                                        </ControlTemplate.Triggers>
+                                                    </ControlTemplate>
+                                                </Button.Template>
+                                            </Button>
+
+                                            <Popup x:Name="HomeAddContextPopup" PlacementTarget="{Binding ElementName=BtnHomeAddContext}" Placement="Top" StaysOpen="False" AllowsTransparency="True" VerticalOffset="-6">
+                                                <Border Background="{DynamicResource BrushCardInnerBg}" BorderBrush="{DynamicResource BrushBorder}" BorderThickness="1" CornerRadius="10" Padding="6" MinWidth="185">
+                                                    <StackPanel>
+                                                        <TextBlock Text="Add Context" FontSize="10.5" FontWeight="Medium" Foreground="{DynamicResource BrushTextMuted}" Margin="8,4,8,6"/>
+                                                        <Button Style="{StaticResource TopMenuBarBtn}" HorizontalContentAlignment="Left" Padding="8,6" Click="BtnCtxFiles_Click">
+                                                            <StackPanel Orientation="Horizontal">
+                                                                <TextBlock Text="📎" FontSize="12" Margin="0,0,8,0"/>
+                                                                <TextBlock Text="Files" FontSize="12"/>
+                                                            </StackPanel>
+                                                        </Button>
+                                                        <Button Style="{StaticResource TopMenuBarBtn}" HorizontalContentAlignment="Left" Padding="8,6" Click="BtnCtxFolder_Click">
+                                                            <StackPanel Orientation="Horizontal">
+                                                                <Path Data="{StaticResource IconFolder}" Fill="{DynamicResource BrushTextSecondary}" Stretch="Uniform" Width="12" Height="12" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                                                                <TextBlock Text="Folder" FontSize="12"/>
+                                                            </StackPanel>
+                                                        </Button>
+                                                        <Button Style="{StaticResource TopMenuBarBtn}" HorizontalContentAlignment="Left" Padding="8,6" Click="BtnCtxMentions_Click">
+                                                            <StackPanel Orientation="Horizontal">
+                                                                <TextBlock Text="@" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource BrushTextSecondary}" Margin="1,0,9,0"/>
+                                                                <TextBlock Text="Mentions" FontSize="12"/>
+                                                            </StackPanel>
+                                                        </Button>
+                                                        <Button Style="{StaticResource TopMenuBarBtn}" HorizontalContentAlignment="Left" Padding="8,6" Click="BtnCtxActions_Click">
+                                                            <StackPanel Orientation="Horizontal">
+                                                                <Path Data="{StaticResource IconBolt}" Fill="{DynamicResource BrushTextSecondary}" Stretch="Uniform" Width="11" Height="11" Margin="1,0,8,0" VerticalAlignment="Center"/>
+                                                                <TextBlock Text="System Prompt" FontSize="12"/>
+                                                            </StackPanel>
+                                                        </Button>
+                                                        <Border Height="1" Background="{DynamicResource BrushBorderSubtle}" Margin="6,4"/>
+                                                        <Button Style="{StaticResource TopMenuBarBtn}" HorizontalContentAlignment="Left" Padding="8,5" Click="BtnCtxClear_Click">
+                                                            <TextBlock Text="Clear Attachments" FontSize="11" Foreground="{DynamicResource BrushTextMuted}"/>
+                                                        </Button>
+                                                    </StackPanel>
+                                                </Border>
+                                            </Popup>
+
+                                            <!-- @ Mentions Popup -->
+                                            <Popup x:Name="HomeMentionsPopup" PlacementTarget="{Binding ElementName=BtnHomeAddContext}" Placement="Top" StaysOpen="False" AllowsTransparency="True" VerticalOffset="-6">
+                                                <Border Background="{DynamicResource BrushCardInnerBg}" BorderBrush="{DynamicResource BrushBorder}" BorderThickness="1" CornerRadius="10" Padding="6" MinWidth="260" MaxHeight="280">
+                                                    <DockPanel>
+                                                        <TextBlock DockPanel.Dock="Top" Text="MENTION PROJECT FILE" FontSize="9.5" FontWeight="Bold" FontFamily="Consolas" Foreground="{DynamicResource BrushTextDim}" Margin="8,4,8,6"/>
+                                                        <ListBox x:Name="HomeMentionsList" Background="Transparent" BorderThickness="0" SelectionChanged="HomeMentionsList_SelectionChanged">
+                                                            <ListBox.ItemTemplate>
+                                                                <DataTemplate>
+                                                                    <TextBlock Text="{Binding}" FontSize="11.5" FontFamily="Consolas" Foreground="{DynamicResource BrushTextPrimary}" Padding="8,5"/>
+                                                                </DataTemplate>
+                                                            </ListBox.ItemTemplate>
+                                                        </ListBox>
+                                                    </DockPanel>
+                                                </Border>
+                                            </Popup>
+
+                                            <!-- System Prompt Presets Popup -->
+                                            <Popup x:Name="HomePresetsPopup" PlacementTarget="{Binding ElementName=BtnHomeAddContext}" Placement="Top" StaysOpen="False" AllowsTransparency="True" VerticalOffset="-6">
+                                                <Border Background="{DynamicResource BrushCardInnerBg}" BorderBrush="{DynamicResource BrushBorder}" BorderThickness="1" CornerRadius="10" Padding="6" MinWidth="240" MaxHeight="260">
+                                                    <DockPanel>
+                                                        <TextBlock DockPanel.Dock="Top" Text="SYSTEM PROMPT PRESET" FontSize="9.5" FontWeight="Bold" FontFamily="Consolas" Foreground="{DynamicResource BrushTextDim}" Margin="8,4,8,6"/>
+                                                        <ListBox x:Name="HomePresetsList" Background="Transparent" BorderThickness="0" SelectionChanged="HomePresetsList_SelectionChanged">
+                                                            <ListBox.ItemTemplate>
+                                                                <DataTemplate>
+                                                                    <TextBlock Text="{Binding Name}" FontSize="12" Foreground="{DynamicResource BrushTextPrimary}" Padding="8,6"/>
+                                                                </DataTemplate>
+                                                            </ListBox.ItemTemplate>
+                                                        </ListBox>
+                                                    </DockPanel>
+                                                </Border>
+                                            </Popup>
+                                        </Grid>
+
+                                        <!-- Model Picker Pill (shows Free/Paid + Specialty Tag) -->
                                         <Grid>
                                             <Button x:Name="BtnHomeModelPicker" Click="BtnHomeModelPicker_Click" Background="Transparent" BorderThickness="0" Cursor="Hand" Padding="6,4">
                                                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                                                     <TextBlock x:Name="TxtHomeModelLabel" Text="GPT-4o" FontSize="11.5" FontWeight="Medium" Foreground="{DynamicResource BrushTextSecondary}" VerticalAlignment="Center"/>
+                                                    <Border x:Name="HomeModelTierBadge" Background="#2a1c07" CornerRadius="4" Margin="6,0,0,0" Padding="5,1" VerticalAlignment="Center">
+                                                        <TextBlock x:Name="TxtHomeModelTier" Text="PAID" FontSize="9" FontWeight="Bold" Foreground="#f59e0b" FontFamily="Consolas"/>
+                                                    </Border>
+                                                    <Border Background="{DynamicResource BrushCardInnerBg}" BorderBrush="{DynamicResource BrushBorderSubtle}" BorderThickness="1" CornerRadius="4" Margin="4,0,0,0" Padding="5,1" VerticalAlignment="Center">
+                                                        <TextBlock x:Name="TxtHomeModelCap" Text="CODE" FontSize="9" Foreground="{DynamicResource BrushTextMuted}" FontFamily="Consolas"/>
+                                                    </Border>
                                                     <TextBlock Text=" ⌄" FontSize="10" Foreground="{DynamicResource BrushTextDim}" VerticalAlignment="Center"/>
                                                 </StackPanel>
                                             </Button>
-                                            <Popup x:Name="HomeModelPopup" PlacementTarget="{Binding ElementName=BtnHomeModelPicker}" Placement="Top" StaysOpen="False" AllowsTransparency="True">
-                                                <Border Background="{DynamicResource BrushCardInnerBg}" BorderBrush="{DynamicResource BrushBorder}" BorderThickness="1" CornerRadius="8" Padding="4" MinWidth="280" MaxHeight="340">
+
+                                            <Popup x:Name="HomeModelPopup" PlacementTarget="{Binding ElementName=BtnHomeModelPicker}" Placement="Top" StaysOpen="False" AllowsTransparency="True" VerticalOffset="-6">
+                                                <Border Background="{DynamicResource BrushCardInnerBg}" BorderBrush="{DynamicResource BrushBorder}" BorderThickness="1" CornerRadius="10" Padding="8" Width="460" Height="420">
                                                     <DockPanel>
-                                                        <TextBlock DockPanel.Dock="Top" Text="SELECT MODEL" FontSize="9.5" FontWeight="Bold" FontFamily="Consolas" Foreground="{DynamicResource BrushTextDim}" Margin="8,6"/>
-                                                        <ListBox x:Name="HomeModelPickerList" Background="Transparent" BorderThickness="0" SelectionChanged="HomeModelPickerList_SelectionChanged">
+                                                        <StackPanel DockPanel.Dock="Top" Margin="0,0,0,8">
+                                                            <Grid Margin="2,0,2,8">
+                                                                <TextBlock Text="SELECT MODEL" FontSize="10" FontWeight="Bold" FontFamily="Consolas" Foreground="{DynamicResource BrushTextDim}" VerticalAlignment="Center"/>
+                                                                <TextBlock x:Name="TxtHomeModelPopupCount" Text="484 models" FontSize="10" FontFamily="Consolas" Foreground="{DynamicResource BrushTextMuted}" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                                                            </Grid>
+                                                            <Border Background="{DynamicResource BrushInputBg}" BorderBrush="{DynamicResource BrushBorder}" BorderThickness="1" CornerRadius="6" Padding="8,5" Margin="0,0,0,8">
+                                                                <Grid>
+                                                                    <TextBlock Text="Search model, provider, or tag (coding, vision, video, free)..." FontSize="11" Foreground="{DynamicResource BrushTextDim}" IsHitTestVisible="False" VerticalAlignment="Center">
+                                                                        <TextBlock.Style><Style TargetType="TextBlock"><Setter Property="Visibility" Value="Collapsed"/><Style.Triggers><DataTrigger Binding="{Binding Text, ElementName=TxtHomeModelSearch}" Value=""><Setter Property="Visibility" Value="Visible"/></DataTrigger></Style.Triggers></Style></TextBlock.Style>
+                                                                    </TextBlock>
+                                                                    <TextBox x:Name="TxtHomeModelSearch" Background="Transparent" BorderThickness="0" Foreground="{DynamicResource BrushTextPrimary}" CaretBrush="{DynamicResource BrushAccentLight}" FontSize="11.5" TextChanged="TxtHomeModelSearch_TextChanged"/>
+                                                                </Grid>
+                                                            </Border>
+                                                            <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
+                                                                <StackPanel Orientation="Horizontal">
+                                                                    <Button Content="All" Style="{StaticResource GlassPillBtn}" Padding="9,3" FontSize="10.5" Margin="0,0,5,0" Tag="All" Click="BtnHomeModelFilter_Click"/>
+                                                                    <Button Content="Free" Style="{StaticResource GlassPillBtn}" Padding="9,3" FontSize="10.5" Margin="0,0,5,0" Tag="Free" Click="BtnHomeModelFilter_Click"/>
+                                                                    <Button Content="Paid" Style="{StaticResource GlassPillBtn}" Padding="9,3" FontSize="10.5" Margin="0,0,5,0" Tag="Paid" Click="BtnHomeModelFilter_Click"/>
+                                                                    <Button Content="Coding" Style="{StaticResource GlassPillBtn}" Padding="9,3" FontSize="10.5" Margin="0,0,5,0" Tag="Coding" Click="BtnHomeModelFilter_Click"/>
+                                                                    <Button Content="Vision" Style="{StaticResource GlassPillBtn}" Padding="9,3" FontSize="10.5" Margin="0,0,5,0" Tag="Vision" Click="BtnHomeModelFilter_Click"/>
+                                                                    <Button Content="Video" Style="{StaticResource GlassPillBtn}" Padding="9,3" FontSize="10.5" Margin="0,0,5,0" Tag="Video" Click="BtnHomeModelFilter_Click"/>
+                                                                    <Button Content="Reasoning" Style="{StaticResource GlassPillBtn}" Padding="9,3" FontSize="10.5" Tag="Reasoning" Click="BtnHomeModelFilter_Click"/>
+                                                                </StackPanel>
+                                                            </ScrollViewer>
+                                                        </StackPanel>
+
+                                                        <ListBox x:Name="HomeModelPickerList" Background="Transparent" BorderThickness="0"
+                                                                 VirtualizingStackPanel.IsVirtualizing="True"
+                                                                 VirtualizingStackPanel.VirtualizationMode="Recycling"
+                                                                 VirtualizingPanel.ScrollUnit="Pixel"
+                                                                 ScrollViewer.CanContentScroll="True"
+                                                                 ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                                                                 HorizontalContentAlignment="Stretch"
+                                                                 SelectionChanged="HomeModelPickerList_SelectionChanged">
                                                             <ListBox.ItemTemplate>
                                                                 <DataTemplate>
-                                                                    <StackPanel Margin="6,4">
-                                                                        <TextBlock Text="{Binding Name}" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource BrushTextPrimary}"/>
-                                                                        <TextBlock Text="{Binding Provider}" FontSize="10" Foreground="{DynamicResource BrushTextDim}"/>
-                                                                    </StackPanel>
+                                                                    <Grid Margin="4,4" HorizontalAlignment="Stretch">
+                                                                        <Grid.ColumnDefinitions>
+                                                                            <ColumnDefinition Width="*"/>
+                                                                            <ColumnDefinition Width="Auto"/>
+                                                                        </Grid.ColumnDefinitions>
+                                                                        <StackPanel Grid.Column="0">
+                                                                            <StackPanel Orientation="Horizontal">
+                                                                                <TextBlock Text="{Binding Name}" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource BrushTextPrimary}" TextTrimming="CharacterEllipsis" MaxWidth="220"/>
+                                                                                <Border Background="{Binding TierBadgeBg}" CornerRadius="4" Margin="6,0,0,0" Padding="5,1" VerticalAlignment="Center">
+                                                                                    <TextBlock Text="{Binding TierBadgeText}" FontSize="8.5" FontWeight="Bold" Foreground="{Binding TierBadgeColor}" FontFamily="Consolas"/>
+                                                                                </Border>
+                                                                            </StackPanel>
+                                                                            <StackPanel Orientation="Horizontal" Margin="0,2,0,0">
+                                                                                <TextBlock Text="{Binding Provider}" FontSize="10" Foreground="{DynamicResource BrushTextDim}"/>
+                                                                                <TextBlock Text=" · " FontSize="10" Foreground="{DynamicResource BrushTextDim}"/>
+                                                                                <TextBlock Text="{Binding CategoryBadgeText}" FontSize="9.5" Foreground="{DynamicResource BrushAccentLight}" FontFamily="Consolas"/>
+                                                                            </StackPanel>
+                                                                        </StackPanel>
+                                                                        <Border Grid.Column="1" Background="{DynamicResource BrushCardBg}" BorderBrush="{DynamicResource BrushBorderSubtle}" BorderThickness="1" CornerRadius="4" Padding="5,2" VerticalAlignment="Center" Margin="8,0,0,0">
+                                                                            <TextBlock Text="{Binding Context}" FontSize="9.5" Foreground="{DynamicResource BrushTextMuted}" FontFamily="Consolas"/>
+                                                                        </Border>
+                                                                    </Grid>
                                                                 </DataTemplate>
                                                             </ListBox.ItemTemplate>
                                                         </ListBox>
@@ -1040,29 +1206,44 @@
                                         </Grid>
 
                                         <Button Content="API Keys" Click="BtnNavApiKeys_Click" Background="Transparent" BorderThickness="0"
-                                                Foreground="{DynamicResource BrushTextDim}" FontSize="11" Cursor="Hand" Margin="8,0,0,0" Padding="6,4"/>
+                                                Foreground="{DynamicResource BrushTextDim}" FontSize="11" Cursor="Hand" Margin="6,0,0,0" Padding="6,4"/>
                                     </StackPanel>
 
-                                    <Button x:Name="BtnHomeSend" Click="BtnHomeSend_Click" HorizontalAlignment="Right" VerticalAlignment="Center"
-                                            Width="30" Height="30" Cursor="Hand" ToolTip="Send (Enter)">
-                                        <Button.Template>
-                                            <ControlTemplate TargetType="Button">
-                                                <Border x:Name="sendBdr" Background="{DynamicResource BrushTextPrimary}" CornerRadius="15">
-                                                    <Path Data="M 6,11 L 6,2 M 2,6 L 6,2 L 10,6" Stroke="{DynamicResource BrushWindowBg}" StrokeThickness="1.7"
-                                                          StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round"
-                                                          Width="12" Height="13" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                                </Border>
-                                                <ControlTemplate.Triggers>
-                                                    <Trigger Property="IsMouseOver" Value="True">
-                                                        <Setter TargetName="sendBdr" Property="Opacity" Value="0.88"/>
-                                                    </Trigger>
-                                                    <Trigger Property="IsEnabled" Value="False">
-                                                        <Setter TargetName="sendBdr" Property="Opacity" Value="0.35"/>
-                                                    </Trigger>
-                                                </ControlTemplate.Triggers>
-                                            </ControlTemplate>
-                                        </Button.Template>
-                                    </Button>
+                                    <!-- Right: Tiny Context Window Circle Bar + Circular Send Button -->
+                                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                                        <Border x:Name="HomeContextRingContainer" Background="{DynamicResource BrushCardInnerBg}" BorderBrush="{DynamicResource BrushBorderSubtle}" BorderThickness="1"
+                                                CornerRadius="999" Padding="7,3" Margin="0,0,10,0" VerticalAlignment="Center"
+                                                ToolTip="Context window usage">
+                                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                <Grid Width="16" Height="16" Margin="0,0,6,0" VerticalAlignment="Center">
+                                                    <Ellipse Stroke="{DynamicResource BrushBorderHover}" StrokeThickness="2.2"/>
+                                                    <Path x:Name="HomeContextArcPath" Stroke="{DynamicResource BrushAccentLight}" StrokeThickness="2.2" StrokeStartLineCap="Round" StrokeEndLineCap="Round"/>
+                                                </Grid>
+                                                <TextBlock x:Name="TxtHomeContextLabel" Text="0% · 128k" FontSize="10" Foreground="{DynamicResource BrushTextMuted}" FontFamily="Consolas" VerticalAlignment="Center"/>
+                                            </StackPanel>
+                                        </Border>
+
+                                        <Button x:Name="BtnHomeSend" Click="BtnHomeSend_Click" VerticalAlignment="Center"
+                                                Width="30" Height="30" Cursor="Hand" ToolTip="Send (Enter)">
+                                            <Button.Template>
+                                                <ControlTemplate TargetType="Button">
+                                                    <Border x:Name="sendBdr" Background="{DynamicResource BrushTextPrimary}" CornerRadius="15">
+                                                        <Path Data="M 6,11 L 6,2 M 2,6 L 6,2 L 10,6" Stroke="{DynamicResource BrushWindowBg}" StrokeThickness="1.7"
+                                                              StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round"
+                                                              Width="12" Height="13" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                    </Border>
+                                                    <ControlTemplate.Triggers>
+                                                        <Trigger Property="IsMouseOver" Value="True">
+                                                            <Setter TargetName="sendBdr" Property="Opacity" Value="0.88"/>
+                                                        </Trigger>
+                                                        <Trigger Property="IsEnabled" Value="False">
+                                                            <Setter TargetName="sendBdr" Property="Opacity" Value="0.35"/>
+                                                        </Trigger>
+                                                    </ControlTemplate.Triggers>
+                                                </ControlTemplate>
+                                            </Button.Template>
+                                        </Button>
+                                    </StackPanel>
                                 </Grid>
                             </Grid>
                         </Border>
@@ -1278,8 +1459,12 @@
                             <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled" Margin="0,0,0,4">
                                 <StackPanel Orientation="Horizontal">
                                     <Button Content="All Companies" Style="{StaticResource GlassPillBtn}" Margin="0,0,8,0" Padding="13,6" Click="BtnFilterModels_Click" Tag="All"/>
-                                    <Button Content="✔ Free" Style="{StaticResource GlassPillBtn}" Margin="0,0,8,0" Padding="13,6" Click="BtnFilterModels_Click" Tag="Free"/>
-                                    <Button Content="$ Paid" Style="{StaticResource GlassPillBtn}" Margin="0,0,8,0" Padding="13,6" Click="BtnFilterModels_Click" Tag="Paid"/>
+                                    <Button Content="Free" Style="{StaticResource GlassPillBtn}" Margin="0,0,8,0" Padding="13,6" Click="BtnFilterModels_Click" Tag="Free"/>
+                                    <Button Content="Paid" Style="{StaticResource GlassPillBtn}" Margin="0,0,8,0" Padding="13,6" Click="BtnFilterModels_Click" Tag="Paid"/>
+                                    <Button Content="Coding" Style="{StaticResource GlassPillBtn}" Margin="0,0,8,0" Padding="13,6" Click="BtnFilterModels_Click" Tag="Coding"/>
+                                    <Button Content="Vision" Style="{StaticResource GlassPillBtn}" Margin="0,0,8,0" Padding="13,6" Click="BtnFilterModels_Click" Tag="Vision"/>
+                                    <Button Content="Video" Style="{StaticResource GlassPillBtn}" Margin="0,0,8,0" Padding="13,6" Click="BtnFilterModels_Click" Tag="Video"/>
+                                    <Button Content="Reasoning" Style="{StaticResource GlassPillBtn}" Margin="0,0,8,0" Padding="13,6" Click="BtnFilterModels_Click" Tag="Reasoning"/>
                                     <Border Width="1" Background="{DynamicResource BrushBorderSubtle}" Margin="2,4,10,4"/>
                                     <Button Content="OpenAI" Style="{StaticResource GlassPillBtn}" Margin="0,0,8,0" Padding="13,6" Click="BtnFilterModels_Click" Tag="OpenAI"/>
                                     <Button Content="Anthropic" Style="{StaticResource GlassPillBtn}" Margin="0,0,8,0" Padding="13,6" Click="BtnFilterModels_Click" Tag="Anthropic"/>
@@ -1289,7 +1474,7 @@
                                     <Button Content="Groq" Style="{StaticResource GlassPillBtn}" Margin="0,0,8,0" Padding="13,6" Click="BtnFilterModels_Click" Tag="Groq"/>
                                     <Button Content="OpenRouter" Style="{StaticResource GlassPillBtn}" Margin="0,0,8,0" Padding="13,6" Click="BtnFilterModels_Click" Tag="OpenRouter"/>
                                     <Button Content="Mistral AI" Style="{StaticResource GlassPillBtn}" Margin="0,0,8,0" Padding="13,6" Click="BtnFilterModels_Click" Tag="Mistral"/>
-                                    <Button Content="⚡ Custom Providers" Style="{StaticResource GlassPillBtn}" Padding="13,6" Click="BtnFilterModels_Click" Tag="Custom"/>
+                                    <Button Content="Custom Providers" Style="{StaticResource GlassPillBtn}" Padding="13,6" Click="BtnFilterModels_Click" Tag="Custom"/>
                                 </StackPanel>
                             </ScrollViewer>
                         </Grid>
@@ -1325,10 +1510,7 @@
                                 </ListBox.ItemContainerStyle>
                                 <ListBox.ItemTemplate>
                                     <DataTemplate>
-                                        <Border Background="{DynamicResource BrushCardBg}" BorderBrush="{DynamicResource BrushBorder}" BorderThickness="1" CornerRadius="12" Margin="0,0,0,16" Padding="18,16">
-                                            <Border.Effect>
-                                                <DropShadowEffect Color="#000000" Direction="270" ShadowDepth="3" BlurRadius="16" Opacity="0.35"/>
-                                            </Border.Effect>
+                                        <Border Background="{DynamicResource BrushCardBg}" BorderBrush="{DynamicResource BrushBorder}" BorderThickness="1" CornerRadius="12" Margin="0,0,0,14" Padding="18,16">
                                             <Grid>
                                                 <Grid.RowDefinitions>
                                                     <RowDefinition Height="Auto"/> <!-- Company Header -->
@@ -1391,23 +1573,37 @@
                                                 <!-- Divider -->
                                                 <Border Grid.Row="1" Height="1" Background="{DynamicResource BrushBorderSubtle}" Margin="0,12,0,12"/>
 
-                                                <!-- Models inside this Company (virtualized: large catalogs like OpenRouter render lazily) -->
-                                                <ScrollViewer Grid.Row="2" MaxHeight="640" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" CanContentScroll="True">
-                                                <ItemsControl ItemsSource="{Binding Models}"
-                                                              VirtualizingStackPanel.IsVirtualizing="True"
-                                                              VirtualizingStackPanel.VirtualizationMode="Recycling"
-                                                              ScrollViewer.CanContentScroll="True">
-                                                    <ItemsControl.ItemsPanel>
-                                                        <ItemsPanelTemplate>
-                                                            <VirtualizingStackPanel/>
-                                                        </ItemsPanelTemplate>
-                                                    </ItemsControl.ItemsPanel>
-                                                    <ItemsControl.ItemTemplate>
+                                                <!-- Models inside this Company (virtualized ListBox + smooth wheel forwarding) -->
+                                                <ListBox Grid.Row="2" ItemsSource="{Binding Models}" MaxHeight="520"
+                                                         Background="Transparent" BorderThickness="0" Padding="0"
+                                                         ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                                                         ScrollViewer.VerticalScrollBarVisibility="Auto"
+                                                         VirtualizingStackPanel.IsVirtualizing="True"
+                                                         VirtualizingStackPanel.VirtualizationMode="Recycling"
+                                                         VirtualizingPanel.ScrollUnit="Pixel"
+                                                         ScrollViewer.CanContentScroll="True"
+                                                         HorizontalContentAlignment="Stretch"
+                                                         PreviewMouseWheel="InnerModelList_PreviewMouseWheel">
+                                                    <ListBox.ItemContainerStyle>
+                                                        <Style TargetType="ListBoxItem">
+                                                            <Setter Property="Background" Value="Transparent"/>
+                                                            <Setter Property="BorderThickness" Value="0"/>
+                                                            <Setter Property="Padding" Value="0"/>
+                                                            <Setter Property="Margin" Value="0"/>
+                                                            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                                                            <Setter Property="Focusable" Value="False"/>
+                                                            <Setter Property="Template">
+                                                                <Setter.Value>
+                                                                    <ControlTemplate TargetType="ListBoxItem">
+                                                                        <ContentPresenter/>
+                                                                    </ControlTemplate>
+                                                                </Setter.Value>
+                                                            </Setter>
+                                                        </Style>
+                                                    </ListBox.ItemContainerStyle>
+                                                    <ListBox.ItemTemplate>
                                                         <DataTemplate>
-                                                            <Border Background="{DynamicResource BrushCardInnerBg}" BorderBrush="{DynamicResource BrushBorderSubtle}" BorderThickness="1" CornerRadius="8" Padding="16,14" Margin="0,0,0,10">
-                                                                <Border.Effect>
-                                                                    <DropShadowEffect Color="#000000" BlurRadius="6" ShadowDepth="1" Opacity="0.2"/>
-                                                                </Border.Effect>
+                                                            <Border Background="{DynamicResource BrushCardInnerBg}" BorderBrush="{DynamicResource BrushBorderSubtle}" BorderThickness="1" CornerRadius="8" Padding="14,12" Margin="0,0,0,8">
                                                                 <Grid>
                                                                     <Grid.ColumnDefinitions>
                                                                         <ColumnDefinition Width="Auto"/>
@@ -1416,13 +1612,16 @@
                                                                     </Grid.ColumnDefinitions>
 
                                                                     <!-- Accent spine -->
-                                                                    <Border Grid.Column="0" Width="3" CornerRadius="2" Background="{DynamicResource BrushAccent}" Margin="0,1,14,1"/>
+                                                                    <Border Grid.Column="0" Width="3" CornerRadius="2" Background="{DynamicResource BrushAccent}" Margin="0,1,12,1"/>
 
                                                                     <StackPanel Grid.Column="1">
                                                                         <StackPanel Orientation="Horizontal">
-                                                                            <TextBlock Text="{Binding Name}" FontWeight="Bold" FontSize="14" Foreground="{DynamicResource BrushTextPrimary}" VerticalAlignment="Center"/>
+                                                                            <TextBlock Text="{Binding Name}" FontWeight="Bold" FontSize="13.5" Foreground="{DynamicResource BrushTextPrimary}" VerticalAlignment="Center"/>
                                                                             <Border Background="{Binding TierBadgeBg}" CornerRadius="4" Margin="8,0,0,0" Padding="7,2" VerticalAlignment="Center">
                                                                                 <TextBlock Text="{Binding TierBadgeText}" FontSize="9" FontWeight="Bold" Foreground="{Binding TierBadgeColor}" FontFamily="Consolas"/>
+                                                                            </Border>
+                                                                            <Border Background="{DynamicResource BrushAccentGlow}" BorderBrush="{DynamicResource BrushAccentMuted}" BorderThickness="1" CornerRadius="4" Margin="6,0,0,0" Padding="7,2" VerticalAlignment="Center">
+                                                                                <TextBlock Text="{Binding CategoryBadgeText}" FontSize="9" FontWeight="Bold" Foreground="{DynamicResource BrushAccentLight}" FontFamily="Consolas"/>
                                                                             </Border>
                                                                             <Border Background="{DynamicResource BrushBorderSubtle}" BorderBrush="{DynamicResource BrushBorderSubtle}" BorderThickness="1" CornerRadius="4" Margin="6,0,0,0" Padding="7,2" VerticalAlignment="Center">
                                                                                 <TextBlock Text="{Binding Family}" FontSize="10" Foreground="{DynamicResource BrushTextSecondary}" FontFamily="Consolas"/>
@@ -1431,8 +1630,8 @@
                                                                                 <TextBlock Text="{Binding KeyBadgeText}" FontSize="10" FontWeight="Bold" Foreground="{Binding KeyBadgeColor}" FontFamily="Consolas"/>
                                                                             </Border>
                                                                         </StackPanel>
-                                                                        <TextBlock Text="{Binding Description}" FontSize="11" Foreground="{DynamicResource BrushTextSecondary}" Margin="0,5,0,0" TextWrapping="Wrap"/>
-                                                                        <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                                                                        <TextBlock Text="{Binding Description}" FontSize="11" Foreground="{DynamicResource BrushTextSecondary}" Margin="0,4,0,0" TextWrapping="Wrap"/>
+                                                                        <StackPanel Orientation="Horizontal" Margin="0,7,0,0">
                                                                             <Border Background="{DynamicResource BrushBorderSubtle}" BorderBrush="{DynamicResource BrushBorderSubtle}" BorderThickness="1" CornerRadius="4" Padding="7,2" Margin="0,0,7,0">
                                                                                 <StackPanel Orientation="Horizontal">
                                                                                     <TextBlock Text="CTX " FontSize="9" Foreground="{DynamicResource BrushTextDim}" FontFamily="Consolas" VerticalAlignment="Center"/>
@@ -1460,9 +1659,8 @@
                                                                 </Grid>
                                                             </Border>
                                                         </DataTemplate>
-                                                    </ItemsControl.ItemTemplate>
-                                                </ItemsControl>
-                                                </ScrollViewer>
+                                                    </ListBox.ItemTemplate>
+                                                </ListBox>
                                             </Grid>
                                         </Border>
                                     </DataTemplate>

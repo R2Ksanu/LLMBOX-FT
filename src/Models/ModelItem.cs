@@ -1,6 +1,9 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Text.Json.Serialization;
 using System.Windows;
+using LlmodelBox.Providers;
 
 namespace LlmodelBox.Models
 {
@@ -44,5 +47,115 @@ namespace LlmodelBox.Models
         public string KeyBadgeColor => HasApiKey ? "#22c55e" : "#f59e0b";
         public string KeyBadgeBg => HasApiKey ? "#142618" : "#2e1808";
         public string ActionBtnText => HasApiKey ? "⚡ Load & Chat (API)" : "🔑 Enter Key to Load";
+
+        private string Haystack() => $"{Id} {Name} {Family} {Description}".ToLowerInvariant();
+
+        private static bool ContainsAny(string text, params string[] terms)
+        {
+            foreach (var t in terms)
+            {
+                if (text.Contains(t, StringComparison.Ordinal)) return true;
+            }
+            return false;
+        }
+
+        [JsonIgnore]
+        public bool IsCodingModel
+        {
+            get
+            {
+                var h = Haystack();
+                return ContainsAny(h, "code", "coder", "codestral", "devstral", "starcoder", "programming", "software",
+                    "deepseek", "claude", "gpt-4", "gpt-5", "o1", "o3", "o4", "qwen", "llama-3.3", "llama-4");
+            }
+        }
+
+        [JsonIgnore]
+        public bool IsVisionModel
+        {
+            get
+            {
+                var h = Haystack();
+                if (ContainsAny(h, "vision", "-vl", " vl", "multimodal", "pixtral", "image", "llava")) return true;
+                return ModelCapabilityResolver.Resolve(this).Vision;
+            }
+        }
+
+        [JsonIgnore]
+        public bool IsVideoModel
+        {
+            get
+            {
+                var h = Haystack();
+                return ContainsAny(h, "video", "omni", "gemini-1.5", "gemini-2", "gemini-2.5", "gemini-3", "veo", "sora", "kling");
+            }
+        }
+
+        [JsonIgnore]
+        public bool IsAudioModel
+        {
+            get
+            {
+                var h = Haystack();
+                if (ContainsAny(h, "audio", "speech", "whisper", "tts", "realtime", "voice")) return true;
+                return ModelCapabilityResolver.Resolve(this).Audio;
+            }
+        }
+
+        [JsonIgnore]
+        public bool IsReasoningModel
+        {
+            get
+            {
+                var h = Haystack();
+                if (ContainsAny(h, "reason", "thinking", "-r1", " r1", "qwq", "o1", "o3", "o4")) return true;
+                return ModelCapabilityResolver.Resolve(this).Reasoning;
+            }
+        }
+
+        [JsonIgnore]
+        public string CategoryBadgeText
+        {
+            get
+            {
+                var tags = new List<string>(4);
+                if (IsCodingModel) tags.Add("CODE");
+                if (IsVisionModel) tags.Add("VISION");
+                if (IsVideoModel) tags.Add("VIDEO");
+                if (IsAudioModel && !IsVideoModel) tags.Add("AUDIO");
+                if (IsReasoningModel && tags.Count < 3) tags.Add("REASON");
+                if (tags.Count == 0 || (tags.Count == 1 && tags[0] == "CODE")) tags.Add("TEXT");
+                return string.Join(" · ", tags);
+            }
+        }
+
+        [JsonIgnore]
+        public string PrimaryCategoryTag
+        {
+            get
+            {
+                if (IsVideoModel) return "VIDEO";
+                if (IsVisionModel) return "VISION";
+                if (IsCodingModel) return "CODE";
+                if (IsReasoningModel) return "REASON";
+                if (IsAudioModel) return "AUDIO";
+                return "TEXT";
+            }
+        }
+
+        public bool MatchesCapabilityFilter(string? filter)
+        {
+            if (string.IsNullOrWhiteSpace(filter) || string.Equals(filter, "All", StringComparison.OrdinalIgnoreCase))
+                return true;
+            if (string.Equals(filter, "Free", StringComparison.OrdinalIgnoreCase)) return IsFree;
+            if (string.Equals(filter, "Paid", StringComparison.OrdinalIgnoreCase)) return !IsFree;
+            if (string.Equals(filter, "Coding", StringComparison.OrdinalIgnoreCase) || string.Equals(filter, "Code", StringComparison.OrdinalIgnoreCase)) return IsCodingModel;
+            if (string.Equals(filter, "Vision", StringComparison.OrdinalIgnoreCase)) return IsVisionModel;
+            if (string.Equals(filter, "Video", StringComparison.OrdinalIgnoreCase)) return IsVideoModel;
+            if (string.Equals(filter, "Audio", StringComparison.OrdinalIgnoreCase)) return IsAudioModel;
+            if (string.Equals(filter, "Reasoning", StringComparison.OrdinalIgnoreCase)) return IsReasoningModel;
+            if (string.Equals(filter, "Text", StringComparison.OrdinalIgnoreCase)) return true;
+            return true;
+        }
     }
 }

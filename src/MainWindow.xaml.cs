@@ -1649,6 +1649,46 @@ namespace LlmodelBox
             }
         }
 
+        // Allow inner virtualized model lists to scroll when they have room, and forward
+        // MouseWheel events to the outer CompanyCategoriesControl when at top/bottom so the
+        // user's mouse wheel never gets stuck inside a company card.
+        private void InnerModelList_PreviewMouseWheel(object sender, MouseWheelEventArgs e)
+        {
+            if (sender is DependencyObject dep)
+            {
+                var sv = FindVisualChild<ScrollViewer>(dep);
+                if (sv != null && sv.ScrollableHeight > 0)
+                {
+                    bool scrollingUpAtTop = e.Delta > 0 && sv.VerticalOffset <= 0;
+                    bool scrollingDownAtBottom = e.Delta < 0 && sv.VerticalOffset >= sv.ScrollableHeight;
+                    if (!scrollingUpAtTop && !scrollingDownAtBottom) return;
+                }
+            }
+
+            if (CompanyCategoriesControl != null)
+            {
+                e.Handled = true;
+                var forwarded = new MouseWheelEventArgs(e.MouseDevice, e.Timestamp, e.Delta)
+                {
+                    RoutedEvent = UIElement.MouseWheelEvent,
+                    Source = sender
+                };
+                CompanyCategoriesControl.RaiseEvent(forwarded);
+            }
+        }
+
+        private static T? FindVisualChild<T>(DependencyObject root) where T : DependencyObject
+        {
+            for (int i = 0; i < VisualTreeHelper.GetChildrenCount(root); i++)
+            {
+                var child = VisualTreeHelper.GetChild(root, i);
+                if (child is T match) return match;
+                var nested = FindVisualChild<T>(child);
+                if (nested != null) return nested;
+            }
+            return null;
+        }
+
         // Populate aggregator categories (OpenRouter / Hugging Face) with their live catalog. Uses the
         // Populate company categories with their live model catalog from their /models endpoint.
         // Uses the cache when available; otherwise kicks off a one-time async fetch per key.
