@@ -58,5 +58,15 @@ namespace LlmodelBox
                 ? WindowState.Normal
                 : WindowState.Maximized;
         }
+
+        private void IdeWindow_StateChanged(object? sender, System.EventArgs e)
+        {
+            if (RootBorder != null)
+            {
+                RootBorder.Padding = WindowState == WindowState.Maximized
+                    ? new Thickness(7)
+                    : new Thickness(0);
+            }
+        }
     }
 }

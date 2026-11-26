@@ -71,6 +71,7 @@ namespace LlmodelBox.Controls.UtilityPanel
         private string _workspaceRoot = string.Empty;
         private List<string> _workspaceFiles = new();
         private string _activeTool = "Review";
+        private string _reviewFilter = "All";
         private RightPanelDisplayMode _displayMode = RightPanelDisplayMode.Expanded;
         private bool _reviewSideBySide = false;
         private ReviewableFileChange? _selectedReviewFile;
@@ -181,10 +182,24 @@ namespace LlmodelBox.Controls.UtilityPanel
             _workspaceRoot = rootPath ?? string.Empty;
             _workspaceFiles = (relativeFiles ?? Array.Empty<string>()).ToList();
 
+            if (BadgeFilesCount != null) BadgeFilesCount.Text = _workspaceFiles.Count.ToString();
+            UpdateToolBadges();
+
             if (_activeTool == "Review") _ = RefreshReviewAsync();
             else if (_activeTool == "OpenFile") RefreshOpenFileList();
             else if (_activeTool is "SourceControl" or "Memory" or "Context" or "Problems" or "ModelUsage" or "ProjectInfo")
                 RefreshUtilityView();
+        }
+
+        private void UpdateToolBadges()
+        {
+            if (BadgeTerminalCount != null)
+                BadgeTerminalCount.Text = _terminal.Sessions.Count > 0 ? _terminal.Sessions.Count.ToString() : "PS";
+            if (BadgePluginsCount != null)
+            {
+                int active = _plugins.GetAllPlugins().Count(p => p.State.IsEnabled);
+                BadgePluginsCount.Text = active > 0 ? $"{active} ON" : "EXT";
+            }
         }
 
         public void RecordManualBufferChange(string? fullFilePath, string diskBefore, string editorNow)
@@ -234,13 +249,14 @@ namespace LlmodelBox.Controls.UtilityPanel
         {
             _activeTool = string.IsNullOrWhiteSpace(toolKey) ? "Review" : toolKey;
 
-            // Update primary tab button active states
+            // Update 3x2 Bento Grid tile active states
             var primaryBtns = new[] { BtnToolReview, BtnToolOpenFile, BtnToolTerminal, BtnToolBrowser, BtnToolSideQuestion, BtnToolPlugins };
             foreach (var b in primaryBtns)
             {
                 bool active = string.Equals(b.Tag?.ToString(), _activeTool, StringComparison.OrdinalIgnoreCase);
-                b.Style = TryFindResource(active ? "SettingsTabBtnActive" : "SettingsTabBtn") as Style ?? b.Style;
+                b.Style = TryFindResource(active ? "BentoTileBtnActive" : "BentoTileBtn") as Style ?? b.Style;
             }
+            UpdateToolBadges();
 
             ViewReview.Visibility = _activeTool == "Review" ? Visibility.Visible : Visibility.Collapsed;
             ViewOpenFile.Visibility = _activeTool == "OpenFile" ? Visibility.Visible : Visibility.Collapsed;
@@ -424,9 +440,9 @@ namespace LlmodelBox.Controls.UtilityPanel
         {
             if (_reviewService == null || string.IsNullOrWhiteSpace(_workspaceRoot)) return;
             var all = await _reviewService.CollectAllChangesAsync(_workspaceRoot);
-            string filter = (CmbReviewFilter.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? "All";
+            if (BadgeReviewCount != null) BadgeReviewCount.Text = all.Count.ToString();
 
-            var filtered = all.Where(c => filter switch
+            var filtered = all.Where(c => _reviewFilter switch
             {
                 "AI" => c.Origin == ChangeOriginKind.AiGenerated,
                 "Manual" => c.Origin == ChangeOriginKind.ManualEdit,
@@ -434,12 +450,14 @@ namespace LlmodelBox.Controls.UtilityPanel
                 _ => true
             }).ToList();
 
-            TxtReviewCount.Text = $"{filtered.Count} changed file(s)";
+            TxtReviewCount.Text = $"{filtered.Count}";
             ReviewFilesList.ItemsSource = filtered;
             ReviewHistoryList.ItemsSource = _reviewService.History.Select(h => $"{h.TimestampUtc:HH:mm:ss} {h.Action}: {h.RelativePath}").ToList();
 
             if (filtered.Count > 0)
             {
+                ReviewFilesList.Visibility = Visibility.Visible;
+                ReviewActionBar.Visibility = Visibility.Visible;
                 if (_selectedReviewFile == null || !filtered.Any(f => string.Equals(f.RelativePath, _selectedReviewFile.RelativePath, StringComparison.OrdinalIgnoreCase)))
                     ReviewFilesList.SelectedIndex = 0;
                 else
@@ -447,24 +465,115 @@ namespace LlmodelBox.Controls.UtilityPanel
             }
             else
             {
-                ReviewDiffHost.Children.Clear();
-                ReviewDiffHost.Children.Add(new TextBlock
-                {
-                    Text = "Workspace clean — no AI, manual, or Git changes detected.",
-                    Foreground = Brush("BrushTextMuted", "#a1a1aa"),
-                    FontSize = 11.5,
-                    Margin = new Thickness(4, 12, 4, 4)
-                });
+                ReviewFilesList.Visibility = Visibility.Collapsed;
+                ReviewActionBar.Visibility = Visibility.Collapsed;
+                RenderCleanWorkspaceBentoHub();
             }
         }
 
+        private void RenderCleanWorkspaceBentoHub()
+        {
+            ReviewDiffHost.Children.Clear();
+
+            var hero = new Border
+            {
+                Background = Brush("BrushCardInnerBg", "#16181a"),
+                BorderBrush = Brush("BrushBorder", "#27272a"),
+                BorderThickness = new Thickness(1),
+                CornerRadius = new CornerRadius(9),
+                Padding = new Thickness(12, 10, 12, 10),
+                Margin = new Thickness(0, 2, 0, 10)
+            };
+            var heroStack = new StackPanel();
+            var topRow = new Grid();
+            topRow.Children.Add(new TextBlock
+            {
+                Text = "Workspace Clean ✓",
+                FontSize = 12.5,
+                FontWeight = FontWeights.SemiBold,
+                Foreground = Brush("BrushSuccess", "#22c55e"),
+                VerticalAlignment = VerticalAlignment.Center
+            });
+            topRow.Children.Add(new Border
+            {
+                Background = Brush("BrushCardBg", "#111114"),
+                BorderBrush = Brush("BrushBorderSubtle", "#27272a"),
+                BorderThickness = new Thickness(1),
+                CornerRadius = new CornerRadius(999),
+                Padding = new Thickness(7, 1, 7, 1),
+                HorizontalAlignment = HorizontalAlignment.Right,
+                Child = new TextBlock
+                {
+                    Text = $"{_workspaceFiles.Count} files",
+                    FontFamily = new FontFamily("Consolas"),
+                    FontSize = 9.5,
+                    Foreground = Brush("BrushTextDim", "#9ca3af")
+                }
+            });
+            heroStack.Children.Add(topRow);
+            heroStack.Children.Add(new TextBlock
+            {
+                Text = "AI edits, unsaved file changes, and Git diffs appear here automatically with inline & split hunk review.",
+                FontSize = 11,
+                Foreground = Brush("BrushTextSecondary", "#a1a1aa"),
+                TextWrapping = TextWrapping.Wrap,
+                Margin = new Thickness(0, 5, 0, 0)
+            });
+            hero.Child = heroStack;
+            ReviewDiffHost.Children.Add(hero);
+
+            // 2x2 Bento Quick Launch Grid
+            var bentoGrid = new System.Windows.Controls.Primitives.UniformGrid
+            {
+                Rows = 2,
+                Columns = 2
+            };
+
+            Button MakeBentoAction(string title, string sub, string toolKey, Thickness margin)
+            {
+                var stack = new StackPanel();
+                stack.Children.Add(new TextBlock { Text = title, FontSize = 11.5, FontWeight = FontWeights.SemiBold, Foreground = Brush("BrushTextPrimary", "#fafafa") });
+                stack.Children.Add(new TextBlock { Text = sub, FontSize = 10, Foreground = Brush("BrushTextDim", "#71717a"), TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 2, 0, 0) });
+
+                var btn = new Button
+                {
+                    Content = stack,
+                    Style = TryFindResource("BentoTileBtn") as Style,
+                    Margin = margin,
+                    Padding = new Thickness(10, 9, 10, 9),
+                    VerticalContentAlignment = VerticalAlignment.Top
+                };
+                btn.Click += (_, _) => SelectTool(toolKey);
+                return btn;
+            }
+
+            bentoGrid.Children.Add(MakeBentoAction(">_ Terminal", "Persistent PowerShell, CMD & Git Bash", "Terminal", new Thickness(0, 0, 6, 6)));
+            bentoGrid.Children.Add(MakeBentoAction("⌘P Quick Open", "Fuzzy file finder & preview", "OpenFile", new Thickness(0, 0, 0, 6)));
+            bentoGrid.Children.Add(MakeBentoAction("▶ Run & Test", "Run dotnet build & test", "RunTest", new Thickness(0, 0, 6, 0)));
+            bentoGrid.Children.Add(MakeBentoAction("✦ Side Question", "Isolated secondary AI chat", "SideQuestion", new Thickness(0, 0, 0, 0)));
+
+            ReviewDiffHost.Children.Add(bentoGrid);
+        }
+
         private void BtnRefreshReview_Click(object sender, RoutedEventArgs e) => _ = RefreshReviewAsync();
-        private void CmbReviewFilter_SelectionChanged(object sender, SelectionChangedEventArgs e) { if (IsLoaded) _ = RefreshReviewAsync(); }
+
+        private void BtnReviewFilter_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is not Button btn || btn.Tag is not string tag) return;
+            _reviewFilter = tag;
+            var filterBtns = new[] { BtnFilterAll, BtnFilterAi, BtnFilterManual, BtnFilterGit };
+            foreach (var fb in filterBtns)
+            {
+                bool active = string.Equals(fb.Tag?.ToString(), _reviewFilter, StringComparison.OrdinalIgnoreCase);
+                fb.Style = TryFindResource(active ? "SettingsTabBtnActive" : "SettingsTabBtn") as Style ?? fb.Style;
+            }
+            _ = RefreshReviewAsync();
+        }
 
         private void BtnReviewModeToggle_Click(object sender, RoutedEventArgs e)
         {
             _reviewSideBySide = !_reviewSideBySide;
-            BtnReviewModeToggle.Content = _reviewSideBySide ? "Inline Diff" : "Side-by-Side";
+            BtnReviewModeToggle.Content = _reviewSideBySide ? "Inline" : "Split";
             if (_selectedReviewFile != null) RenderSelectedReviewFile(_selectedReviewFile);
         }
 
@@ -525,9 +634,9 @@ namespace LlmodelBox.Controls.UtilityPanel
                 var actions = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right, Margin = new Thickness(4) };
                 DockPanel.SetDock(actions, Dock.Right);
 
-                var acceptBtn = new Button { Content = hunk.IsAccepted ? "Accepted ✓" : "Accept", Padding = new Thickness(7, 2, 7, 2), FontSize = 9.5, Margin = new Thickness(0, 0, 4, 0), Cursor = Cursors.Hand };
+                var acceptBtn = new Button { Content = hunk.IsAccepted ? "Accepted ✓" : "Accept", Style = TryFindResource(hunk.IsAccepted ? "PrimaryActionBtn" : "BlackBoxActionBtn") as Style, Padding = new Thickness(7, 2, 7, 2), FontSize = 9.5, Margin = new Thickness(0, 0, 4, 0), Cursor = Cursors.Hand };
                 acceptBtn.Click += (_, _) => { _reviewService.AcceptHunk(file.RelativePath, hunk.Id); RenderSelectedReviewFile(file); };
-                var rejectBtn = new Button { Content = "Reject", Padding = new Thickness(7, 2, 7, 2), FontSize = 9.5, Cursor = Cursors.Hand };
+                var rejectBtn = new Button { Content = "Reject", Style = TryFindResource("BlackBoxActionBtn") as Style, Padding = new Thickness(7, 2, 7, 2), FontSize = 9.5, Cursor = Cursors.Hand };
                 rejectBtn.Click += (_, _) =>
                 {
                     if (_reviewService.RejectHunk(_workspaceRoot, file.RelativePath, hunk.Id))
@@ -1322,6 +1431,7 @@ namespace LlmodelBox.Controls.UtilityPanel
                 var toggleBtn = new Button
                 {
                     Content = rec.State.IsEnabled ? "Enabled ✓" : (rec.State.IsInstalled ? "Enable" : "Install"),
+                    Style = TryFindResource(rec.State.IsEnabled ? "PrimaryActionBtn" : "BlackBoxActionBtn") as Style,
                     Padding = new Thickness(9, 3, 9, 3),
                     FontSize = 10,
                     Cursor = Cursors.Hand,
@@ -1440,7 +1550,7 @@ namespace LlmodelBox.Controls.UtilityPanel
         private void BuildCodeSearchView()
         {
             var box = new TextBox { Padding = new Thickness(7, 5, 7, 5), FontSize = 11.5, Background = Brush("BrushCardInnerBg", "#18181b"), Foreground = Brush("BrushTextPrimary", "#fafafa") };
-            var btn = new Button { Content = "Search Workspace", Margin = new Thickness(0, 6, 0, 8), Padding = new Thickness(10, 4, 10, 4), Cursor = Cursors.Hand };
+            var btn = new Button { Content = "Search Workspace", Style = TryFindResource("PrimaryActionBtn") as Style, Margin = new Thickness(0, 6, 0, 8), Padding = new Thickness(10, 4, 10, 4), Cursor = Cursors.Hand };
             var results = new StackPanel();
             btn.Click += (_, _) =>
             {
@@ -1522,8 +1632,8 @@ namespace LlmodelBox.Controls.UtilityPanel
                 MinHeight = 220,
                 Text = _lastBuildResult?.Output ?? "Click Build or Test to execute inside workspace root."
             };
-            var bBuild = new Button { Content = "▶ dotnet build", Margin = new Thickness(0, 0, 6, 4), Padding = new Thickness(9, 4, 9, 4), Cursor = Cursors.Hand };
-            var bTest = new Button { Content = "🧪 dotnet test", Margin = new Thickness(0, 0, 6, 4), Padding = new Thickness(9, 4, 9, 4), Cursor = Cursors.Hand };
+            var bBuild = new Button { Content = "▶ dotnet build", Style = TryFindResource("PrimaryActionBtn") as Style, Margin = new Thickness(0, 0, 6, 4), Padding = new Thickness(10, 5, 10, 5), Cursor = Cursors.Hand };
+            var bTest = new Button { Content = "🧪 dotnet test", Style = TryFindResource("BlackBoxActionBtn") as Style, Margin = new Thickness(0, 0, 6, 4), Padding = new Thickness(10, 5, 10, 5), Cursor = Cursors.Hand };
 
             bBuild.Click += async (_, _) => { outBox.Text = "Running dotnet build..."; _lastBuildResult = await _buildRunner.RunCommandAsync(_workspaceRoot, "dotnet", "build"); outBox.Text = $"Exit: {_lastBuildResult.ExitCode} ({_lastBuildResult.Duration.TotalSeconds:F1}s)\n\n{_lastBuildResult.Output}"; };
             bTest.Click += async (_, _) => { outBox.Text = "Running dotnet test..."; _lastBuildResult = await _buildRunner.RunCommandAsync(_workspaceRoot, "dotnet", "test"); outBox.Text = $"Exit: {_lastBuildResult.ExitCode} ({_lastBuildResult.Duration.TotalSeconds:F1}s)\n\n{_lastBuildResult.Output}"; };
@@ -1627,7 +1737,7 @@ namespace LlmodelBox.Controls.UtilityPanel
         {
             void AddShortcut(string label, string actionKey)
             {
-                var btn = new Button { Content = label, Padding = new Thickness(10, 6, 10, 6), Margin = new Thickness(0, 0, 0, 6), HorizontalContentAlignment = HorizontalAlignment.Left, Cursor = Cursors.Hand };
+                var btn = new Button { Content = label, Style = TryFindResource("BentoTileBtn") as Style, Padding = new Thickness(10, 7, 10, 7), Margin = new Thickness(0, 0, 0, 6), HorizontalContentAlignment = HorizontalAlignment.Left, Cursor = Cursors.Hand };
                 btn.Click += (_, _) => ExplorerShortcutRequested?.Invoke(actionKey);
                 UtilityContentHost.Children.Add(btn);
             }

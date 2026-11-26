@@ -12,6 +12,9 @@
         Foreground="{DynamicResource BrushTextPrimary}"
         FontFamily="Segoe UI, Consolas, sans-serif"
         WindowStyle="None"
+        MaxHeight="{x:Static SystemParameters.MaximizedPrimaryScreenHeight}"
+        MaxWidth="{x:Static SystemParameters.MaximizedPrimaryScreenWidth}"
+        StateChanged="IdeWindow_StateChanged"
         KeyDown="Window_KeyDown">
 
     <WindowChrome.WindowChrome>
@@ -22,7 +25,7 @@
                       UseAeroCaptionButtons="False" />
     </WindowChrome.WindowChrome>
 
-    <Border Background="{DynamicResource BrushWindowBg}">
+    <Border x:Name="RootBorder" Background="{DynamicResource BrushWindowBg}">
         <Grid>
             <Grid.RowDefinitions>
                 <RowDefinition Height="42"/>
