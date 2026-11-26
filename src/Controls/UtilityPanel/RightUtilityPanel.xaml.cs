@@ -89,6 +89,8 @@ namespace LlmodelBox.Controls.UtilityPanel
 
         public event Action<RightPanelDisplayMode>? DisplayModeChangeRequested;
         public event Action<string>? OpenFileInEditorRequested;
+        public event Action<string, int, int>? OpenFileAtLocationRequested;
+        public event Action<IReadOnlyList<LlmodelBox.Infrastructure.Editor.EditorDiagnostic>>? BuildDiagnosticsUpdated;
         public event Action<string>? SendToMainChatRequested;
         public event Action<string>? ActiveToolChanged;
         public event Action? WorkspaceFilesMutated;
@@ -1687,6 +1689,7 @@ namespace LlmodelBox.Controls.UtilityPanel
                             if (line.Contains(term, StringComparison.OrdinalIgnoreCase))
                             {
                                 string captured = full;
+                                int capturedLine = ln;
                                 var rowBtn = new Button
                                 {
                                     Content = $"{rel}:{ln}  {line.Trim()}",
@@ -1699,7 +1702,11 @@ namespace LlmodelBox.Controls.UtilityPanel
                                     Cursor = Cursors.Hand,
                                     Margin = new Thickness(0, 2, 0, 2)
                                 };
-                                rowBtn.Click += (_, _) => OpenWorkspacePath(captured);
+                                rowBtn.Click += (_, _) =>
+                                {
+                                    OpenWorkspacePath(captured);
+                                    OpenFileAtLocationRequested?.Invoke(captured, capturedLine, 1);
+                                };
                                 results.Children.Add(rowBtn);
                                 if (++matches >= 60) break;
                             }
@@ -1719,12 +1726,37 @@ namespace LlmodelBox.Controls.UtilityPanel
         {
             if (_lastBuildResult != null)
             {
-                var lines = _lastBuildResult.Output.Replace("\r\n", "\n").Split('\n')
+                var diags = LlmodelBox.Infrastructure.Editor.EditorDiagnosticsHelper.ParseBuildOutput(_lastBuildResult.Output);
+                BuildDiagnosticsUpdated?.Invoke(diags);
+                if (diags.Count > 0)
+                {
+                    foreach (var d in diags.Take(60))
+                    {
+                        var captured = d;
+                        var diagBtn = new Button
+                        {
+                            Content = $"{Path.GetFileName(d.FilePath)}({d.Line},{d.Column}): {d.Severity} {d.Code}: {d.Message}",
+                            HorizontalContentAlignment = HorizontalAlignment.Left,
+                            Background = Brushes.Transparent,
+                            BorderThickness = new Thickness(0),
+                            FontFamily = new FontFamily("Consolas"),
+                            FontSize = 10.5,
+                            Foreground = d.Severity == LlmodelBox.Infrastructure.Editor.DiagnosticSeverity.Error ? Brushes.IndianRed : Brushes.Khaki,
+                            Cursor = Cursors.Hand,
+                            Margin = new Thickness(0, 2, 0, 2)
+                        };
+                        diagBtn.Click += (_, _) => OpenFileAtLocationRequested?.Invoke(ResolveFullPath(captured.FilePath), captured.Line, captured.Column);
+                        UtilityContentHost.Children.Add(diagBtn);
+                    }
+                    return;
+                }
+
+                var rawLines = _lastBuildResult.Output.Replace("\r\n", "\n").Split('\n')
                     .Where(l => l.Contains(": error ", StringComparison.OrdinalIgnoreCase) || l.Contains(": warning ", StringComparison.OrdinalIgnoreCase))
                     .Take(50).ToList();
-                if (lines.Count > 0)
+                if (rawLines.Count > 0)
                 {
-                    foreach (var l in lines)
+                    foreach (var l in rawLines)
                         UtilityContentHost.Children.Add(new TextBlock { Text = l, FontFamily = new FontFamily("Consolas"), FontSize = 10.5, TextWrapping = TextWrapping.Wrap, Foreground = l.Contains("error") ? Brushes.IndianRed : Brushes.Khaki, Margin = new Thickness(0, 2, 0, 2) });
                     return;
                 }
@@ -1750,8 +1782,20 @@ namespace LlmodelBox.Controls.UtilityPanel
             var bBuild = new Button { Content = "▶ dotnet build", Style = TryFindResource("PrimaryActionBtn") as Style, Margin = new Thickness(0, 0, 6, 4), Padding = new Thickness(10, 5, 10, 5), Cursor = Cursors.Hand };
             var bTest = new Button { Content = "🧪 dotnet test", Style = TryFindResource("BlackBoxActionBtn") as Style, Margin = new Thickness(0, 0, 6, 4), Padding = new Thickness(10, 5, 10, 5), Cursor = Cursors.Hand };
 
-            bBuild.Click += async (_, _) => { outBox.Text = "Running dotnet build..."; _lastBuildResult = await _buildRunner.RunCommandAsync(_workspaceRoot, "dotnet", "build"); outBox.Text = $"Exit: {_lastBuildResult.ExitCode} ({_lastBuildResult.Duration.TotalSeconds:F1}s)\n\n{_lastBuildResult.Output}"; };
-            bTest.Click += async (_, _) => { outBox.Text = "Running dotnet test..."; _lastBuildResult = await _buildRunner.RunCommandAsync(_workspaceRoot, "dotnet", "test"); outBox.Text = $"Exit: {_lastBuildResult.ExitCode} ({_lastBuildResult.Duration.TotalSeconds:F1}s)\n\n{_lastBuildResult.Output}"; };
+            bBuild.Click += async (_, _) =>
+            {
+                outBox.Text = "Running dotnet build...";
+                _lastBuildResult = await _buildRunner.RunCommandAsync(_workspaceRoot, "dotnet", "build");
+                outBox.Text = $"Exit: {_lastBuildResult.ExitCode} ({_lastBuildResult.Duration.TotalSeconds:F1}s)\n\n{_lastBuildResult.Output}";
+                BuildDiagnosticsUpdated?.Invoke(LlmodelBox.Infrastructure.Editor.EditorDiagnosticsHelper.ParseBuildOutput(_lastBuildResult.Output));
+            };
+            bTest.Click += async (_, _) =>
+            {
+                outBox.Text = "Running dotnet test...";
+                _lastBuildResult = await _buildRunner.RunCommandAsync(_workspaceRoot, "dotnet", "test");
+                outBox.Text = $"Exit: {_lastBuildResult.ExitCode} ({_lastBuildResult.Duration.TotalSeconds:F1}s)\n\n{_lastBuildResult.Output}";
+                BuildDiagnosticsUpdated?.Invoke(LlmodelBox.Infrastructure.Editor.EditorDiagnosticsHelper.ParseBuildOutput(_lastBuildResult.Output));
+            };
 
             bar.Children.Add(bBuild);
             bar.Children.Add(bTest);

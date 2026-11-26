@@ -4,6 +4,7 @@
              xmlns:local="clr-namespace:LlmodelBox"
              xmlns:rich="clr-namespace:LlmodelBox.Controls.RichChat"
              xmlns:utility="clr-namespace:LlmodelBox.Controls.UtilityPanel"
+             xmlns:editor="clr-namespace:LlmodelBox.Controls.Editor"
              xmlns:common="clr-namespace:LlmodelBox.Common"
              mc:Ignorable="d"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
@@ -258,62 +259,9 @@
                                     <RowDefinition Height="290" MinHeight="180"/>
                                 </Grid.RowDefinitions>
 
-                                <!-- Row 0: Code Editor / File Viewer -->
+                                <!-- Row 0: Upgraded AvalonEdit Multi-Tab Code Editor -->
                                 <Border Grid.Row="0" Background="{DynamicResource BrushWindowBg}" BorderBrush="{DynamicResource BrushBorder}" BorderThickness="1" CornerRadius="8" ClipToBounds="True">
-                                    <Grid>
-                                        <Grid.RowDefinitions>
-                                            <RowDefinition Height="34"/>
-                                            <RowDefinition Height="*"/>
-                                        </Grid.RowDefinitions>
-
-                                        <!-- Editor Tab Bar -->
-                                        <Border Grid.Row="0" Background="{DynamicResource BrushCardBg}" BorderBrush="{DynamicResource BrushBorderSubtle}" BorderThickness="0,0,0,1" Padding="10,0">
-                                            <Grid VerticalAlignment="Center">
-                                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                                    <TextBlock x:Name="TxtEditorFileName" Text="📄 main.py" Foreground="{DynamicResource BrushTextPrimary}" FontWeight="Bold" FontSize="11.5" FontFamily="Consolas" VerticalAlignment="Center"/>
-                                                    <TextBlock x:Name="TxtEditorStatus" Text="✓ Saved" Foreground="{DynamicResource BrushSuccess}" FontSize="10" FontFamily="Consolas" VerticalAlignment="Center" Margin="10,0,0,0"/>
-                                                    <TextBlock x:Name="TxtEditorEncoding" Text="UTF-8" Foreground="{DynamicResource BrushTextDim}" FontSize="10" FontFamily="Consolas" VerticalAlignment="Center" Margin="8,0,0,0"/>
-                                                </StackPanel>
-
-                                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
-                                                    <Button Style="{StaticResource PrimaryActionBtn}" Padding="8,3" Margin="0,0,4,0" FontSize="10.5" Click="BtnSaveFile_Click">
-                                                        <StackPanel Orientation="Horizontal">
-                                                            <Path Data="{StaticResource IconSave}" Fill="{DynamicResource BrushAccentText}" Stretch="Uniform" Width="13" Height="13" VerticalAlignment="Center" Margin="0,0,6,0"/>
-                                                            <TextBlock Text="Save" VerticalAlignment="Center"/>
-                                                        </StackPanel>
-                                                    </Button>
-                                                    <Button Style="{StaticResource BlackBoxActionBtn}" Padding="8,3" Margin="0,0,4,0" FontSize="10.5" Click="BtnViewEditorDiff_Click" ToolTip="Review changes against saved file">
-                                                        <StackPanel Orientation="Horizontal">
-                                                            <Path Data="{StaticResource IconDiff}" Fill="{DynamicResource BrushTextSecondary}" Stretch="Uniform" Width="13" Height="13" VerticalAlignment="Center" Margin="0,0,6,0"/>
-                                                            <TextBlock Text="Diff" VerticalAlignment="Center"/>
-                                                        </StackPanel>
-                                                    </Button>
-                                                    <Button Style="{StaticResource BlackBoxActionBtn}" Padding="8,3" FontSize="10.5" Click="BtnCopyEditorCode_Click" ToolTip="Copy all code to clipboard">
-                                                        <StackPanel Orientation="Horizontal">
-                                                            <Path Data="{StaticResource IconCopy}" Fill="{DynamicResource BrushTextSecondary}" Stretch="Uniform" Width="13" Height="13" VerticalAlignment="Center" Margin="0,0,6,0"/>
-                                                            <TextBlock Text="Copy" VerticalAlignment="Center"/>
-                                                        </StackPanel>
-                                                    </Button>
-                                                </StackPanel>
-                                            </Grid>
-                                        </Border>
-
-                                        <!-- Editor Box -->
-                                        <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto" Padding="0">
-                                            <TextBox x:Name="TxtWorkspaceEditor"
-                                                     Background="{DynamicResource BrushWindowBg}"
-                                                     Foreground="{DynamicResource BrushTextPrimary}"
-                                                     CaretBrush="{DynamicResource BrushAccentLight}"
-                                                     BorderThickness="0" 
-                                                     FontFamily="Consolas, Cascadia Code, Courier New" 
-                                                     FontSize="12.5" 
-                                                     AcceptsReturn="True" 
-                                                     AcceptsTab="True" 
-                                                     TextWrapping="NoWrap" 
-                                                     Padding="12,10"
-                                                     TextChanged="TxtWorkspaceEditor_TextChanged"/>
-                                        </ScrollViewer>
-                                    </Grid>
+                                    <editor:CodeEditorWorkspace x:Name="CodeEditor"/>
                                 </Border>
 
                                 <!-- Horizontal Splitter -->

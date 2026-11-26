@@ -140,6 +140,16 @@ namespace LlmodelBox.Controls
                         if (File.Exists(resolved)) LoadFileIntoEditor(resolved);
                     }
                 };
+                UtilityPanel.OpenFileAtLocationRequested += (path, line, col) =>
+                {
+                    string target = File.Exists(path) ? path : ResolveProjectFilePath(path);
+                    if (File.Exists(target))
+                    {
+                        _currentOpenFilePath = target;
+                        _ = CodeEditor.OpenFileAsync(target, line, col);
+                    }
+                };
+                UtilityPanel.BuildDiagnosticsUpdated += diags => CodeEditor?.SetBuildDiagnostics(diags);
                 UtilityPanel.SendToMainChatRequested += async text =>
                 {
                     if (!string.IsNullOrWhiteSpace(text))
@@ -169,6 +179,30 @@ namespace LlmodelBox.Controls
                         SwitchInspectorTab(3);
                     }
                 };
+            }
+
+            if (CodeEditor != null)
+            {
+                CodeEditor.SetWorkspaceService(_workspaceService);
+                bool isDark = !string.Equals(_settings.SelectedTheme, ThemeManager.ThemeDaylight, StringComparison.OrdinalIgnoreCase);
+                CodeEditor.ApplyThemePalette(isDark);
+                CodeEditor.ActiveBufferChanged += (path, orig, current) =>
+                {
+                    _currentOpenFilePath = path;
+                    _originalDiskContent = orig;
+                    UtilityPanel?.RecordManualBufferChange(path, orig, current);
+                    UpdateEditorMetrics();
+                };
+                CodeEditor.FileSaved += savedPath =>
+                {
+                    _currentOpenFilePath = savedPath;
+                    _originalDiskContent = CodeEditor.ActiveOriginalDiskContent;
+                    RefreshProjectFilesUi();
+                    if (_activeInspectorTab == 1) GenerateAndDisplayDiff();
+                    AppendLog($"[EDITOR] File saved: {Path.GetFileName(savedPath)}");
+                };
+                CodeEditor.DiffRequested += () => BtnViewEditorDiff_Click(this, new RoutedEventArgs());
+                CodeEditor.CopyRequested += () => AppendLog("[EDITOR] Code copied to clipboard.");
             }
 
             PreviewKeyDown += (_, e) =>
@@ -329,8 +363,8 @@ namespace LlmodelBox.Controls
                     _realtimeEvents,
                     () => _allModels,
                     () => _activeModel,
-                    () => _currentOpenFilePath,
-                    () => TxtWorkspaceEditor?.Text ?? string.Empty);
+                    () => CodeEditor?.ActiveFilePath ?? _currentOpenFilePath,
+                    () => CodeEditor?.ActiveText ?? string.Empty);
                 ApplyRightPanelMode(RightUtilityPanel.ParseMode(_settings.RightPanelState), animate: false);
                 UtilityPanel.SetWorkspaceContext(project.Path, CollectFlatRelativeFiles(_projectFiles));
             }
@@ -597,9 +631,7 @@ namespace LlmodelBox.Controls
             }
             else
             {
-                TxtWorkspaceEditor.Text = "# Project Workspace ready.\n# Create a file or ask the AI agent to generate code.";
-                TxtEditorFileName.Text = "📄 (no file selected)";
-                TxtEditorStatus.Text = "Ready";
+                CodeEditor.SetWelcomeState("# Project Workspace ready.\n# Create a file or ask the AI agent to generate code.");
             }
         }
 
@@ -609,25 +641,10 @@ namespace LlmodelBox.Controls
             try
             {
                 _currentOpenFilePath = filePath;
-                string content = _workspaceService.ReadFileContent(filePath);
-                _originalDiskContent = content;
-                TxtWorkspaceEditor.Text = content;
-                string ext = Path.GetExtension(filePath).ToLowerInvariant();
-                string icon = ext switch
-                {
-                    ".cs" => "🔷",
-                    ".py" => "🐍",
-                    ".js" or ".ts" => "🟨",
-                    ".html" => "🌐",
-                    ".css" => "🎨",
-                    ".json" => "⚙️",
-                    ".md" or ".txt" => "📄",
-                    ".bat" or ".ps1" => "⚡",
-                    _ => "📄"
-                };
-                TxtEditorFileName.Text = $"{icon} {Path.GetFileName(filePath)}";
-                TxtEditorStatus.Text = "✓ Saved";
-                TxtEditorStatus.Foreground = new SolidColorBrush(ThemeColor("BrushSuccess", "#22c55e"));
+                _originalDiskContent = File.Exists(filePath) && new FileInfo(filePath).Length <= 1_500_000
+                    ? _workspaceService.ReadFileContent(filePath)
+                    : string.Empty;
+                _ = CodeEditor.OpenFileAsync(filePath);
 
                 if (_activeProject != null && UtilityPanel != null)
                 {
@@ -646,7 +663,7 @@ namespace LlmodelBox.Controls
 
         private void UpdateEditorMetrics()
         {
-            if (TxtWorkspaceEditor == null) return;
+            if (CodeEditor == null) return;
             var m = _activeModel ?? (_allModels.Count > 0 ? _allModels[0] : null);
             UpdateContextAndTokenTelemetry(m);
         }
@@ -655,8 +672,9 @@ namespace LlmodelBox.Controls
         {
             try
             {
-                int editorChars = TxtWorkspaceEditor?.Text?.Length ?? 0;
-                int editorTokens = TokenHelper.EstimateTokens(TxtWorkspaceEditor?.Text ?? "");
+                string activeText = CodeEditor?.ActiveText ?? string.Empty;
+                int editorChars = activeText.Length;
+                int editorTokens = TokenHelper.EstimateTokens(activeText);
                 int chatTokens = _chatMessages.Sum(c => TokenHelper.EstimateTokens(c.Content ?? ""));
                 int totalActiveTokens = editorTokens + chatTokens;
                 int contextLimit = TokenHelper.ParseContextWindowTokens(m?.Context);
@@ -721,23 +739,6 @@ namespace LlmodelBox.Controls
                 }
             }
             catch { }
-        }
-
-        private void TxtWorkspaceEditor_TextChanged(object sender, TextChangedEventArgs e)
-        {
-            if (TxtEditorStatus == null) return;
-            if (TxtWorkspaceEditor.Text != _originalDiskContent)
-            {
-                TxtEditorStatus.Text = "● Modified";
-                TxtEditorStatus.Foreground = new SolidColorBrush(ThemeColor("BrushAccentLight", "#38bdf8"));
-            }
-            else
-            {
-                TxtEditorStatus.Text = "✓ Saved";
-                TxtEditorStatus.Foreground = new SolidColorBrush(ThemeColor("BrushSuccess", "#22c55e"));
-            }
-            UtilityPanel?.RecordManualBufferChange(_currentOpenFilePath, _originalDiskContent, TxtWorkspaceEditor.Text);
-            UpdateEditorMetrics();
         }
 
         private static List<string> CollectFlatRelativeFiles(List<ProjectFileItem> nodes)
@@ -844,38 +845,16 @@ namespace LlmodelBox.Controls
 
         private void BtnSaveFile_Click(object sender, RoutedEventArgs e)
         {
-            if (string.IsNullOrEmpty(_currentOpenFilePath))
-            {
-                if (_activeProject != null)
-                {
-                    _currentOpenFilePath = Path.Combine(_activeProject.Path, "main.py");
-                }
-                else return;
-            }
+            string? fallbackPath = string.IsNullOrEmpty(CodeEditor.ActiveFilePath) && _activeProject != null
+                ? Path.Combine(_activeProject.Path, "main.py")
+                : null;
 
-            try
+            if (!CodeEditor.SaveActiveFile(fallbackPath))
             {
-                bool ok = _workspaceService.SaveFileContent(_currentOpenFilePath, TxtWorkspaceEditor.Text);
-                if (ok)
-                {
-                    _originalDiskContent = TxtWorkspaceEditor.Text;
-                    TxtEditorStatus.Text = "✓ Saved";
-                    TxtEditorStatus.Foreground = new SolidColorBrush(ThemeColor("BrushSuccess", "#22c55e"));
-                    RefreshProjectFilesUi();
-                    if (_activeInspectorTab == 1)
-                    {
-                        GenerateAndDisplayDiff();
-                    }
-                    AppendLog($"[EDITOR] File saved: {Path.GetFileName(_currentOpenFilePath)}");
-                }
-                else
+                if (!string.IsNullOrEmpty(CodeEditor.ActiveFilePath))
                 {
                     MessageBox.Show("Failed to save file.", "Save Error", MessageBoxButton.OK, MessageBoxImage.Error);
                 }
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"Could not save file: {ex.Message}", "Save Error", MessageBoxButton.OK, MessageBoxImage.Warning);
             }
         }
 
@@ -889,7 +868,7 @@ namespace LlmodelBox.Controls
         {
             try
             {
-                Clipboard.SetText(TxtWorkspaceEditor.Text);
+                Clipboard.SetText(CodeEditor.ActiveText);
                 AppendLog("[EDITOR] Code copied to clipboard.");
             }
             catch { }
@@ -996,8 +975,9 @@ namespace LlmodelBox.Controls
             if (_workspaceService.RenamePath(_activeProject.Path, item.FullPath, newName.Trim(), out string newFull))
             {
                 bool wasOpen = string.Equals(_currentOpenFilePath, item.FullPath, StringComparison.OrdinalIgnoreCase);
+                if (!item.IsDirectory) CodeEditor.NotifyFileRenamedOrMoved(item.FullPath, newFull);
                 RefreshProjectFilesUi();
-                if (wasOpen && !item.IsDirectory) LoadFileIntoEditor(newFull);
+                if (wasOpen && !item.IsDirectory) _currentOpenFilePath = newFull;
                 AppendLog($"[EXPLORER] Renamed {item.Name} → {newName.Trim()}");
             }
             else
@@ -1017,8 +997,9 @@ namespace LlmodelBox.Controls
             if (_workspaceService.MovePath(_activeProject.Path, item.FullPath, dest.Trim(), out string newFull))
             {
                 bool wasOpen = string.Equals(_currentOpenFilePath, item.FullPath, StringComparison.OrdinalIgnoreCase);
+                if (!item.IsDirectory) CodeEditor.NotifyFileRenamedOrMoved(item.FullPath, newFull);
                 RefreshProjectFilesUi();
-                if (wasOpen && !item.IsDirectory) LoadFileIntoEditor(newFull);
+                if (wasOpen && !item.IsDirectory) _currentOpenFilePath = newFull;
                 AppendLog($"[EXPLORER] Moved {item.Name} → {dest.Trim()}");
             }
             else
@@ -1070,8 +1051,9 @@ namespace LlmodelBox.Controls
             if (_workspaceService.MovePath(_activeProject.Path, source.FullPath, destRel, out string newFull))
             {
                 bool wasOpen = string.Equals(_currentOpenFilePath, source.FullPath, StringComparison.OrdinalIgnoreCase);
+                if (!source.IsDirectory) CodeEditor.NotifyFileRenamedOrMoved(source.FullPath, newFull);
                 RefreshProjectFilesUi();
-                if (wasOpen && !source.IsDirectory) LoadFileIntoEditor(newFull);
+                if (wasOpen && !source.IsDirectory) _currentOpenFilePath = newFull;
                 AppendLog($"[EXPLORER] Moved {source.Name} → {(string.IsNullOrEmpty(destRel) ? "project root" : destRel)}");
             }
             else
@@ -1099,13 +1081,11 @@ namespace LlmodelBox.Controls
             if (_workspaceService.DeletePath(_activeProject.Path, item.FullPath))
             {
                 bool wasOpen = string.Equals(_currentOpenFilePath, item.FullPath, StringComparison.OrdinalIgnoreCase);
+                CodeEditor.CloseTabByPath(item.FullPath);
                 RefreshProjectFilesUi();
                 if (wasOpen)
                 {
-                    TxtWorkspaceEditor.Text = string.Empty;
-                    TxtEditorFileName.Text = "📄 (no file selected)";
-                    TxtEditorStatus.Text = "Ready";
-                    _currentOpenFilePath = null;
+                    _currentOpenFilePath = CodeEditor.ActiveFilePath;
                 }
                 AppendLog($"[EXPLORER] Deleted {item.RelativePath}");
             }
@@ -1521,8 +1501,8 @@ namespace LlmodelBox.Controls
                 UserPrompt = prompt,
                 SystemInstruction = (_settings.SystemInstructionEnabled && !string.IsNullOrWhiteSpace(_settings.SystemInstruction))
                     ? _settings.SystemInstruction : null,
-                OpenFilePath = _currentOpenFilePath,
-                OpenFileText = TxtWorkspaceEditor.Text,
+                OpenFilePath = CodeEditor?.ActiveFilePath ?? _currentOpenFilePath,
+                OpenFileText = CodeEditor?.ActiveText ?? string.Empty,
                 Attachments = messageImages.Select(Path.GetFileName).Where(n => !string.IsNullOrEmpty(n)).Select(n => n!).ToList(),
                 History = history,
                 ProjectKey = _activeProject?.Path
@@ -1736,7 +1716,18 @@ namespace LlmodelBox.Controls
             {
                 RefreshProjectFilesUi();
                 var aiSummaries = assistantMsg.Blocks.OfType<DiffSummaryBlock>().SelectMany(d => d.Files).ToList();
-                if (aiSummaries.Count > 0) UtilityPanel?.RecordAiFileChanges(aiSummaries);
+                if (aiSummaries.Count > 0)
+                {
+                    UtilityPanel?.RecordAiFileChanges(aiSummaries);
+                    foreach (var entry in aiSummaries)
+                    {
+                        string fullModPath = ResolveProjectFilePath(entry.FilePath);
+                        if (!string.IsNullOrEmpty(fullModPath))
+                        {
+                            CodeEditor?.ApplyAiInlineChangePreview(fullModPath, entry.BeforeContent, entry.AfterContent, entry.Additions, entry.Deletions);
+                        }
+                    }
+                }
             }
 
             if (TxtInfoChatTurns != null) TxtInfoChatTurns.Text = $"{_chatMessages.Count} messages";
@@ -1764,6 +1755,7 @@ namespace LlmodelBox.Controls
                 if (File.Exists(fullPath))
                 {
                     LoadFileIntoEditor(fullPath);
+                    CodeEditor?.ApplyAiInlineChangePreview(fullPath, first.BeforeContent, first.AfterContent, first.Additions, first.Deletions);
                 }
                 _diffLines = _workspaceService.GenerateDiff(first.BeforeContent, first.AfterContent);
                 DiffLinesList.ItemsSource = null;
@@ -1986,8 +1978,8 @@ namespace LlmodelBox.Controls
         // ================= REVIEW DIFF =================
         private void GenerateAndDisplayDiff()
         {
-            string original = _originalDiskContent;
-            string current = TxtWorkspaceEditor.Text;
+            string original = CodeEditor?.ActiveOriginalDiskContent ?? _originalDiskContent;
+            string current = CodeEditor?.ActiveText ?? string.Empty;
             _diffLines = _workspaceService.GenerateDiff(original, current);
             DiffLinesList.ItemsSource = null;
             DiffLinesList.ItemsSource = _diffLines;
