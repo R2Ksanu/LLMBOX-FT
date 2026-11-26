@@ -2,6 +2,8 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
 using LlmodelBox.Common;
 using LlmodelBox.Models;
@@ -11,22 +13,43 @@ namespace LlmodelBox.Services
     public class SettingsService : ISettingsService
     {
         private readonly string _settingsFilePath;
+        private readonly SecureKeyVault _vault;
 
-        public SettingsService(string? settingsFilePath = null)
+        public SettingsService(string? settingsFilePath = null, string? vaultFilePath = null)
         {
             _settingsFilePath = settingsFilePath ?? AppConstants.SettingsFilePath;
+            string resolvedVault;
+            if (!string.IsNullOrWhiteSpace(vaultFilePath))
+            {
+                resolvedVault = vaultFilePath;
+            }
+            else if (settingsFilePath != null)
+            {
+                byte[] hash = SHA256.HashData(Encoding.UTF8.GetBytes(Path.GetFullPath(settingsFilePath).ToLowerInvariant()));
+                resolvedVault = Path.Combine(Path.GetTempPath(), "LlmodelBox_IsolatedVaults", Convert.ToHexString(hash).Substring(0, 16) + ".dpapi");
+            }
+            else
+            {
+                resolvedVault = AppConstants.SecretVaultFilePath;
+            }
+            _vault = new SecureKeyVault(resolvedVault);
         }
 
         public UserSettings LoadSettings()
         {
             var settings = new UserSettings();
+            bool loadedFromDisk = false;
             try
             {
                 if (File.Exists(_settingsFilePath))
                 {
                     string json = File.ReadAllText(_settingsFilePath);
                     var loaded = JsonSerializer.Deserialize<UserSettings>(json);
-                    if (loaded != null) settings = loaded;
+                    if (loaded != null)
+                    {
+                        settings = loaded;
+                        loadedFromDisk = true;
+                    }
                 }
             }
             catch { }
@@ -34,7 +57,19 @@ namespace LlmodelBox.Services
             if (settings.ApiKeys == null) settings.ApiKeys = new ApiConfig();
             if (settings.CustomProviders == null) settings.CustomProviders = new List<CustomProviderItem>();
 
-            // Auto-detect environment variables
+            bool hadLegacyPlaintextOnDisk = loadedFromDisk && SecureKeyVault.ContainsAnyPlaintextSecrets(settings);
+            var vaultPayload = _vault.Load();
+            SecureKeyVault.MergeVaultIntoSettings(settings, vaultPayload);
+
+            // Auto-migrate any plaintext API keys out of legacy settings.json into the DPAPI vault
+            // and scrub settings.json so no plaintext secrets remain on disk.
+            if (hadLegacyPlaintextOnDisk)
+            {
+                _vault.SaveFromSettings(settings);
+                WriteScrubbedSettingsFile(settings);
+            }
+
+            // Auto-detect environment variables in-memory only (do not overwrite encrypted vault implicitly).
             if (string.IsNullOrWhiteSpace(settings.ApiKeys.OpenAI))
                 settings.ApiKeys.OpenAI = Environment.GetEnvironmentVariable("OPENAI_API_KEY") ?? "";
             if (string.IsNullOrWhiteSpace(settings.ApiKeys.Anthropic))
@@ -102,17 +137,27 @@ namespace LlmodelBox.Services
 
         public bool SaveSettings(UserSettings settings)
         {
+            if (settings == null) return false;
             try
             {
-                var options = new JsonSerializerOptions { WriteIndented = true };
-                string json = JsonSerializer.Serialize(settings, options);
-                LlmodelBox.Common.AtomicFile.WriteAllText(_settingsFilePath, json);
+                // Persist API keys in Windows DPAPI encrypted vault (current-user + NTFS ACL protected)
+                // and scrub plaintext secrets out of settings.json before touching disk.
+                _vault.SaveFromSettings(settings);
+                WriteScrubbedSettingsFile(settings);
                 return true;
             }
             catch
             {
                 return false;
             }
+        }
+
+        private void WriteScrubbedSettingsFile(UserSettings settings)
+        {
+            var scrubbed = SecureKeyVault.CreateScrubbedCopyForDisk(settings);
+            var options = new JsonSerializerOptions { WriteIndented = true };
+            string json = JsonSerializer.Serialize(scrubbed, options);
+            LlmodelBox.Common.AtomicFile.WriteAllText(_settingsFilePath, json);
         }
 
         public void SetApiKeyForProvider(string provider, string key, UserSettings settings)

@@ -19,12 +19,15 @@ using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using Microsoft.Win32;
 using LlmodelBox.Common;
+using LlmodelBox.Controls.UtilityPanel;
+using LlmodelBox.Infrastructure;
 using LlmodelBox.Models;
 using LlmodelBox.Models.Ai;
 using LlmodelBox.Runtime;
 using LlmodelBox.Runtime.Content;
 using LlmodelBox.Runtime.Context;
 using LlmodelBox.Runtime.Memory;
+using LlmodelBox.Runtime.Middleware;
 using LlmodelBox.Services;
 
 namespace LlmodelBox.Controls
@@ -62,6 +65,12 @@ namespace LlmodelBox.Controls
         private CancellationTokenSource? _chatCts = null;
         private bool _workspaceChatBusy = false;
         private int _activeInspectorTab = 0;
+        private readonly ISettingsService? _settingsService;
+        private readonly IGitService _gitService;
+        private readonly IBuildTestRunner _buildRunner;
+        private readonly IRealtimeEventEngine? _realtimeEvents;
+        private RightPanelDisplayMode _rightPanelMode = RightPanelDisplayMode.Expanded;
+        private bool _showingClassicInspector = false;
 
         private ModelItem? _activeModel => _getActiveModel();
         private List<ModelItem> _allModels => _getAllModels();
@@ -69,7 +78,20 @@ namespace LlmodelBox.Controls
         public event Action? BackRequested;
         public event Action? SwitchModelRequested;
 
-        public WorkspaceControl(ICloudApiService cloudApiService, ITokenUsageService tokenUsageService, UserSettings settings, HttpClient httpClient, Func<ModelItem?> getActiveModel, Func<List<ModelItem>> getAllModels, Action<ModelItem> setActiveModel, LlmodelBox.Runtime.IAiRuntime runtime, LlmodelBox.Runtime.Tools.IToolRegistry? toolRegistry = null)
+        public WorkspaceControl(
+            ICloudApiService cloudApiService,
+            ITokenUsageService tokenUsageService,
+            UserSettings settings,
+            HttpClient httpClient,
+            Func<ModelItem?> getActiveModel,
+            Func<List<ModelItem>> getAllModels,
+            Action<ModelItem> setActiveModel,
+            LlmodelBox.Runtime.IAiRuntime runtime,
+            LlmodelBox.Runtime.Tools.IToolRegistry? toolRegistry = null,
+            ISettingsService? settingsService = null,
+            IGitService? gitService = null,
+            IBuildTestRunner? buildRunner = null,
+            IRealtimeEventEngine? realtimeEvents = null)
         {
             _cloudApiService = cloudApiService;
             _tokenUsageService = tokenUsageService;
@@ -80,7 +102,188 @@ namespace LlmodelBox.Controls
             _setActiveModel = setActiveModel;
             _runtime = runtime;
             _toolRegistry = toolRegistry;
+            _settingsService = settingsService;
+            _gitService = gitService ?? new GitService();
+            _buildRunner = buildRunner ?? new BuildTestRunner();
+            _realtimeEvents = realtimeEvents;
             InitializeComponent();
+            InitializeRightUtilityPanelWiring();
+        }
+
+        private void InitializeRightUtilityPanelWiring()
+        {
+            if (ColRightSplitter != null)
+            {
+                ColRightSplitter.DragCompleted += (_, _) =>
+                {
+                    if (_rightPanelMode == RightPanelDisplayMode.Expanded && ColRightUtility != null)
+                    {
+                        double w = ColRightUtility.ActualWidth;
+                        if (w >= 260 && w <= 760)
+                        {
+                            _settings.RightPanelWidth = Math.Round(w);
+                            _settingsService?.SaveSettings(_settings);
+                        }
+                    }
+                };
+            }
+
+            if (UtilityPanel != null)
+            {
+                UtilityPanel.DisplayModeChangeRequested += mode => ApplyRightPanelMode(mode, animate: true);
+                UtilityPanel.OpenFileInEditorRequested += path =>
+                {
+                    if (File.Exists(path)) LoadFileIntoEditor(path);
+                    else if (_activeProject != null)
+                    {
+                        string resolved = ResolveProjectFilePath(path);
+                        if (File.Exists(resolved)) LoadFileIntoEditor(resolved);
+                    }
+                };
+                UtilityPanel.SendToMainChatRequested += async text =>
+                {
+                    if (!string.IsNullOrWhiteSpace(text))
+                    {
+                        TxtChatPromptInput.Text = text;
+                        TxtChatPromptInput.Focus();
+                        await Task.CompletedTask;
+                    }
+                };
+                UtilityPanel.WorkspaceFilesMutated += () =>
+                {
+                    RefreshProjectFilesUi();
+                    if (!string.IsNullOrEmpty(_currentOpenFilePath) && File.Exists(_currentOpenFilePath))
+                    {
+                        LoadFileIntoEditor(_currentOpenFilePath);
+                    }
+                };
+                UtilityPanel.ExplorerShortcutRequested += action =>
+                {
+                    if (action == "RevealWorkspace") BtnWorkspaceExplorer_Click(this, new RoutedEventArgs());
+                    else if (action == "RefreshTree") RefreshProjectFilesUi();
+                    else if (action == "OpenMedia")
+                    {
+                        _showingClassicInspector = true;
+                        LegacyInspectorRoot.Visibility = Visibility.Visible;
+                        UtilityPanel.Visibility = Visibility.Collapsed;
+                        SwitchInspectorTab(3);
+                    }
+                };
+            }
+
+            PreviewKeyDown += (_, e) =>
+            {
+                if (e.Key == Key.U && (Keyboard.Modifiers & (ModifierKeys.Control | ModifierKeys.Shift)) == (ModifierKeys.Control | ModifierKeys.Shift))
+                {
+                    e.Handled = true;
+                    BtnToggleUtilityPanel_Click(this, new RoutedEventArgs());
+                }
+                else if (e.Key == Key.P && (Keyboard.Modifiers & ModifierKeys.Control) == ModifierKeys.Control)
+                {
+                    e.Handled = true;
+                    if (_rightPanelMode != RightPanelDisplayMode.Expanded)
+                        ApplyRightPanelMode(RightPanelDisplayMode.Expanded, animate: true);
+                    UtilityPanel?.FocusOmnibox();
+                }
+            };
+        }
+
+        private void ApplyRightPanelMode(RightPanelDisplayMode mode, bool animate)
+        {
+            _rightPanelMode = mode;
+            if (_showingClassicInspector && mode != RightPanelDisplayMode.Expanded)
+            {
+                _showingClassicInspector = false;
+                if (LegacyInspectorRoot != null) LegacyInspectorRoot.Visibility = Visibility.Collapsed;
+                if (UtilityPanel != null) UtilityPanel.Visibility = Visibility.Visible;
+            }
+
+            UtilityPanel?.SetDisplayMode(mode);
+
+            double savedWidth = _settings.RightPanelWidth is >= 260 and <= 760 ? _settings.RightPanelWidth : 390;
+            double targetWidth = mode switch
+            {
+                RightPanelDisplayMode.Expanded => savedWidth,
+                RightPanelDisplayMode.CollapsedRail => 44,
+                _ => 0
+            };
+
+            if (ColRightUtility != null)
+            {
+                if (mode == RightPanelDisplayMode.Expanded)
+                {
+                    ColRightUtility.MinWidth = 260;
+                    ColRightUtility.MaxWidth = 760;
+                    if (ColRightSplitter != null) ColRightSplitter.Visibility = Visibility.Visible;
+                }
+                else
+                {
+                    ColRightUtility.MinWidth = mode == RightPanelDisplayMode.CollapsedRail ? 44 : 0;
+                    ColRightUtility.MaxWidth = mode == RightPanelDisplayMode.CollapsedRail ? 44 : 0;
+                    if (ColRightSplitter != null) ColRightSplitter.Visibility = Visibility.Collapsed;
+                }
+
+                double fromWidth = ColRightUtility.ActualWidth > 0 ? ColRightUtility.ActualWidth : ColRightUtility.Width.Value;
+                if (animate && Math.Abs(fromWidth - targetWidth) > 2)
+                {
+                    var anim = new GridLengthAnimation
+                    {
+                        From = fromWidth,
+                        To = targetWidth,
+                        Duration = TimeSpan.FromMilliseconds(220),
+                        EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
+                    };
+                    anim.Completed += (_, _) =>
+                    {
+                        ColRightUtility.BeginAnimation(ColumnDefinition.WidthProperty, null);
+                        ColRightUtility.Width = new GridLength(targetWidth, GridUnitType.Pixel);
+                    };
+                    ColRightUtility.BeginAnimation(ColumnDefinition.WidthProperty, anim);
+                }
+                else
+                {
+                    ColRightUtility.BeginAnimation(ColumnDefinition.WidthProperty, null);
+                    ColRightUtility.Width = new GridLength(targetWidth, GridUnitType.Pixel);
+                }
+            }
+
+            _settings.RightPanelState = mode switch
+            {
+                RightPanelDisplayMode.CollapsedRail => "Collapsed",
+                RightPanelDisplayMode.Hidden => "Hidden",
+                _ => "Expanded"
+            };
+            _settingsService?.SaveSettings(_settings);
+        }
+
+        private void BtnToggleUtilityPanel_Click(object sender, RoutedEventArgs e)
+        {
+            var next = _rightPanelMode switch
+            {
+                RightPanelDisplayMode.Expanded => RightPanelDisplayMode.CollapsedRail,
+                RightPanelDisplayMode.CollapsedRail => RightPanelDisplayMode.Hidden,
+                _ => RightPanelDisplayMode.Expanded
+            };
+            ApplyRightPanelMode(next, animate: true);
+        }
+
+        private void BtnToggleClassicInspector_Click(object sender, RoutedEventArgs e)
+        {
+            _showingClassicInspector = !_showingClassicInspector;
+            if (_showingClassicInspector)
+            {
+                if (_rightPanelMode != RightPanelDisplayMode.Expanded)
+                    ApplyRightPanelMode(RightPanelDisplayMode.Expanded, animate: true);
+                if (UtilityPanel != null) UtilityPanel.Visibility = Visibility.Collapsed;
+                if (LegacyInspectorRoot != null) LegacyInspectorRoot.Visibility = Visibility.Visible;
+                BtnToggleClassicInspector.Content = "Modern";
+            }
+            else
+            {
+                if (LegacyInspectorRoot != null) LegacyInspectorRoot.Visibility = Visibility.Collapsed;
+                if (UtilityPanel != null) UtilityPanel.Visibility = Visibility.Visible;
+                BtnToggleClassicInspector.Content = "Classic";
+            }
         }
 
         private void SetActiveModel(ModelItem model) => _setActiveModel(model);
@@ -112,6 +315,25 @@ namespace LlmodelBox.Controls
             InitializeProjectChat();
             UpdateInspectorInfo();
             SwitchInspectorTab(0);
+            if (UtilityPanel != null)
+            {
+                UtilityPanel.Configure(
+                    _runtime,
+                    _settingsService ?? new SettingsService(),
+                    _settings,
+                    _workspaceService,
+                    _gitService,
+                    _buildRunner,
+                    _tokenUsageService,
+                    _toolRegistry as LlmodelBox.Runtime.Tools.ToolRegistry,
+                    _realtimeEvents,
+                    () => _allModels,
+                    () => _activeModel,
+                    () => _currentOpenFilePath,
+                    () => TxtWorkspaceEditor?.Text ?? string.Empty);
+                ApplyRightPanelMode(RightUtilityPanel.ParseMode(_settings.RightPanelState), animate: false);
+                UtilityPanel.SetWorkspaceContext(project.Path, CollectFlatRelativeFiles(_projectFiles));
+            }
             AppendLog($"[WORKSPACE] Loaded project '{project.Name}' at {project.Path}");
             AppendLog($"[ENGINE] Active AI Model: {modelName} | Gateway TLS 1.3 Active");
         }
@@ -346,6 +568,7 @@ namespace LlmodelBox.Controls
                 TxtExplorerStats.Text = $"{fileCount} files | {sizeStr}";
                 TxtInfoFilesCount.Text = $"{fileCount} files";
                 TxtInfoProjectSize.Text = sizeStr;
+                UtilityPanel?.SetWorkspaceContext(_activeProject.Path, CollectFlatRelativeFiles(_projectFiles));
             }
             catch (Exception ex)
             {
@@ -406,6 +629,13 @@ namespace LlmodelBox.Controls
                 TxtEditorStatus.Text = "✓ Saved";
                 TxtEditorStatus.Foreground = new SolidColorBrush(ThemeColor("BrushSuccess", "#22c55e"));
 
+                if (_activeProject != null && UtilityPanel != null)
+                {
+                    string rel = filePath.StartsWith(_activeProject.Path, StringComparison.OrdinalIgnoreCase)
+                        ? Path.GetRelativePath(_activeProject.Path, filePath)
+                        : filePath;
+                    UtilityPanel.TrackRecentFile(rel);
+                }
                 UpdateEditorMetrics();
             }
             catch (Exception ex)
@@ -506,7 +736,23 @@ namespace LlmodelBox.Controls
                 TxtEditorStatus.Text = "✓ Saved";
                 TxtEditorStatus.Foreground = new SolidColorBrush(ThemeColor("BrushSuccess", "#22c55e"));
             }
+            UtilityPanel?.RecordManualBufferChange(_currentOpenFilePath, _originalDiskContent, TxtWorkspaceEditor.Text);
             UpdateEditorMetrics();
+        }
+
+        private static List<string> CollectFlatRelativeFiles(List<ProjectFileItem> nodes)
+        {
+            var list = new List<string>();
+            void Walk(List<ProjectFileItem> items)
+            {
+                foreach (var n in items)
+                {
+                    if (n.IsDirectory) Walk(n.Children);
+                    else if (!string.IsNullOrWhiteSpace(n.RelativePath)) list.Add(n.RelativePath);
+                }
+            }
+            Walk(nodes);
+            return list;
         }
 
         // Walks the project tree and produces the flat list of rows that should currently be
@@ -1489,6 +1735,8 @@ namespace LlmodelBox.Controls
             if (assistantMsg.FilesModifiedCount > 0)
             {
                 RefreshProjectFilesUi();
+                var aiSummaries = assistantMsg.Blocks.OfType<DiffSummaryBlock>().SelectMany(d => d.Files).ToList();
+                if (aiSummaries.Count > 0) UtilityPanel?.RecordAiFileChanges(aiSummaries);
             }
 
             if (TxtInfoChatTurns != null) TxtInfoChatTurns.Text = $"{_chatMessages.Count} messages";
@@ -1506,6 +1754,11 @@ namespace LlmodelBox.Controls
         {
             if (summary.Files.Count > 0)
             {
+                UtilityPanel?.RecordAiFileChanges(summary.Files);
+                if (_rightPanelMode != RightPanelDisplayMode.Expanded)
+                    ApplyRightPanelMode(RightPanelDisplayMode.Expanded, animate: true);
+                UtilityPanel?.SelectTool("Review");
+
                 var first = summary.Files[0];
                 string fullPath = ResolveProjectFilePath(first.FilePath);
                 if (File.Exists(fullPath))

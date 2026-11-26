@@ -525,7 +525,7 @@ namespace LlmodelBox
             PopulateStoragePathsUi();
             RefreshCompanyCategoriesUi();
             CloseSettingsModal();
-            AppendLog("[SETTINGS] Profile card updated and cloud API credentials saved to settings.json.");
+            AppendLog("[SETTINGS] Profile card updated and cloud API credentials saved to encrypted DPAPI vault.");
         }
 
         private async void BtnTestApiKeys_Click(object sender, RoutedEventArgs e)
@@ -1407,7 +1407,8 @@ namespace LlmodelBox
             }
 
             var workspace = new LlmodelBox.Controls.WorkspaceControl(_cloudApiService, _tokenUsageService, _settings, _httpClient,
-                () => _activeModel, () => _allModels, m => SetActiveModel(m), _aiRuntime, _toolRegistry);
+                () => _activeModel, () => _allModels, m => SetActiveModel(m), _aiRuntime, _toolRegistry,
+                _settingsService, _services.Git, _services.BuildRunner, _services.Middleware.RealtimeEvents);
 
             var win = new IdeWindow(project, workspace, _settings.SelectedTheme, _settings.ThemeAccent) { Owner = this };
             workspace.BackRequested += () => win.Close();
@@ -2993,7 +2994,7 @@ namespace LlmodelBox
                         return;
                     }
                     SaveSettings();
-                    AppendLog($"[SUCCESS] API key for {parts[0]} updated and saved to settings.json ({MaskHelper.MaskKey(val)}).");
+                    AppendLog($"[SUCCESS] API key for {parts[0]} updated and saved to encrypted DPAPI vault ({MaskHelper.MaskKey(val)}).");
                 }
                 else
                 {

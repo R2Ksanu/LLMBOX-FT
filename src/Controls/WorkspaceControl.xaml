@@ -3,6 +3,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:local="clr-namespace:LlmodelBox"
              xmlns:rich="clr-namespace:LlmodelBox.Controls.RichChat"
+             xmlns:utility="clr-namespace:LlmodelBox.Controls.UtilityPanel"
              xmlns:common="clr-namespace:LlmodelBox.Common"
              mc:Ignorable="d"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
@@ -107,12 +108,14 @@
                                             <TextBlock Text="System Prompt" VerticalAlignment="Center"/>
                                         </StackPanel>
                                     </Button>
-                                    <Button Style="{StaticResource BlackBoxActionBtn}" Click="BtnClearChat_Click" Padding="10,5" FontSize="11">
+                                    <Button Style="{StaticResource BlackBoxActionBtn}" Click="BtnClearChat_Click" Padding="10,5" FontSize="11" Margin="0,0,6,0">
                                         <StackPanel Orientation="Horizontal">
                                             <Path Data="{StaticResource IconTrash}" Fill="{DynamicResource BrushTextSecondary}" Stretch="Uniform" Width="14" Height="14" VerticalAlignment="Center" Margin="0,0,7,0"/>
                                             <TextBlock Text="Clear Chat" VerticalAlignment="Center"/>
                                         </StackPanel>
                                     </Button>
+                                    <Button x:Name="BtnToggleUtilityPanel" Content="◫ Panel" ToolTip="Toggle / Restore Right Utility Panel (Ctrl+Shift+U)" Style="{StaticResource BlackBoxActionBtn}" Padding="10,5" FontSize="11" Margin="0,0,6,0" Click="BtnToggleUtilityPanel_Click"/>
+                                    <Button x:Name="BtnToggleClassicInspector" Content="Classic" ToolTip="Switch between Modern Right Utility Panel and Legacy Inspector / Cmd Runner" Style="{StaticResource BlackBoxActionBtn}" Padding="9,5" FontSize="10.5" Click="BtnToggleClassicInspector_Click"/>
                                 </StackPanel>
                             </Grid>
                         </Border>
@@ -122,9 +125,9 @@
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="220" MinWidth="180" MaxWidth="340"/>
                                 <ColumnDefinition Width="6"/>
-                                <ColumnDefinition Width="*" MinWidth="380"/>
+                                <ColumnDefinition Width="*" MinWidth="360"/>
                                 <ColumnDefinition Width="6"/>
-                                <ColumnDefinition Width="340" MinWidth="260" MaxWidth="480"/>
+                                <ColumnDefinition x:Name="ColRightUtility" Width="390" MinWidth="260" MaxWidth="760"/>
                             </Grid.ColumnDefinitions>
 
                             <!-- ================= COLUMN 0: LEFT FILE EXPLORER ================= -->
@@ -520,10 +523,12 @@
                             </Grid>
 
                             <!-- Splitter 2 -->
-                            <GridSplitter Grid.Column="3" Width="6" HorizontalAlignment="Center" Background="{DynamicResource BrushCardBg}" Cursor="SizeWE"/>
+                            <GridSplitter x:Name="ColRightSplitter" Grid.Column="3" Width="6" HorizontalAlignment="Center" Background="{DynamicResource BrushCardBg}" Cursor="SizeWE"/>
 
-                            <!-- ================= COLUMN 4: RIGHT INSPECTOR ================= -->
-                            <Border Grid.Column="4" Background="{DynamicResource BrushWindowBg}" BorderBrush="{DynamicResource BrushBorder}" BorderThickness="1" CornerRadius="8" ClipToBounds="True">
+                            <!-- ================= COLUMN 4: COLLAPSIBLE RIGHT UTILITY PANEL (+ Legacy Classic Migration Host) ================= -->
+                            <Grid Grid.Column="4">
+                                <utility:RightUtilityPanel x:Name="UtilityPanel" Visibility="Visible"/>
+                                <Border x:Name="LegacyInspectorRoot" Visibility="Collapsed" Background="{DynamicResource BrushWindowBg}" BorderBrush="{DynamicResource BrushBorder}" BorderThickness="1" CornerRadius="8" ClipToBounds="True">
                                 <Grid>
                                     <Grid.RowDefinitions>
                                         <RowDefinition Height="38"/> <!-- Tabs Bar -->
@@ -921,7 +926,8 @@
                                         </ScrollViewer>
                                     </Grid>
                                 </Grid>
-                            </Border>
+                                </Border>
+                            </Grid>
                         </Grid>
     </Grid>
 </UserControl>

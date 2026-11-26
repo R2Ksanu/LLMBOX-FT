@@ -1,0 +1,546 @@
+<UserControl x:Class="LlmodelBox.Controls.UtilityPanel.RightUtilityPanel"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:wv2="clr-namespace:Microsoft.Web.WebView2.Wpf;assembly=Microsoft.Web.WebView2.Wpf"
+             xmlns:rich="clr-namespace:LlmodelBox.Controls.RichChat"
+             SnapsToDevicePixels="True">
+    <Grid>
+        <!-- ================= EXPANDED UTILITY PANEL ================= -->
+        <Border x:Name="ExpandedRoot"
+                Background="{DynamicResource BrushWindowBg}"
+                BorderBrush="{DynamicResource BrushBorder}"
+                BorderThickness="1"
+                CornerRadius="8"
+                ClipToBounds="True">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/> <!-- Omnibox + Panel Controls -->
+                    <RowDefinition Height="Auto"/> <!-- Primary Tool Tabs + More Menu -->
+                    <RowDefinition Height="*"/>    <!-- Active Tool View Host -->
+                </Grid.RowDefinitions>
+
+                <!-- Row 0: Universal Search / URL Bar + Collapse / Hide -->
+                <Border Grid.Row="0" Background="{DynamicResource BrushCardBg}" BorderBrush="{DynamicResource BrushBorderSubtle}" BorderThickness="0,0,0,1" Padding="8,7">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+
+                        <Border Grid.Column="0" Background="{DynamicResource BrushCardInnerBg}" BorderBrush="{DynamicResource BrushBorder}" BorderThickness="1" CornerRadius="6" Padding="7,4">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="⌘" FontSize="11.5" Foreground="{DynamicResource BrushTextDim}" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                <Grid Grid.Column="1">
+                                    <TextBlock Text="Search files, commands, tools, or enter URL..." FontSize="11" Foreground="{DynamicResource BrushTextDim}" IsHitTestVisible="False" VerticalAlignment="Center">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock">
+                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding Text, ElementName=TxtOmnibox}" Value="">
+                                                        <Setter Property="Visibility" Value="Visible"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+                                    <TextBox x:Name="TxtOmnibox" Background="Transparent" BorderThickness="0"
+                                             Foreground="{DynamicResource BrushTextPrimary}" CaretBrush="{DynamicResource BrushAccentLight}"
+                                             FontSize="11.5" VerticalAlignment="Center"
+                                             TextChanged="TxtOmnibox_TextChanged"
+                                             GotFocus="TxtOmnibox_GotFocus"
+                                             PreviewKeyDown="TxtOmnibox_PreviewKeyDown"/>
+                                </Grid>
+                            </Grid>
+                        </Border>
+
+                        <!-- Omnibox Categorized Search Popup -->
+                        <Popup x:Name="OmniboxPopup" PlacementTarget="{Binding ElementName=TxtOmnibox}" Placement="Bottom"
+                               StaysOpen="False" AllowsTransparency="True" VerticalOffset="4" Width="340">
+                            <Border Background="{DynamicResource BrushCardInnerBg}" BorderBrush="{DynamicResource BrushBorder}" BorderThickness="1" CornerRadius="8" Padding="6" MaxHeight="320">
+                                <ListBox x:Name="OmniboxResultsList" Background="Transparent" BorderThickness="0"
+                                         ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                                         MouseLeftButtonUp="OmniboxResultsList_MouseLeftButtonUp"
+                                         KeyDown="OmniboxResultsList_KeyDown">
+                                    <ListBox.ItemTemplate>
+                                        <DataTemplate>
+                                            <Grid Margin="2,3" HorizontalAlignment="Stretch">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                </Grid.ColumnDefinitions>
+                                                <Border Grid.Column="0" Background="{DynamicResource BrushCardBg}" BorderBrush="{DynamicResource BrushBorderSubtle}" BorderThickness="1" CornerRadius="4" Padding="5,1" Margin="0,0,8,0" VerticalAlignment="Center">
+                                                    <TextBlock Text="{Binding Category}" FontFamily="Consolas" FontSize="9" FontWeight="Bold" Foreground="{DynamicResource BrushAccentLight}"/>
+                                                </Border>
+                                                <StackPanel Grid.Column="1">
+                                                    <TextBlock Text="{Binding Title}" FontSize="11.5" FontWeight="SemiBold" Foreground="{DynamicResource BrushTextPrimary}" TextTrimming="CharacterEllipsis"/>
+                                                    <TextBlock Text="{Binding Subtitle}" FontSize="10" Foreground="{DynamicResource BrushTextDim}" TextTrimming="CharacterEllipsis"/>
+                                                </StackPanel>
+                                            </Grid>
+                                        </DataTemplate>
+                                    </ListBox.ItemTemplate>
+                                </ListBox>
+                            </Border>
+                        </Popup>
+
+                        <!-- Collapse to Rail & Hide Buttons -->
+                        <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="6,0,0,0">
+                            <Button x:Name="BtnCollapseToRail" Content="»" ToolTip="Collapse to Icon Rail" Style="{StaticResource CaptionSysButtonStyle}" Width="24" Height="24" Click="BtnCollapseToRail_Click"/>
+                            <Button x:Name="BtnHidePanel" Content="✕" ToolTip="Hide Right Utility Panel (Ctrl+Shift+U)" Style="{StaticResource CaptionSysButtonStyle}" Width="24" Height="24" Margin="2,0,0,0" Click="BtnHidePanel_Click"/>
+                        </StackPanel>
+                    </Grid>
+                </Border>
+
+                <!-- Row 1: Primary Tools Strip + Additional Utility Views Menu -->
+                <Border Grid.Row="1" Background="{DynamicResource BrushCardBg}" BorderBrush="{DynamicResource BrushBorderSubtle}" BorderThickness="0,0,0,1" Padding="4,4">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <ScrollViewer Grid.Column="0" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
+                            <StackPanel Orientation="Horizontal">
+                                <Button x:Name="BtnToolReview" Content="Review" Tag="Review" Style="{StaticResource SettingsTabBtnActive}" Padding="8,4" Margin="1,0" FontSize="10.5" Click="BtnSelectTool_Click"/>
+                                <Button x:Name="BtnToolOpenFile" Content="Files" Tag="OpenFile" Style="{StaticResource SettingsTabBtn}" Padding="8,4" Margin="1,0" FontSize="10.5" Click="BtnSelectTool_Click"/>
+                                <Button x:Name="BtnToolTerminal" Content="Terminal" Tag="Terminal" Style="{StaticResource SettingsTabBtn}" Padding="8,4" Margin="1,0" FontSize="10.5" Click="BtnSelectTool_Click"/>
+                                <Button x:Name="BtnToolBrowser" Content="Browser" Tag="Browser" Style="{StaticResource SettingsTabBtn}" Padding="8,4" Margin="1,0" FontSize="10.5" Click="BtnSelectTool_Click"/>
+                                <Button x:Name="BtnToolSideQuestion" Content="Side Q" Tag="SideQuestion" Style="{StaticResource SettingsTabBtn}" Padding="8,4" Margin="1,0" FontSize="10.5" Click="BtnSelectTool_Click"/>
+                                <Button x:Name="BtnToolPlugins" Content="Plugins" Tag="Plugins" Style="{StaticResource SettingsTabBtn}" Padding="8,4" Margin="1,0" FontSize="10.5" Click="BtnSelectTool_Click"/>
+                            </StackPanel>
+                        </ScrollViewer>
+                        <Grid Grid.Column="1" Margin="4,0,0,0">
+                            <Button x:Name="BtnMoreUtilities" Content="⋯" ToolTip="Additional Utility Views (Search, Problems, Run/Test, Git, Memory, Context, Activity, Usage, Info)"
+                                    Style="{StaticResource SettingsTabBtn}" Padding="7,4" FontSize="12" Click="BtnMoreUtilities_Click"/>
+                            <Popup x:Name="MoreUtilitiesPopup" PlacementTarget="{Binding ElementName=BtnMoreUtilities}" Placement="Bottom" StaysOpen="False" AllowsTransparency="True">
+                                <Border Background="{DynamicResource BrushCardInnerBg}" BorderBrush="{DynamicResource BrushBorder}" BorderThickness="1" CornerRadius="8" Padding="6" Width="205">
+                                    <StackPanel>
+                                        <TextBlock Text="UTILITY VIEWS" FontSize="9.5" FontWeight="Bold" FontFamily="Consolas" Foreground="{DynamicResource BrushTextDim}" Margin="6,3,6,5"/>
+                                        <Button Content="🔎  Code Search" Tag="CodeSearch" HorizontalContentAlignment="Left" Style="{StaticResource BlackBoxActionBtn}" Margin="0,1" Padding="8,5" FontSize="11" Click="BtnSelectUtilityPopup_Click"/>
+                                        <Button Content="⚠  Problems" Tag="Problems" HorizontalContentAlignment="Left" Style="{StaticResource BlackBoxActionBtn}" Margin="0,1" Padding="8,5" FontSize="11" Click="BtnSelectUtilityPopup_Click"/>
+                                        <Button Content="▶  Run &amp; Test" Tag="RunTest" HorizontalContentAlignment="Left" Style="{StaticResource BlackBoxActionBtn}" Margin="0,1" Padding="8,5" FontSize="11" Click="BtnSelectUtilityPopup_Click"/>
+                                        <Button Content="⎇  Source Control" Tag="SourceControl" HorizontalContentAlignment="Left" Style="{StaticResource BlackBoxActionBtn}" Margin="0,1" Padding="8,5" FontSize="11" Click="BtnSelectUtilityPopup_Click"/>
+                                        <Button Content="🧠  Memory Inspector" Tag="Memory" HorizontalContentAlignment="Left" Style="{StaticResource BlackBoxActionBtn}" Margin="0,1" Padding="8,5" FontSize="11" Click="BtnSelectUtilityPopup_Click"/>
+                                        <Button Content="📐  Context Inspector" Tag="Context" HorizontalContentAlignment="Left" Style="{StaticResource BlackBoxActionBtn}" Margin="0,1" Padding="8,5" FontSize="11" Click="BtnSelectUtilityPopup_Click"/>
+                                        <Button Content="⚡  Agent Activity" Tag="Activity" HorizontalContentAlignment="Left" Style="{StaticResource BlackBoxActionBtn}" Margin="0,1" Padding="8,5" FontSize="11" Click="BtnSelectUtilityPopup_Click"/>
+                                        <Button Content="📊  Model Usage" Tag="ModelUsage" HorizontalContentAlignment="Left" Style="{StaticResource BlackBoxActionBtn}" Margin="0,1" Padding="8,5" FontSize="11" Click="BtnSelectUtilityPopup_Click"/>
+                                        <Button Content="ℹ  Project Info &amp; Media" Tag="ProjectInfo" HorizontalContentAlignment="Left" Style="{StaticResource BlackBoxActionBtn}" Margin="0,1" Padding="8,5" FontSize="11" Click="BtnSelectUtilityPopup_Click"/>
+                                        <Button Content="📁  Explorer Shortcuts" Tag="ExplorerShortcuts" HorizontalContentAlignment="Left" Style="{StaticResource BlackBoxActionBtn}" Margin="0,1" Padding="8,5" FontSize="11" Click="BtnSelectUtilityPopup_Click"/>
+                                    </StackPanel>
+                                </Border>
+                            </Popup>
+                        </Grid>
+                    </Grid>
+                </Border>
+
+                <!-- Row 2: Tool Views Stack -->
+                <Grid Grid.Row="2">
+                    <!-- 1. REVIEW TOOL (All changed files: AI, Manual, Git + Inline/Side-by-Side + Hunks + History) -->
+                    <Grid x:Name="ViewReview" Visibility="Visible">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="140"/>
+                            <RowDefinition Height="*"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+
+                        <Border Grid.Row="0" Background="{DynamicResource BrushCardBg}" BorderBrush="{DynamicResource BrushBorderSubtle}" BorderThickness="0,0,0,1" Padding="8,6">
+                            <Grid>
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                    <TextBlock x:Name="TxtReviewCount" Text="0 changed files" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource BrushTextPrimary}" VerticalAlignment="Center"/>
+                                    <ComboBox x:Name="CmbReviewFilter" Width="80" Margin="8,0,0,0" FontSize="10" SelectedIndex="0" SelectionChanged="CmbReviewFilter_SelectionChanged">
+                                        <ComboBoxItem Content="All"/>
+                                        <ComboBoxItem Content="AI"/>
+                                        <ComboBoxItem Content="Manual"/>
+                                        <ComboBoxItem Content="Git"/>
+                                    </ComboBox>
+                                </StackPanel>
+                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                                    <Button x:Name="BtnReviewModeToggle" Content="Side-by-Side" Style="{StaticResource BlackBoxActionBtn}" Padding="7,3" FontSize="10" Margin="0,0,4,0" Click="BtnReviewModeToggle_Click"/>
+                                    <Button Content="🔄" ToolTip="Refresh all workspace changes" Style="{StaticResource BlackBoxActionBtn}" Padding="6,3" FontSize="10" Click="BtnRefreshReview_Click"/>
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+
+                        <!-- Changed files list across entire project -->
+                        <ListBox x:Name="ReviewFilesList" Grid.Row="1" Background="Transparent" BorderBrush="{DynamicResource BrushBorderSubtle}" BorderThickness="0,0,0,1"
+                                 ScrollViewer.HorizontalScrollBarVisibility="Disabled" SelectionChanged="ReviewFilesList_SelectionChanged">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate>
+                                    <Grid Margin="2,3" HorizontalAlignment="Stretch">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <Border Grid.Column="0" Background="{DynamicResource BrushCardInnerBg}" BorderBrush="{DynamicResource BrushBorder}" BorderThickness="1" CornerRadius="3" Padding="4,1" Margin="0,0,6,0">
+                                            <TextBlock Text="{Binding OriginLabel}" FontFamily="Consolas" FontSize="9" FontWeight="Bold" Foreground="{DynamicResource BrushAccentLight}"/>
+                                        </Border>
+                                        <TextBlock Grid.Column="1" Text="{Binding RelativePath}" FontFamily="Consolas" FontSize="11" Foreground="{DynamicResource BrushTextPrimary}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
+                                        <StackPanel Grid.Column="2" Orientation="Horizontal" Margin="6,0,0,0">
+                                            <TextBlock Text="{Binding Additions, StringFormat=+{0}}" FontFamily="Consolas" FontSize="10" Foreground="#4ade80" Margin="0,0,4,0"/>
+                                            <TextBlock Text="{Binding Deletions, StringFormat=-{0}}" FontFamily="Consolas" FontSize="10" Foreground="#f87171"/>
+                                        </StackPanel>
+                                    </Grid>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+
+                        <!-- Selected file hunks / side-by-side / inline diff -->
+                        <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto" Padding="8">
+                            <StackPanel x:Name="ReviewDiffHost"/>
+                        </ScrollViewer>
+
+                        <Border Grid.Row="3" Background="{DynamicResource BrushCardBg}" BorderBrush="{DynamicResource BrushBorderSubtle}" BorderThickness="0,1,0,0" Padding="8,5">
+                            <Grid>
+                                <StackPanel Orientation="Horizontal">
+                                    <Button Content="Open in Editor" Style="{StaticResource PrimaryActionBtn}" Padding="8,4" FontSize="10.5" Margin="0,0,6,0" Click="BtnReviewOpenFile_Click"/>
+                                    <Button Content="Revert File" Style="{StaticResource BlackBoxActionBtn}" Padding="8,4" FontSize="10.5" Click="BtnReviewRevertFile_Click"/>
+                                </StackPanel>
+                                <Expander Header="History" HorizontalAlignment="Right" FontSize="10" Foreground="{DynamicResource BrushTextDim}" ExpandDirection="Up">
+                                    <ListBox x:Name="ReviewHistoryList" MaxHeight="100" Width="220" Background="{DynamicResource BrushCardInnerBg}" BorderBrush="{DynamicResource BrushBorder}" FontSize="10"/>
+                                </Expander>
+                            </Grid>
+                        </Border>
+                    </Grid>
+
+                    <!-- 2. OPEN FILE TOOL -->
+                    <Grid x:Name="ViewOpenFile" Visibility="Collapsed">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                            <RowDefinition Height="150"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+
+                        <Border Grid.Row="0" Background="{DynamicResource BrushCardBg}" BorderBrush="{DynamicResource BrushBorderSubtle}" BorderThickness="0,0,0,1" Padding="8,7">
+                            <TextBox x:Name="TxtOpenFileSearch" Background="{DynamicResource BrushCardInnerBg}" BorderBrush="{DynamicResource BrushBorder}" BorderThickness="1"
+                                     Foreground="{DynamicResource BrushTextPrimary}" CaretBrush="{DynamicResource BrushAccentLight}" Padding="7,5" FontSize="11.5"
+                                     TextChanged="TxtOpenFileSearch_TextChanged" ToolTip="Fuzzy filename or relative path search"/>
+                        </Border>
+
+                        <ListBox x:Name="OpenFileResultsList" Grid.Row="1" Background="Transparent" BorderThickness="0"
+                                 SelectionChanged="OpenFileResultsList_SelectionChanged" MouseDoubleClick="OpenFileResultsList_MouseDoubleClick">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate>
+                                    <StackPanel Margin="4,3">
+                                        <StackPanel Orientation="Horizontal">
+                                            <TextBlock Text="{Binding Badge}" FontFamily="Consolas" FontSize="9" Foreground="{DynamicResource BrushAccentLight}" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                                            <TextBlock Text="{Binding FileName}" FontSize="11.5" FontWeight="SemiBold" Foreground="{DynamicResource BrushTextPrimary}"/>
+                                        </StackPanel>
+                                        <TextBlock Text="{Binding RelativePath}" FontFamily="Consolas" FontSize="10" Foreground="{DynamicResource BrushTextDim}" TextTrimming="CharacterEllipsis"/>
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+
+                        <Border Grid.Row="2" Background="{DynamicResource BrushCardInnerBg}" BorderBrush="{DynamicResource BrushBorder}" BorderThickness="0,1,0,1" Padding="8">
+                            <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto">
+                                <TextBlock x:Name="TxtOpenFilePreview" Text="Select a file to preview..." FontFamily="Consolas" FontSize="10.5" Foreground="{DynamicResource BrushTextSecondary}"/>
+                            </ScrollViewer>
+                        </Border>
+
+                        <StackPanel Grid.Row="3" Orientation="Horizontal" Margin="8,6" HorizontalAlignment="Right">
+                            <Button Content="Open External..." Style="{StaticResource BlackBoxActionBtn}" Padding="9,4" FontSize="10.5" Margin="0,0,6,0" Click="BtnOpenFileExternal_Click"/>
+                            <Button Content="Open in Editor" Style="{StaticResource PrimaryActionBtn}" Padding="10,4" FontSize="10.5" Click="BtnOpenFileInEditor_Click"/>
+                        </StackPanel>
+                    </Grid>
+
+                    <!-- 3. TERMINAL TOOL (Multi-tab persistent ConPTY / Pipe PowerShell, CMD, Git Bash) -->
+                    <Grid x:Name="ViewTerminal" Visibility="Collapsed">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+
+                        <Border Grid.Row="0" Background="{DynamicResource BrushCardBg}" BorderBrush="{DynamicResource BrushBorderSubtle}" BorderThickness="0,0,0,1" Padding="6,5">
+                            <Grid>
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                    <ComboBox x:Name="CmbTerminalShell" Width="96" FontSize="10.5" SelectedIndex="0">
+                                        <ComboBoxItem Content="PowerShell"/>
+                                        <ComboBoxItem Content="CMD"/>
+                                        <ComboBoxItem Content="Git Bash"/>
+                                    </ComboBox>
+                                    <Button Content="+ Tab" Style="{StaticResource PrimaryActionBtn}" Padding="8,3" FontSize="10" Margin="5,0,0,0" Click="BtnNewTerminalTab_Click"/>
+                                    <Button Content="ENV" ToolTip="Set extra environment variable (KEY=VAL)" Style="{StaticResource BlackBoxActionBtn}" Padding="7,3" FontSize="10" Margin="4,0,0,0" Click="BtnToggleTerminalEnv_Click"/>
+                                </StackPanel>
+                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                                    <Button Content="⏹ Stop" Style="{StaticResource BlackBoxActionBtn}" Padding="6,3" FontSize="10" Margin="0,0,4,0" Click="BtnTerminalInterrupt_Click"/>
+                                    <Button Content="Clear" Style="{StaticResource BlackBoxActionBtn}" Padding="6,3" FontSize="10" Click="BtnTerminalClear_Click"/>
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+
+                        <StackPanel Grid.Row="1">
+                            <!-- Session Tabs + Optional Env Bar -->
+                            <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled" Background="{DynamicResource BrushCardInnerBg}">
+                                <StackPanel x:Name="TerminalTabsBar" Orientation="Horizontal" Margin="4,3"/>
+                            </ScrollViewer>
+                            <Border x:Name="TerminalEnvBar" Visibility="Collapsed" Background="{DynamicResource BrushCardBg}" BorderBrush="{DynamicResource BrushBorderSubtle}" BorderThickness="0,1,0,1" Padding="6,4">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBox x:Name="TxtTerminalEnvVars" ToolTip="Semicolon-separated KEY=VALUE (e.g. NODE_ENV=dev;FOO=bar)" Background="{DynamicResource BrushCardInnerBg}"
+                                             Foreground="{DynamicResource BrushTextPrimary}" BorderBrush="{DynamicResource BrushBorder}" FontFamily="Consolas" FontSize="10.5" Padding="5,3"/>
+                                    <TextBlock Grid.Column="1" Text="Apply on +Tab" FontSize="9.5" Foreground="{DynamicResource BrushTextDim}" VerticalAlignment="Center" Margin="6,0,0,0"/>
+                                </Grid>
+                            </Border>
+                            <Border Background="{DynamicResource BrushCardBg}" BorderBrush="{DynamicResource BrushBorderSubtle}" BorderThickness="0,0,0,1" Padding="8,3">
+                                <TextBlock x:Name="TxtTerminalStatus" Text="No terminal session" FontFamily="Consolas" FontSize="10" Foreground="{DynamicResource BrushTextSecondary}" TextTrimming="CharacterEllipsis"/>
+                            </Border>
+                        </StackPanel>
+
+                        <TextBox Grid.Row="2" x:Name="TxtTerminalTranscript"
+                                 IsReadOnly="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto"
+                                 Background="{DynamicResource BrushCardInnerBg}" Foreground="{DynamicResource BrushTextPrimary}"
+                                 BorderThickness="0" Padding="8" FontFamily="Consolas, Cascadia Code" FontSize="11.5"/>
+
+                        <Border Grid.Row="3" Background="{DynamicResource BrushCardBg}" BorderBrush="{DynamicResource BrushBorderSubtle}" BorderThickness="0,1,0,0" Padding="6,5">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="&gt;" FontFamily="Consolas" FontWeight="Bold" Foreground="{DynamicResource BrushAccent}" VerticalAlignment="Center" Margin="4,0,6,0"/>
+                                <TextBox Grid.Column="1" x:Name="TxtTerminalInput" Background="{DynamicResource BrushCardInnerBg}" BorderBrush="{DynamicResource BrushBorder}" BorderThickness="1"
+                                         Foreground="{DynamicResource BrushTextPrimary}" CaretBrush="{DynamicResource BrushAccentLight}" FontFamily="Consolas" FontSize="11.5" Padding="6,4"
+                                         PreviewKeyDown="TxtTerminalInput_PreviewKeyDown"/>
+                                <Button Grid.Column="2" Content="Send" Style="{StaticResource PrimaryActionBtn}" Padding="9,4" FontSize="10.5" Margin="6,0,0,0" Click="BtnTerminalSend_Click"/>
+                            </Grid>
+                        </Border>
+                    </Grid>
+
+                    <!-- 4. BROWSER TOOL (Embedded WebView2 with Tabs, Back/Forward, Downloads, History & Permissions) -->
+                    <Grid x:Name="ViewBrowser" Visibility="Collapsed">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+
+                        <!-- Browser Tab Strip -->
+                        <Border Grid.Row="0" Background="{DynamicResource BrushCardInnerBg}" BorderBrush="{DynamicResource BrushBorderSubtle}" BorderThickness="0,0,0,1" Padding="4,3">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
+                                    <StackPanel x:Name="BrowserTabsBar" Orientation="Horizontal"/>
+                                </ScrollViewer>
+                                <Button Grid.Column="1" Content="+" ToolTip="New Browser Tab" Style="{StaticResource BlackBoxActionBtn}" Padding="7,2" FontSize="11" Click="BtnBrowserNewTab_Click"/>
+                            </Grid>
+                        </Border>
+
+                        <!-- Navigation Toolbar + Permission Toggle -->
+                        <Border Grid.Row="1" Background="{DynamicResource BrushCardBg}" BorderBrush="{DynamicResource BrushBorderSubtle}" BorderThickness="0,0,0,1" Padding="6,5">
+                            <StackPanel>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel Grid.Column="0" Orientation="Horizontal">
+                                        <Button x:Name="BtnBrowserBack" Content="←" Style="{StaticResource BlackBoxActionBtn}" Padding="6,3" FontSize="11" Click="BtnBrowserBack_Click"/>
+                                        <Button x:Name="BtnBrowserForward" Content="→" Style="{StaticResource BlackBoxActionBtn}" Padding="6,3" FontSize="11" Margin="2,0,0,0" Click="BtnBrowserForward_Click"/>
+                                        <Button Content="↻" Style="{StaticResource BlackBoxActionBtn}" Padding="6,3" FontSize="11" Margin="2,0,0,0" Click="BtnBrowserReload_Click"/>
+                                        <Button Content="⌂" Style="{StaticResource BlackBoxActionBtn}" Padding="6,3" FontSize="11" Margin="2,0,4,0" Click="BtnBrowserHome_Click"/>
+                                    </StackPanel>
+                                    <TextBox Grid.Column="1" x:Name="TxtBrowserUrl" Background="{DynamicResource BrushCardInnerBg}" BorderBrush="{DynamicResource BrushBorder}" BorderThickness="1"
+                                             Foreground="{DynamicResource BrushTextPrimary}" CaretBrush="{DynamicResource BrushAccentLight}" FontFamily="Consolas" FontSize="11" Padding="6,3"
+                                             KeyDown="TxtBrowserUrl_KeyDown"/>
+                                    <StackPanel Grid.Column="2" Orientation="Horizontal" Margin="4,0,0,0">
+                                        <Button Content="Go" Style="{StaticResource PrimaryActionBtn}" Padding="8,3" FontSize="10" Click="BtnBrowserGo_Click"/>
+                                        <Button Content="↗" ToolTip="Open in External Browser" Style="{StaticResource BlackBoxActionBtn}" Padding="6,3" FontSize="10.5" Margin="3,0,0,0" Click="BtnBrowserOpenExternal_Click"/>
+                                        <Button Content="⚙" ToolTip="Browser Settings, History &amp; Downloads" Style="{StaticResource BlackBoxActionBtn}" Padding="6,3" FontSize="10.5" Margin="3,0,0,0" Click="BtnBrowserSettings_Click"/>
+                                    </StackPanel>
+                                </Grid>
+
+                                <!-- Collapsible Browser Settings, History & Downloads Drawer -->
+                                <Border x:Name="BrowserSettingsDrawer" Visibility="Collapsed" Background="{DynamicResource BrushCardInnerBg}" BorderBrush="{DynamicResource BrushBorder}" BorderThickness="1" CornerRadius="6" Padding="8" Margin="0,6,0,0">
+                                    <StackPanel>
+                                        <TextBlock Text="BROWSER PERMISSIONS &amp; SETTINGS" FontSize="9.5" FontWeight="Bold" FontFamily="Consolas" Foreground="{DynamicResource BrushTextDim}" Margin="0,0,0,4"/>
+                                        <CheckBox x:Name="ChkBrowserAllowDownloads" Content="Allow Interactive File Downloads" FontSize="11" Foreground="{DynamicResource BrushTextPrimary}" Margin="0,2" Checked="BrowserPermission_Changed" Unchecked="BrowserPermission_Changed"/>
+                                        <CheckBox x:Name="ChkBrowserAllowAutomation" Content="Allow AI Browser Automation (separate permission)" FontSize="11" Foreground="{DynamicResource BrushTextPrimary}" Margin="0,2" Checked="BrowserPermission_Changed" Unchecked="BrowserPermission_Changed"/>
+                                        <TextBlock Text="Home URL:" FontSize="10" Foreground="{DynamicResource BrushTextDim}" Margin="0,5,0,2"/>
+                                        <TextBox x:Name="TxtBrowserHomeUrl" FontSize="10.5" FontFamily="Consolas" Background="{DynamicResource BrushCardBg}" Foreground="{DynamicResource BrushTextPrimary}" Padding="5,3" LostFocus="TxtBrowserHomeUrl_LostFocus"/>
+                                        <TextBlock Text="Recent History / Downloads:" FontSize="10" Foreground="{DynamicResource BrushTextDim}" Margin="0,6,0,2"/>
+                                        <ListBox x:Name="BrowserHistoryAndDownloadsList" MaxHeight="95" Background="{DynamicResource BrushCardBg}" BorderBrush="{DynamicResource BrushBorder}" FontSize="10" MouseDoubleClick="BrowserHistoryItem_DoubleClick"/>
+                                    </StackPanel>
+                                </Border>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Genuine Microsoft Edge WebView2 Control -->
+                        <Grid Grid.Row="2" Background="{DynamicResource BrushCardInnerBg}">
+                            <wv2:WebView2 x:Name="EmbeddedWebView"/>
+                            <TextBlock x:Name="TxtWebViewFallbackStatus" Visibility="Collapsed" TextWrapping="Wrap" Margin="16" VerticalAlignment="Center" HorizontalAlignment="Center"
+                                       Foreground="{DynamicResource BrushTextSecondary}" FontSize="11.5"/>
+                        </Grid>
+
+                        <Border Grid.Row="3" Background="{DynamicResource BrushCardBg}" BorderBrush="{DynamicResource BrushBorderSubtle}" BorderThickness="0,1,0,0" Padding="8,3">
+                            <TextBlock x:Name="TxtBrowserStatus" Text="WebView2 Ready" FontFamily="Consolas" FontSize="9.5" Foreground="{DynamicResource BrushTextDim}"/>
+                        </Border>
+                    </Grid>
+
+                    <!-- 5. SIDE QUESTION TOOL (Isolated secondary AI thread + independent model selector) -->
+                    <Grid x:Name="ViewSideQuestion" Visibility="Collapsed">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+
+                        <Border Grid.Row="0" Background="{DynamicResource BrushCardBg}" BorderBrush="{DynamicResource BrushBorderSubtle}" BorderThickness="0,0,0,1" Padding="8,6">
+                            <StackPanel>
+                                <Grid>
+                                    <TextBlock Text="ISOLATED SIDE CONVERSATION" FontFamily="Consolas" FontSize="9.5" FontWeight="Bold" Foreground="{DynamicResource BrushAccentLight}" VerticalAlignment="Center"/>
+                                    <Button Content="Clear Side Chat" Style="{StaticResource BlackBoxActionBtn}" Padding="6,2" FontSize="9.5" HorizontalAlignment="Right" Click="BtnSideClear_Click"/>
+                                </Grid>
+                                <Grid Margin="0,5,0,0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Text="Model:" FontSize="10.5" Foreground="{DynamicResource BrushTextMuted}" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                    <ComboBox Grid.Column="1" x:Name="CmbSideModel" DisplayMemberPath="Name" FontSize="10.5"/>
+                                </Grid>
+                                <WrapPanel Margin="0,5,0,0">
+                                    <CheckBox x:Name="ChkSideIncludeFile" Content="Attach Open File / Selection" IsChecked="True" FontSize="10.5" Foreground="{DynamicResource BrushTextSecondary}" Margin="0,0,10,0"/>
+                                    <Button Content="+ Temp File" Style="{StaticResource BlackBoxActionBtn}" Padding="6,2" FontSize="9.5" Click="BtnSideAttachFile_Click"/>
+                                </WrapPanel>
+                                <TextBlock x:Name="TxtSideAttachments" Visibility="Collapsed" FontFamily="Consolas" FontSize="9.5" Foreground="{DynamicResource BrushAccent}" Margin="0,4,0,0" TextTrimming="CharacterEllipsis"/>
+                            </StackPanel>
+                        </Border>
+
+                        <ScrollViewer Grid.Row="1" x:Name="SideChatScroller" VerticalScrollBarVisibility="Auto" Padding="8">
+                            <ItemsControl x:Name="SideMessagesList">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border Background="{DynamicResource BrushCardBg}" BorderBrush="{DynamicResource BrushBorder}" BorderThickness="1" CornerRadius="7" Padding="9,7" Margin="0,0,0,8">
+                                            <StackPanel>
+                                                <Grid Margin="0,0,0,4">
+                                                    <TextBlock Text="{Binding RoleBadgeText}" FontFamily="Consolas" FontSize="9.5" FontWeight="Bold" Foreground="{Binding RoleColor}"/>
+                                                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                                                        <Button Content="Copy" Style="{StaticResource BlackBoxActionBtn}" Padding="5,1" FontSize="9.5" Margin="0,0,4,0" Tag="{Binding}" Click="BtnSideCopyAnswer_Click"/>
+                                                        <Button Content="→ Main Chat" Style="{StaticResource PrimaryActionBtn}" Padding="6,1" FontSize="9.5" Tag="{Binding}" Click="BtnSidePromoteAnswer_Click"/>
+                                                    </StackPanel>
+                                                </Grid>
+                                                <rich:RichMessageView Message="{Binding}"/>
+                                            </StackPanel>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </ScrollViewer>
+
+                        <Border Grid.Row="2" Background="{DynamicResource BrushCardBg}" BorderBrush="{DynamicResource BrushBorderSubtle}" BorderThickness="0,1,0,0" Padding="7,6">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBox x:Name="TxtSidePrompt" Grid.Column="0" AcceptsReturn="True" TextWrapping="Wrap" MaxHeight="70"
+                                         Background="{DynamicResource BrushCardInnerBg}" Foreground="{DynamicResource BrushTextPrimary}" BorderBrush="{DynamicResource BrushBorder}"
+                                         Padding="6,5" FontSize="11.5" KeyDown="TxtSidePrompt_KeyDown"/>
+                                <Button x:Name="BtnSideSend" Grid.Column="1" Content="Ask" Style="{StaticResource PrimaryActionBtn}" Padding="10,5" Margin="6,0,0,0" VerticalAlignment="Bottom" Click="BtnSideSend_Click"/>
+                            </Grid>
+                        </Border>
+                    </Grid>
+
+                    <!-- 6. PLUGINS TOOL (Extension Manager + Permissions + Trust Checks + Activity/Errors) -->
+                    <Grid x:Name="ViewPlugins" Visibility="Collapsed">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                            <RowDefinition Height="110"/>
+                        </Grid.RowDefinitions>
+
+                        <Border Grid.Row="0" Background="{DynamicResource BrushCardBg}" BorderBrush="{DynamicResource BrushBorderSubtle}" BorderThickness="0,0,0,1" Padding="8,6">
+                            <Grid>
+                                <TextBlock Text="EXTENSION MANAGER (TRUST-GATED)" FontFamily="Consolas" FontSize="9.5" FontWeight="Bold" Foreground="{DynamicResource BrushTextSecondary}" VerticalAlignment="Center"/>
+                                <Button Content="Reload" Style="{StaticResource BlackBoxActionBtn}" Padding="7,2" FontSize="10" HorizontalAlignment="Right" Click="BtnPluginsReload_Click"/>
+                            </Grid>
+                        </Border>
+
+                        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Padding="8">
+                            <StackPanel x:Name="PluginsListHost"/>
+                        </ScrollViewer>
+
+                        <Border Grid.Row="2" Background="{DynamicResource BrushCardInnerBg}" BorderBrush="{DynamicResource BrushBorderSubtle}" BorderThickness="0,1,0,0" Padding="8,6">
+                            <DockPanel>
+                                <TextBlock DockPanel.Dock="Top" Text="PLUGIN ACTIVITY &amp; ERRORS" FontFamily="Consolas" FontSize="9" FontWeight="Bold" Foreground="{DynamicResource BrushTextDim}" Margin="0,0,0,4"/>
+                                <ListBox x:Name="PluginLogList" Background="Transparent" BorderThickness="0" FontFamily="Consolas" FontSize="10"/>
+                            </DockPanel>
+                        </Border>
+                    </Grid>
+
+                    <!-- 7. ADDITIONAL UTILITY VIEWS HOST (Code Search, Problems, Run & Test, Git, Memory, Context, Activity, Usage, ProjectInfo, Shortcuts) -->
+                    <Grid x:Name="ViewUtilitiesHost" Visibility="Collapsed">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+                        <Border Grid.Row="0" Background="{DynamicResource BrushCardBg}" BorderBrush="{DynamicResource BrushBorderSubtle}" BorderThickness="0,0,0,1" Padding="8,6">
+                            <Grid>
+                                <TextBlock x:Name="TxtUtilityViewTitle" Text="Utility View" FontSize="11.5" FontWeight="Bold" Foreground="{DynamicResource BrushTextPrimary}" VerticalAlignment="Center"/>
+                                <Button Content="Refresh" Style="{StaticResource BlackBoxActionBtn}" Padding="7,2" FontSize="10" HorizontalAlignment="Right" Click="BtnUtilityRefresh_Click"/>
+                            </Grid>
+                        </Border>
+                        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Padding="8">
+                            <StackPanel x:Name="UtilityContentHost"/>
+                        </ScrollViewer>
+                    </Grid>
+                </Grid>
+            </Grid>
+        </Border>
+
+        <!-- ================= COLLAPSED ICON RAIL (44px) ================= -->
+        <Border x:Name="IconRailRoot"
+                Visibility="Collapsed"
+                Width="44"
+                Background="{DynamicResource BrushWindowBg}"
+                BorderBrush="{DynamicResource BrushBorder}"
+                BorderThickness="1"
+                CornerRadius="8"
+                Padding="4,6">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <Button Grid.Row="0" Content="«" ToolTip="Expand Utility Panel" Style="{StaticResource BlackBoxActionBtn}" Height="28" FontSize="12" Margin="0,0,0,6" Click="BtnExpandFromRail_Click"/>
+
+                <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                    <StackPanel>
+                        <Button Content="RV" ToolTip="Review Changes (AI / Manual / Git)" Tag="Review" Style="{StaticResource BlackBoxActionBtn}" Height="30" FontFamily="Consolas" FontSize="10" Margin="0,2" Click="BtnRailTool_Click"/>
+                        <Button Content="OF" ToolTip="Open File (Fuzzy Search)" Tag="OpenFile" Style="{StaticResource BlackBoxActionBtn}" Height="30" FontFamily="Consolas" FontSize="10" Margin="0,2" Click="BtnRailTool_Click"/>
+                        <Button Content="&gt;_" ToolTip="Persistent Terminal (PowerShell / CMD / Git Bash)" Tag="Terminal" Style="{StaticResource BlackBoxActionBtn}" Height="30" FontFamily="Consolas" FontSize="10" Margin="0,2" Click="BtnRailTool_Click"/>
+                        <Button Content="WB" ToolTip="Embedded Browser (WebView2)" Tag="Browser" Style="{StaticResource BlackBoxActionBtn}" Height="30" FontFamily="Consolas" FontSize="10" Margin="0,2" Click="BtnRailTool_Click"/>
+                        <Button Content="SQ" ToolTip="Isolated Side Question" Tag="SideQuestion" Style="{StaticResource BlackBoxActionBtn}" Height="30" FontFamily="Consolas" FontSize="10" Margin="0,2" Click="BtnRailTool_Click"/>
+                        <Button Content="PL" ToolTip="Plugins &amp; Permissions" Tag="Plugins" Style="{StaticResource BlackBoxActionBtn}" Height="30" FontFamily="Consolas" FontSize="10" Margin="0,2" Click="BtnRailTool_Click"/>
+                        <Border Height="1" Background="{DynamicResource BrushBorderSubtle}" Margin="4,6"/>
+                        <Button Content="🔎" ToolTip="Code Search" Tag="CodeSearch" Style="{StaticResource BlackBoxActionBtn}" Height="28" FontSize="11" Margin="0,2" Click="BtnRailTool_Click"/>
+                        <Button Content="⚠" ToolTip="Problems" Tag="Problems" Style="{StaticResource BlackBoxActionBtn}" Height="28" FontSize="11" Margin="0,2" Click="BtnRailTool_Click"/>
+                        <Button Content="▶" ToolTip="Run &amp; Test" Tag="RunTest" Style="{StaticResource BlackBoxActionBtn}" Height="28" FontSize="11" Margin="0,2" Click="BtnRailTool_Click"/>
+                        <Button Content="⎇" ToolTip="Source Control" Tag="SourceControl" Style="{StaticResource BlackBoxActionBtn}" Height="28" FontSize="11" Margin="0,2" Click="BtnRailTool_Click"/>
+                        <Button Content="📊" ToolTip="Model Usage" Tag="ModelUsage" Style="{StaticResource BlackBoxActionBtn}" Height="28" FontSize="11" Margin="0,2" Click="BtnRailTool_Click"/>
+                    </StackPanel>
+                </ScrollViewer>
+
+                <Button Grid.Row="2" Content="✕" ToolTip="Hide Utility Panel" Style="{StaticResource CaptionSysButtonStyle}" Height="26" Margin="0,6,0,0" Click="BtnHidePanel_Click"/>
+            </Grid>
+        </Border>
+    </Grid>
+</UserControl>

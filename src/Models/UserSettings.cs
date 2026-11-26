@@ -17,6 +17,16 @@ namespace LlmodelBox.Models
         public ApiConfig ApiKeys { get; set; } = new();
         public List<CustomProviderItem> CustomProviders { get; set; } = new();
 
+        // Part 2: Collapsible Right Utility Panel & Tool Preferences
+        public string RightPanelState { get; set; } = "Expanded"; // Expanded, Collapsed, Hidden
+        public double RightPanelWidth { get; set; } = 390;
+        public string RightPanelActiveTool { get; set; } = "Review";
+        public bool BrowserAllowAutomation { get; set; } = false;
+        public bool BrowserAllowDownloads { get; set; } = true;
+        public string BrowserHomeUrl { get; set; } = "https://learn.microsoft.com";
+        public List<string> RecentFiles { get; set; } = new();
+        public List<string> RecentCommands { get; set; } = new();
+
         // Discord Rich Presence. When enabled, the app publishes its name, a live activity
         // line ("Neural Net" / current stage) and elapsed session time to the local Discord client.
         // Requires a Discord Application (client) ID from https://discord.com/developers/applications.

@@ -1261,7 +1261,10 @@ namespace LlmodelBox
             if (TxtPathAgentMemory != null)
                 TxtPathAgentMemory.Text = Path.Combine(AppConstants.ChatHistoryDir, "<project-hash>.mem.json");
             if (TxtPathDataRoot != null)
+            {
                 TxtPathDataRoot.Text = AppConstants.SettingsFilePath;
+                TxtPathDataRoot.ToolTip = $"Encrypted DPAPI Key Vault: {AppConstants.SecretVaultFilePath}";
+            }
         }
 
         private void LoadSettingsProviderLogos()
