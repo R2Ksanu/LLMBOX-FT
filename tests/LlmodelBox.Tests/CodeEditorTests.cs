@@ -1,8 +1,11 @@
 using System;
 using System.IO;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
+using System.Windows;
 using ICSharpCode.AvalonEdit.Document;
+using LlmodelBox.Controls.Editor;
 using LlmodelBox.Infrastructure.Editor;
 using LlmodelBox.Services;
 using Xunit;
@@ -163,6 +166,73 @@ namespace LlmodelBox.Tests
             {
                 try { Directory.Delete(root, recursive: true); } catch { }
             }
+        }
+
+        [Fact]
+        public void CodeEditorWorkspace_TabSwitchAndLayoutMeasure_DoesNotThrowInvalidDocument()
+        {
+            string root = Path.Combine(Path.GetTempPath(), "LlmodelBox_EditorStaTest_" + Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(root);
+            string p1 = Path.Combine(root, "Demo.cs");
+            string p2 = Path.Combine(root, "Script.py");
+            File.WriteAllText(p1, "namespace Test {\n    class Program {\n        void Main() { }\n    }\n}\n");
+            File.WriteAllText(p2, "def run():\n    return 1\n");
+
+            Exception? staError = null;
+            var thread = new Thread(() =>
+            {
+                try
+                {
+                    if (Application.Current == null)
+                    {
+                        var app = new Application();
+                        app.Resources.MergedDictionaries.Add(new ResourceDictionary
+                        {
+                            Source = new Uri("pack://application:,,,/LlmodelBox;component/Resources/Tokens.xaml", UriKind.Absolute)
+                        });
+                        app.Resources.MergedDictionaries.Add(new ResourceDictionary
+                        {
+                            Source = new Uri("pack://application:,,,/LlmodelBox;component/Resources/Controls.xaml", UriKind.Absolute)
+                        });
+                        ThemeManager.ApplyTheme(ThemeManager.ThemeMidnight, app.Resources, ThemeManager.DefaultAccent);
+                    }
+                    var editor = new CodeEditorWorkspace();
+                    editor.Measure(new Size(800, 500));
+                    editor.Arrange(new Rect(0, 0, 800, 500));
+                    editor.UpdateLayout();
+
+                    static void AwaitOnDispatcher(Task t)
+                    {
+                        var frame = new System.Windows.Threading.DispatcherFrame();
+                        t.ContinueWith(_ => frame.Continue = false, TaskScheduler.Default);
+                        System.Windows.Threading.Dispatcher.PushFrame(frame);
+                        t.GetAwaiter().GetResult();
+                    }
+
+                    AwaitOnDispatcher(editor.OpenFileAsync(p1));
+                    editor.Measure(new Size(800, 500));
+                    editor.Arrange(new Rect(0, 0, 800, 500));
+                    editor.UpdateLayout();
+
+                    AwaitOnDispatcher(editor.OpenFileAsync(p2));
+                    editor.Measure(new Size(800, 500));
+                    editor.Arrange(new Rect(0, 0, 800, 500));
+                    editor.UpdateLayout();
+
+                    Assert.Equal(p2, editor.ActiveFilePath);
+                    Assert.Equal(2, editor.OpenTabs.Count);
+                }
+                catch (Exception ex)
+                {
+                    staError = ex;
+                }
+            });
+            thread.SetApartmentState(ApartmentState.STA);
+            thread.Start();
+            thread.Join(TimeSpan.FromSeconds(15));
+
+            try { Directory.Delete(root, recursive: true); } catch { }
+            Assert.Null(staError);
         }
     }
 }

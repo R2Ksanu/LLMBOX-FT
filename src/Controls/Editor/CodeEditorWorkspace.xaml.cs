@@ -216,10 +216,18 @@ namespace LlmodelBox.Controls.Editor
             _suppressDocumentChanged = true;
             try
             {
+                if (_foldingManager != null)
+                {
+                    try { FoldingManager.Uninstall(_foldingManager); } catch { }
+                    _foldingManager = null;
+                }
+
                 AvalonEditor.Document = tab.Document;
                 AvalonEditor.IsReadOnly = tab.IsLargeTruncated;
                 AvalonEditor.TextArea.IndentationStrategy = new DefaultIndentationStrategy();
                 _markerService.SetDocument(tab.Document);
+
+                _foldingManager = FoldingManager.Install(AvalonEditor.TextArea);
 
                 tab.Document.TextChanged -= ActiveDocument_TextChanged;
                 tab.Document.TextChanged += ActiveDocument_TextChanged;
