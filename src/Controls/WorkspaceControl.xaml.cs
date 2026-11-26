@@ -1896,10 +1896,16 @@ namespace LlmodelBox.Controls
         private void SwitchInspectorTab(int tabIndex)
         {
             _activeInspectorTab = tabIndex;
-            BtnInspectorTabInfo.Style = (Style)Resources[tabIndex == 0 ? "SettingsTabBtnActive" : "SettingsTabBtn"];
-            BtnInspectorTabDiff.Style = (Style)Resources[tabIndex == 1 ? "SettingsTabBtnActive" : "SettingsTabBtn"];
-            BtnInspectorTabCmd.Style = (Style)Resources[tabIndex == 2 ? "SettingsTabBtnActive" : "SettingsTabBtn"];
-            BtnInspectorTabArtifacts.Style = (Style)Resources[tabIndex == 3 ? "SettingsTabBtnActive" : "SettingsTabBtn"];
+            var activeStyle = TryFindResource("BentoTileBtnActive") as Style ?? TryFindResource("SettingsTabBtnActive") as Style;
+            var inactiveStyle = TryFindResource("BentoTileBtn") as Style ?? TryFindResource("SettingsTabBtn") as Style;
+
+            if (activeStyle != null && inactiveStyle != null)
+            {
+                BtnInspectorTabInfo.Style = tabIndex == 0 ? activeStyle : inactiveStyle;
+                BtnInspectorTabDiff.Style = tabIndex == 1 ? activeStyle : inactiveStyle;
+                BtnInspectorTabCmd.Style = tabIndex == 2 ? activeStyle : inactiveStyle;
+                BtnInspectorTabArtifacts.Style = tabIndex == 3 ? activeStyle : inactiveStyle;
+            }
 
             TabContentInfo.Visibility = tabIndex == 0 ? Visibility.Visible : Visibility.Collapsed;
             TabContentDiff.Visibility = tabIndex == 1 ? Visibility.Visible : Visibility.Collapsed;

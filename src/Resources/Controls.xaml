@@ -143,7 +143,7 @@
         </Setter>
     </Style>
 
-    <!-- ===== IdeIconButton: square icon button ===== -->
+    <!-- ===== IdeIconButton: square icon button with smooth spring hover ===== -->
     <Style x:Key="IdeIconButton" TargetType="Button">
         <Setter Property="Background" Value="Transparent"/>
         <Setter Property="Foreground" Value="{DynamicResource BrushTextSecondary}"/>
@@ -157,10 +157,30 @@
                 <ControlTemplate TargetType="Button">
                     <Border x:Name="bd" Background="{TemplateBinding Background}"
                             CornerRadius="{StaticResource Radius.Sm}"
+                            RenderTransformOrigin="0.5,0.5"
                             SnapsToDevicePixels="True">
+                        <Border.RenderTransform>
+                            <ScaleTransform x:Name="icScale" ScaleX="1" ScaleY="1"/>
+                        </Border.RenderTransform>
                         <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
                     </Border>
                     <ControlTemplate.Triggers>
+                        <EventTrigger RoutedEvent="MouseEnter">
+                            <BeginStoryboard>
+                                <Storyboard>
+                                    <DoubleAnimation Storyboard.TargetName="icScale" Storyboard.TargetProperty="ScaleX" To="1.08" Duration="0:0:0.12"/>
+                                    <DoubleAnimation Storyboard.TargetName="icScale" Storyboard.TargetProperty="ScaleY" To="1.08" Duration="0:0:0.12"/>
+                                </Storyboard>
+                            </BeginStoryboard>
+                        </EventTrigger>
+                        <EventTrigger RoutedEvent="MouseLeave">
+                            <BeginStoryboard>
+                                <Storyboard>
+                                    <DoubleAnimation Storyboard.TargetName="icScale" Storyboard.TargetProperty="ScaleX" To="1.0" Duration="0:0:0.14"/>
+                                    <DoubleAnimation Storyboard.TargetName="icScale" Storyboard.TargetProperty="ScaleY" To="1.0" Duration="0:0:0.14"/>
+                                </Storyboard>
+                            </BeginStoryboard>
+                        </EventTrigger>
                         <Trigger Property="IsMouseOver" Value="True">
                             <Setter TargetName="bd" Property="Background" Value="{DynamicResource BrushCardInnerBg}"/>
                             <Setter Property="Foreground" Value="{DynamicResource BrushTextPrimary}"/>
@@ -632,10 +652,29 @@
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="Button">
-                    <Border x:Name="bdr" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="6" SnapsToDevicePixels="True">
+                    <Border x:Name="bdr" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="7" RenderTransformOrigin="0.5,0.5" SnapsToDevicePixels="True">
+                        <Border.RenderTransform>
+                            <ScaleTransform x:Name="btnScale" ScaleX="1" ScaleY="1"/>
+                        </Border.RenderTransform>
                         <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" Margin="{TemplateBinding Padding}"/>
                     </Border>
                     <ControlTemplate.Triggers>
+                        <EventTrigger RoutedEvent="MouseEnter">
+                            <BeginStoryboard>
+                                <Storyboard>
+                                    <DoubleAnimation Storyboard.TargetName="btnScale" Storyboard.TargetProperty="ScaleX" To="1.02" Duration="0:0:0.1"/>
+                                    <DoubleAnimation Storyboard.TargetName="btnScale" Storyboard.TargetProperty="ScaleY" To="1.02" Duration="0:0:0.1"/>
+                                </Storyboard>
+                            </BeginStoryboard>
+                        </EventTrigger>
+                        <EventTrigger RoutedEvent="MouseLeave">
+                            <BeginStoryboard>
+                                <Storyboard>
+                                    <DoubleAnimation Storyboard.TargetName="btnScale" Storyboard.TargetProperty="ScaleX" To="1.0" Duration="0:0:0.12"/>
+                                    <DoubleAnimation Storyboard.TargetName="btnScale" Storyboard.TargetProperty="ScaleY" To="1.0" Duration="0:0:0.12"/>
+                                </Storyboard>
+                            </BeginStoryboard>
+                        </EventTrigger>
                         <Trigger Property="IsMouseOver" Value="True">
                             <Setter TargetName="bdr" Property="Background" Value="{DynamicResource BrushBorderSubtle}"/>
                             <Setter TargetName="bdr" Property="BorderBrush" Value="{DynamicResource BrushBorderHover}"/>
@@ -670,10 +709,29 @@
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="Button">
-                    <Border x:Name="bdr" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="6" SnapsToDevicePixels="True">
+                    <Border x:Name="bdr" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="7" RenderTransformOrigin="0.5,0.5" SnapsToDevicePixels="True">
+                        <Border.RenderTransform>
+                            <ScaleTransform x:Name="pScale" ScaleX="1" ScaleY="1"/>
+                        </Border.RenderTransform>
                         <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" Margin="{TemplateBinding Padding}"/>
                     </Border>
                     <ControlTemplate.Triggers>
+                        <EventTrigger RoutedEvent="MouseEnter">
+                            <BeginStoryboard>
+                                <Storyboard>
+                                    <DoubleAnimation Storyboard.TargetName="pScale" Storyboard.TargetProperty="ScaleX" To="1.02" Duration="0:0:0.1"/>
+                                    <DoubleAnimation Storyboard.TargetName="pScale" Storyboard.TargetProperty="ScaleY" To="1.02" Duration="0:0:0.1"/>
+                                </Storyboard>
+                            </BeginStoryboard>
+                        </EventTrigger>
+                        <EventTrigger RoutedEvent="MouseLeave">
+                            <BeginStoryboard>
+                                <Storyboard>
+                                    <DoubleAnimation Storyboard.TargetName="pScale" Storyboard.TargetProperty="ScaleX" To="1.0" Duration="0:0:0.12"/>
+                                    <DoubleAnimation Storyboard.TargetName="pScale" Storyboard.TargetProperty="ScaleY" To="1.0" Duration="0:0:0.12"/>
+                                </Storyboard>
+                            </BeginStoryboard>
+                        </EventTrigger>
                         <Trigger Property="IsMouseOver" Value="True">
                             <Setter TargetName="bdr" Property="Background" Value="{DynamicResource BrushAccentLight}"/>
                             <Setter TargetName="bdr" Property="BorderBrush" Value="{DynamicResource BrushAccentLight}"/>
@@ -759,26 +817,53 @@
         </Setter>
     </Style>
 
-    <!-- ===== Bento Tile Grid Buttons (Right Utility Panel) ===== -->
+    <!-- ===== Bento Tile Grid Buttons (Curved Glass Card + Spring Hover Animation) ===== -->
     <Style x:Key="BentoTileBtn" TargetType="Button">
         <Setter Property="Background" Value="{DynamicResource BrushCardBg}"/>
         <Setter Property="Foreground" Value="{DynamicResource BrushTextSecondary}"/>
         <Setter Property="BorderBrush" Value="{DynamicResource BrushBorderSubtle}"/>
         <Setter Property="BorderThickness" Value="1"/>
-        <Setter Property="Padding" Value="8,6"/>
+        <Setter Property="Padding" Value="9,7"/>
         <Setter Property="Cursor" Value="Hand"/>
         <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
         <Setter Property="SnapsToDevicePixels" Value="True"/>
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="Button">
-                    <Border x:Name="card" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="8" Padding="{TemplateBinding Padding}">
+                    <Border x:Name="card" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="9" Padding="{TemplateBinding Padding}" RenderTransformOrigin="0.5,0.5">
+                        <Border.RenderTransform>
+                            <ScaleTransform x:Name="tileScale" ScaleX="1" ScaleY="1"/>
+                        </Border.RenderTransform>
                         <ContentPresenter HorizontalAlignment="Stretch" VerticalAlignment="Center"/>
                     </Border>
                     <ControlTemplate.Triggers>
+                        <EventTrigger RoutedEvent="MouseEnter">
+                            <BeginStoryboard>
+                                <Storyboard>
+                                    <DoubleAnimation Storyboard.TargetName="tileScale" Storyboard.TargetProperty="ScaleX" To="1.028" Duration="0:0:0.13">
+                                        <DoubleAnimation.EasingFunction><CubicEase EasingMode="EaseOut"/></DoubleAnimation.EasingFunction>
+                                    </DoubleAnimation>
+                                    <DoubleAnimation Storyboard.TargetName="tileScale" Storyboard.TargetProperty="ScaleY" To="1.028" Duration="0:0:0.13">
+                                        <DoubleAnimation.EasingFunction><CubicEase EasingMode="EaseOut"/></DoubleAnimation.EasingFunction>
+                                    </DoubleAnimation>
+                                </Storyboard>
+                            </BeginStoryboard>
+                        </EventTrigger>
+                        <EventTrigger RoutedEvent="MouseLeave">
+                            <BeginStoryboard>
+                                <Storyboard>
+                                    <DoubleAnimation Storyboard.TargetName="tileScale" Storyboard.TargetProperty="ScaleX" To="1.0" Duration="0:0:0.16">
+                                        <DoubleAnimation.EasingFunction><CubicEase EasingMode="EaseOut"/></DoubleAnimation.EasingFunction>
+                                    </DoubleAnimation>
+                                    <DoubleAnimation Storyboard.TargetName="tileScale" Storyboard.TargetProperty="ScaleY" To="1.0" Duration="0:0:0.16">
+                                        <DoubleAnimation.EasingFunction><CubicEase EasingMode="EaseOut"/></DoubleAnimation.EasingFunction>
+                                    </DoubleAnimation>
+                                </Storyboard>
+                            </BeginStoryboard>
+                        </EventTrigger>
                         <Trigger Property="IsMouseOver" Value="True">
                             <Setter TargetName="card" Property="Background" Value="{DynamicResource BrushCardInnerBg}"/>
-                            <Setter TargetName="card" Property="BorderBrush" Value="{DynamicResource BrushBorderHover}"/>
+                            <Setter TargetName="card" Property="BorderBrush" Value="{DynamicResource BrushAccentLight}"/>
                             <Setter Property="Foreground" Value="{DynamicResource BrushTextPrimary}"/>
                         </Trigger>
                         <Trigger Property="IsPressed" Value="True">

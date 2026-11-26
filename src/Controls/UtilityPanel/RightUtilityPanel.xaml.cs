@@ -268,6 +268,8 @@ namespace LlmodelBox.Controls.UtilityPanel
             bool isExtraUtility = !new[] { "Review", "OpenFile", "Terminal", "Browser", "SideQuestion", "Plugins" }.Contains(_activeTool);
             ViewUtilitiesHost.Visibility = isExtraUtility ? Visibility.Visible : Visibility.Collapsed;
 
+            AnimateToolViewportTransition();
+
             if (_activeTool == "Review") _ = RefreshReviewAsync();
             else if (_activeTool == "OpenFile") RefreshOpenFileList();
             else if (_activeTool == "Terminal") EnsureTerminalStarted();
@@ -282,6 +284,21 @@ namespace LlmodelBox.Controls.UtilityPanel
                 _settingsService?.SaveSettings(_settings);
             }
             ActiveToolChanged?.Invoke(_activeTool);
+        }
+
+        private void AnimateToolViewportTransition()
+        {
+            if (ToolViewportGrid == null || ToolViewportTranslate == null || !IsLoaded) return;
+            var fade = new System.Windows.Media.Animation.DoubleAnimation(0.35, 1.0, TimeSpan.FromMilliseconds(180))
+            {
+                EasingFunction = new System.Windows.Media.Animation.CubicEase { EasingMode = System.Windows.Media.Animation.EasingMode.EaseOut }
+            };
+            var slide = new System.Windows.Media.Animation.DoubleAnimation(10.0, 0.0, TimeSpan.FromMilliseconds(180))
+            {
+                EasingFunction = new System.Windows.Media.Animation.CubicEase { EasingMode = System.Windows.Media.Animation.EasingMode.EaseOut }
+            };
+            ToolViewportGrid.BeginAnimation(OpacityProperty, fade);
+            ToolViewportTranslate.BeginAnimation(TranslateTransform.YProperty, slide);
         }
 
         // =================== COLLAPSE / HIDE / EXPAND ===================
@@ -482,7 +499,7 @@ namespace LlmodelBox.Controls.UtilityPanel
                 BorderThickness = new Thickness(1),
                 CornerRadius = new CornerRadius(9),
                 Padding = new Thickness(12, 10, 12, 10),
-                Margin = new Thickness(0, 2, 0, 10)
+                Margin = new Thickness(0, 2, 0, 8)
             };
             var heroStack = new StackPanel();
             var topRow = new Grid();
@@ -513,25 +530,47 @@ namespace LlmodelBox.Controls.UtilityPanel
             heroStack.Children.Add(topRow);
             heroStack.Children.Add(new TextBlock
             {
-                Text = "AI edits, unsaved file changes, and Git diffs appear here automatically with inline & split hunk review.",
-                FontSize = 11,
+                Text = "AI edits, manual edits, and Git diffs appear here live with hunk controls.",
+                FontSize = 10.5,
                 Foreground = Brush("BrushTextSecondary", "#a1a1aa"),
                 TextWrapping = TextWrapping.Wrap,
-                Margin = new Thickness(0, 5, 0, 0)
+                Margin = new Thickness(0, 4, 0, 0)
             });
             hero.Child = heroStack;
             ReviewDiffHost.Children.Add(hero);
 
-            // 2x2 Bento Quick Launch Grid
+            // 3-Column Bento Mini Telemetry Cards Row
+            var metricsRow = new System.Windows.Controls.Primitives.UniformGrid { Rows = 1, Columns = 3, Margin = new Thickness(0, 0, 0, 8) };
+            var activeModel = _getActiveModel?.Invoke();
+            var openPath = _getOpenFilePath?.Invoke();
+            metricsRow.Children.Add(CreateMetricBentoCard("FILES", _workspaceFiles.Count.ToString(), "Indexed", new Thickness(0, 0, 5, 0)));
+            metricsRow.Children.Add(CreateMetricBentoCard("BUFFER", string.IsNullOrEmpty(openPath) ? "—" : Path.GetFileName(openPath), "Active", new Thickness(0, 0, 5, 0)));
+            metricsRow.Children.Add(CreateMetricBentoCard("MODEL", activeModel?.Provider ?? "Ready", activeModel?.Name ?? "None", new Thickness(0)));
+            ReviewDiffHost.Children.Add(metricsRow);
+
+            // 2x2 Animated Hover Bento Quick Launch Grid
             var bentoGrid = new System.Windows.Controls.Primitives.UniformGrid
             {
                 Rows = 2,
                 Columns = 2
             };
 
-            Button MakeBentoAction(string title, string sub, string toolKey, Thickness margin)
+            Button MakeBentoAction(string badge, string title, string sub, string toolKey, Thickness margin)
             {
                 var stack = new StackPanel();
+                var hdr = new Grid { Margin = new Thickness(0, 0, 0, 4) };
+                hdr.Children.Add(new Border
+                {
+                    Background = Brush("BrushCardBg", "#111114"),
+                    BorderBrush = Brush("BrushBorderSubtle", "#27272a"),
+                    BorderThickness = new Thickness(1),
+                    CornerRadius = new CornerRadius(5),
+                    Padding = new Thickness(5, 1, 5, 1),
+                    HorizontalAlignment = HorizontalAlignment.Left,
+                    Child = new TextBlock { Text = badge, FontFamily = new FontFamily("Consolas"), FontSize = 8.5, FontWeight = FontWeights.Bold, Foreground = Brush("BrushAccentLight", "#60a5fa") }
+                });
+                hdr.Children.Add(new TextBlock { Text = "→", FontSize = 11, Foreground = Brush("BrushTextDim", "#71717a"), HorizontalAlignment = HorizontalAlignment.Right });
+                stack.Children.Add(hdr);
                 stack.Children.Add(new TextBlock { Text = title, FontSize = 11.5, FontWeight = FontWeights.SemiBold, Foreground = Brush("BrushTextPrimary", "#fafafa") });
                 stack.Children.Add(new TextBlock { Text = sub, FontSize = 10, Foreground = Brush("BrushTextDim", "#71717a"), TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 2, 0, 0) });
 
@@ -547,12 +586,30 @@ namespace LlmodelBox.Controls.UtilityPanel
                 return btn;
             }
 
-            bentoGrid.Children.Add(MakeBentoAction(">_ Terminal", "Persistent PowerShell, CMD & Git Bash", "Terminal", new Thickness(0, 0, 6, 6)));
-            bentoGrid.Children.Add(MakeBentoAction("⌘P Quick Open", "Fuzzy file finder & preview", "OpenFile", new Thickness(0, 0, 0, 6)));
-            bentoGrid.Children.Add(MakeBentoAction("▶ Run & Test", "Run dotnet build & test", "RunTest", new Thickness(0, 0, 6, 0)));
-            bentoGrid.Children.Add(MakeBentoAction("✦ Side Question", "Isolated secondary AI chat", "SideQuestion", new Thickness(0, 0, 0, 0)));
+            bentoGrid.Children.Add(MakeBentoAction("SHELL", "Terminal", "PowerShell, CMD & Git Bash", "Terminal", new Thickness(0, 0, 6, 6)));
+            bentoGrid.Children.Add(MakeBentoAction("⌘P", "Quick Open", "Fuzzy file finder & preview", "OpenFile", new Thickness(0, 0, 0, 6)));
+            bentoGrid.Children.Add(MakeBentoAction("TEST", "Run & Test", "dotnet build & xUnit test", "RunTest", new Thickness(0, 0, 6, 0)));
+            bentoGrid.Children.Add(MakeBentoAction("SIDE AI", "Side Question", "Isolated secondary AI chat", "SideQuestion", new Thickness(0, 0, 0, 0)));
 
             ReviewDiffHost.Children.Add(bentoGrid);
+        }
+
+        private Border CreateMetricBentoCard(string label, string value, string sub, Thickness margin)
+        {
+            var stack = new StackPanel();
+            stack.Children.Add(new TextBlock { Text = label, FontFamily = new FontFamily("Consolas"), FontSize = 8.5, FontWeight = FontWeights.Bold, Foreground = Brush("BrushTextDim", "#71717a") });
+            stack.Children.Add(new TextBlock { Text = value, FontSize = 12, FontWeight = FontWeights.Bold, Foreground = Brush("BrushTextPrimary", "#fafafa"), TextTrimming = TextTrimming.CharacterEllipsis, Margin = new Thickness(0, 2, 0, 1) });
+            stack.Children.Add(new TextBlock { Text = sub, FontSize = 9.5, Foreground = Brush("BrushAccentLight", "#93c5fd"), TextTrimming = TextTrimming.CharacterEllipsis });
+            return new Border
+            {
+                Background = Brush("BrushCardInnerBg", "#16181a"),
+                BorderBrush = Brush("BrushBorderSubtle", "#27272a"),
+                BorderThickness = new Thickness(1),
+                CornerRadius = new CornerRadius(8),
+                Padding = new Thickness(9, 7, 9, 7),
+                Margin = margin,
+                Child = stack
+            };
         }
 
         private void BtnRefreshReview_Click(object sender, RoutedEventArgs e) => _ = RefreshReviewAsync();
@@ -761,11 +818,12 @@ namespace LlmodelBox.Controls.UtilityPanel
         private void OpenFileResultsList_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             if (OpenFileResultsList.SelectedItem is not OpenFileCandidateItem item) return;
+            TxtOpenFilePreviewTitle.Text = item.RelativePath.ToUpperInvariant();
             try
             {
                 if (File.Exists(item.FullPath))
                 {
-                    var lines = File.ReadLines(item.FullPath).Take(60);
+                    var lines = File.ReadLines(item.FullPath).Take(80);
                     TxtOpenFilePreview.Text = string.Join(Environment.NewLine, lines);
                 }
                 else TxtOpenFilePreview.Text = "[File not found on disk]";
@@ -832,22 +890,32 @@ namespace LlmodelBox.Controls.UtilityPanel
             TerminalTabsBar.Children.Clear();
             foreach (var s in _terminal.Sessions)
             {
+                bool active = s.Id == _activeTerminalId;
                 var panel = new Border
                 {
-                    Background = s.Id == _activeTerminalId ? Brush("BrushCardBg", "#1f2937") : Brushes.Transparent,
-                    BorderBrush = Brush("BrushBorder", "#374151"),
+                    Background = active ? Brush("BrushCardBg", "#1f2937") : Brush("BrushCardInnerBg", "#0f141c"),
+                    BorderBrush = active ? Brush("BrushAccent", "#3b82f6") : Brush("BrushBorderSubtle", "#1f2937"),
                     BorderThickness = new Thickness(1),
-                    CornerRadius = new CornerRadius(5),
-                    Margin = new Thickness(0, 0, 4, 0),
-                    Padding = new Thickness(6, 2, 4, 2)
+                    CornerRadius = new CornerRadius(7),
+                    Margin = new Thickness(0, 0, 5, 0),
+                    Padding = new Thickness(8, 3, 6, 3)
                 };
-                var sp = new StackPanel { Orientation = Orientation.Horizontal };
+                var sp = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
+                var dot = new System.Windows.Shapes.Ellipse
+                {
+                    Width = 6,
+                    Height = 6,
+                    Fill = s.IsRunning ? Brush("BrushSuccess", "#22c55e") : Brush("BrushDanger", "#ef4444"),
+                    Margin = new Thickness(0, 0, 6, 0),
+                    VerticalAlignment = VerticalAlignment.Center
+                };
                 var titleBtn = new Button
                 {
                     Content = s.Title + (s.IsRunning ? "" : $" [{s.ExitCode ?? 0}]"),
                     Background = Brushes.Transparent,
                     BorderThickness = new Thickness(0),
-                    Foreground = Brush("BrushTextPrimary", "#fafafa"),
+                    Foreground = active ? Brush("BrushTextPrimary", "#fafafa") : Brush("BrushTextSecondary", "#9ca3af"),
+                    FontWeight = active ? FontWeights.SemiBold : FontWeights.Normal,
                     FontSize = 10.5,
                     Cursor = Cursors.Hand
                 };
@@ -860,7 +928,7 @@ namespace LlmodelBox.Controls.UtilityPanel
                     BorderThickness = new Thickness(0),
                     Foreground = Brush("BrushTextDim", "#9ca3af"),
                     FontSize = 9.5,
-                    Margin = new Thickness(5, 0, 0, 0),
+                    Margin = new Thickness(6, 0, 0, 0),
                     Cursor = Cursors.Hand
                 };
                 closeBtn.Click += (_, _) =>
@@ -870,8 +938,14 @@ namespace LlmodelBox.Controls.UtilityPanel
                         _activeTerminalId = _terminal.Sessions.FirstOrDefault()?.Id;
                     RenderTerminalTabs();
                     if (_activeTerminalId != null) SelectTerminalTab(_activeTerminalId);
-                    else TxtTerminalTranscript.Text = string.Empty;
+                    else
+                    {
+                        TxtTerminalTranscript.Text = string.Empty;
+                        TxtTerminalStatus.Text = "No session";
+                        TxtTerminalCwd.Text = "Terminal Stream";
+                    }
                 };
+                sp.Children.Add(dot);
                 sp.Children.Add(titleBtn);
                 sp.Children.Add(closeBtn);
                 panel.Child = sp;
@@ -887,9 +961,21 @@ namespace LlmodelBox.Controls.UtilityPanel
             {
                 TxtTerminalTranscript.Text = _terminal.GetTranscript(sessionId);
                 TxtTerminalTranscript.ScrollToEnd();
-                TxtTerminalStatus.Text = $"{info.Shell} ({(info.UsesConPty ? "ConPTY" : "Pipe")}) · {(info.IsRunning ? "Running" : $"Exited {info.ExitCode}")} · {info.WorkingDirectory}";
+                string mode = info.UsesConPty ? "ConPTY" : "Pipe";
+                string state = info.IsRunning ? "Running" : $"Exited {info.ExitCode}";
+                TxtTerminalStatus.Text = $"{info.Shell} · {mode} · {state}";
+                TxtTerminalCwd.Text = $"{info.WorkingDirectory}  ({mode})";
+                TerminalStatusDot.Fill = info.IsRunning ? Brush("BrushSuccess", "#22c55e") : Brush("BrushDanger", "#ef4444");
             }
             RenderTerminalTabs();
+        }
+
+        private async void BtnTerminalQuickCmd_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is not Button btn || btn.Tag is not string cmd) return;
+            EnsureTerminalStarted();
+            if (_activeTerminalId == null) return;
+            await _terminal.SendInputAsync(_activeTerminalId, cmd);
         }
 
         private void OnTerminalOutputReceived(string sessionId, string chunk)
@@ -1189,6 +1275,35 @@ namespace LlmodelBox.Controls.UtilityPanel
             if (WebLink.TryParse(url, out var safe) && safe != null)
             {
                 try { Process.Start(new ProcessStartInfo(safe.AbsoluteUri) { UseShellExecute = true }); } catch { }
+            }
+        }
+
+        private void BtnBrowserViewport_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is not Button btn || btn.Tag is not string mode) return;
+            if (mode == "390")
+            {
+                BrowserViewportFrame.Width = 390;
+                BrowserViewportFrame.HorizontalAlignment = HorizontalAlignment.Center;
+            }
+            else if (mode == "1024")
+            {
+                BrowserViewportFrame.Width = 1024;
+                BrowserViewportFrame.HorizontalAlignment = HorizontalAlignment.Center;
+            }
+            else
+            {
+                BrowserViewportFrame.Width = double.NaN;
+                BrowserViewportFrame.HorizontalAlignment = HorizontalAlignment.Stretch;
+            }
+
+            var active = TryFindResource("PrimaryActionBtn") as Style;
+            var normal = TryFindResource("BlackBoxActionBtn") as Style;
+            if (active != null && normal != null)
+            {
+                BtnBrowserSizeAuto.Style = mode == "Auto" ? active : normal;
+                BtnBrowserSizeDesktop.Style = mode == "1024" ? active : normal;
+                BtnBrowserSizeMobile.Style = mode == "390" ? active : normal;
             }
         }
 
@@ -1698,9 +1813,15 @@ namespace LlmodelBox.Controls.UtilityPanel
             string? openPath = _getOpenFilePath?.Invoke();
             string editorText = _getOpenEditorText?.Invoke() ?? string.Empty;
             var model = _getActiveModel?.Invoke();
-            UtilityContentHost.Children.Add(new TextBlock { Text = $"Active Model: {model?.Name ?? "None"} ({model?.Context ?? "?"})", FontWeight = FontWeights.SemiBold, Foreground = Brush("BrushTextPrimary", "#fafafa"), Margin = new Thickness(0, 0, 0, 6) });
-            UtilityContentHost.Children.Add(new TextBlock { Text = $"Open Buffer: {Path.GetFileName(openPath ?? "(none)")} — {TokenHelper.CountTokens(editorText):N0} tokens", FontFamily = new FontFamily("Consolas"), FontSize = 11, Foreground = Brush("BrushTextSecondary", "#a1a1aa"), Margin = new Thickness(0, 0, 0, 4) });
-            UtilityContentHost.Children.Add(new TextBlock { Text = $"System Prompt: {(_settings.SystemInstructionEnabled ? TokenHelper.CountTokens(_settings.SystemInstruction) : 0)} tokens", FontFamily = new FontFamily("Consolas"), FontSize = 11, Foreground = Brush("BrushTextSecondary", "#a1a1aa") });
+            int bufTokens = TokenHelper.CountTokens(editorText);
+            int sysTokens = _settings.SystemInstructionEnabled ? TokenHelper.CountTokens(_settings.SystemInstruction) : 0;
+
+            var grid = new System.Windows.Controls.Primitives.UniformGrid { Rows = 2, Columns = 2 };
+            grid.Children.Add(CreateMetricBentoCard("MODEL", model?.Name ?? "None", model?.Context ?? "?", new Thickness(0, 0, 6, 6)));
+            grid.Children.Add(CreateMetricBentoCard("OPEN BUFFER", $"{bufTokens:N0} tok", Path.GetFileName(openPath ?? "(none)"), new Thickness(0, 0, 0, 6)));
+            grid.Children.Add(CreateMetricBentoCard("SYSTEM PROMPT", $"{sysTokens:N0} tok", _settings.SystemInstructionEnabled ? "Enabled" : "Disabled", new Thickness(0, 0, 6, 0)));
+            grid.Children.Add(CreateMetricBentoCard("FILES", _workspaceFiles.Count.ToString(), "Workspace index", new Thickness(0)));
+            UtilityContentHost.Children.Add(grid);
         }
 
         private void BuildActivityView()
@@ -1721,16 +1842,25 @@ namespace LlmodelBox.Controls.UtilityPanel
         {
             if (_tokenUsageService == null) return;
             var summary = _tokenUsageService.GetSummary();
-            UtilityContentHost.Children.Add(new TextBlock { Text = $"Total Tokens: {summary.TotalTokens:N0}  ({summary.CallCount} calls)", FontWeight = FontWeights.SemiBold, Foreground = Brush("BrushTextPrimary", "#fafafa"), Margin = new Thickness(0, 0, 0, 6) });
-            UtilityContentHost.Children.Add(new TextBlock { Text = $"Prompt: {summary.PromptTokens:N0}  |  Completion: {summary.CompletionTokens:N0}", FontFamily = new FontFamily("Consolas"), FontSize = 11, Foreground = Brush("BrushTextSecondary", "#a1a1aa"), Margin = new Thickness(0, 0, 0, 8) });
+            var kpiGrid = new System.Windows.Controls.Primitives.UniformGrid { Rows = 1, Columns = 3, Margin = new Thickness(0, 0, 0, 8) };
+            kpiGrid.Children.Add(CreateMetricBentoCard("TOTAL", summary.TotalTokens.ToString("N0"), $"{summary.CallCount} calls", new Thickness(0, 0, 5, 0)));
+            kpiGrid.Children.Add(CreateMetricBentoCard("INPUT", summary.PromptTokens.ToString("N0"), "Prompt tokens", new Thickness(0, 0, 5, 0)));
+            kpiGrid.Children.Add(CreateMetricBentoCard("OUTPUT", summary.CompletionTokens.ToString("N0"), "Completion", new Thickness(0)));
+            UtilityContentHost.Children.Add(kpiGrid);
+
             foreach (var r in summary.TopModels)
-                UtilityContentHost.Children.Add(new TextBlock { Text = $"{r.Label}: {r.Tokens:N0} tok ({r.Calls} calls)", FontFamily = new FontFamily("Consolas"), FontSize = 10.5, Foreground = Brush("BrushTextDim", "#9ca3af"), Margin = new Thickness(0, 2, 0, 2) });
+            {
+                UtilityContentHost.Children.Add(CreateMetricBentoCard("MODEL", r.Label, $"{r.Tokens:N0} tokens · {r.Calls} calls", new Thickness(0, 0, 0, 6)));
+            }
         }
 
         private void BuildProjectInfoView()
         {
-            UtilityContentHost.Children.Add(new TextBlock { Text = $"Workspace Root: {_workspaceRoot}", FontFamily = new FontFamily("Consolas"), FontSize = 10.5, TextWrapping = TextWrapping.Wrap, Foreground = Brush("BrushTextSecondary", "#a1a1aa"), Margin = new Thickness(0, 0, 0, 6) });
-            UtilityContentHost.Children.Add(new TextBlock { Text = $"Indexed Files: {_workspaceFiles.Count}", FontFamily = new FontFamily("Consolas"), FontSize = 11, Foreground = Brush("BrushTextPrimary", "#fafafa") });
+            UtilityContentHost.Children.Add(CreateMetricBentoCard("WORKSPACE", Path.GetFileName(_workspaceRoot), _workspaceRoot, new Thickness(0, 0, 0, 8)));
+            var row = new System.Windows.Controls.Primitives.UniformGrid { Rows = 1, Columns = 2 };
+            row.Children.Add(CreateMetricBentoCard("FILES", _workspaceFiles.Count.ToString(), "Indexed files", new Thickness(0, 0, 6, 0)));
+            row.Children.Add(CreateMetricBentoCard("PLUGINS", _plugins.GetActiveTools().Count.ToString(), "Active plugin tools", new Thickness(0)));
+            UtilityContentHost.Children.Add(row);
         }
 
         private void BuildExplorerShortcutsView()

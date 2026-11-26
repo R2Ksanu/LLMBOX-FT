@@ -107,6 +107,24 @@ namespace LlmodelBox.Tests
         }
 
         [Fact]
+        public void TerminalSessionManager_StripsSplitConPtyOscAndAnsiSequencesCleanly()
+        {
+            string carry = string.Empty;
+            string part1 = "PS C:\\proj>\x1B]0;C:\\Windows\\System32\\WindowsPowerShell";
+            string part2 = "\\v1.0\\powershell.exe\x07\x1B[?25l\x1B[32mdir\x1B[0m\r\nproject.json\rPS C:\\proj>";
+
+            string out1 = TerminalSessionManager.SanitizeTerminalChunk(part1, ref carry);
+            string out2 = TerminalSessionManager.SanitizeTerminalChunk(part2, ref carry);
+            string combined = out1 + out2;
+
+            Assert.DoesNotContain("WindowsPowerShell", combined, StringComparison.Ordinal);
+            Assert.False(combined.Contains('\x1B'), "Cleaned output must not contain ESC control characters.");
+            Assert.DoesNotContain("0;C:", combined, StringComparison.Ordinal);
+            Assert.Contains("dir", combined, StringComparison.Ordinal);
+            Assert.Contains("project.json", combined, StringComparison.Ordinal);
+        }
+
+        [Fact]
         public async Task TerminalSessionManager_SupportsPersistentSessionsHistoryClearAndClose()
         {
             string root = Path.Combine(Path.GetTempPath(), "LlmodelBox_TermTest_" + Guid.NewGuid().ToString("N"));

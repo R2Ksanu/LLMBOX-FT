@@ -535,8 +535,8 @@
                                         <RowDefinition Height="*"/>  <!-- Tab Contents -->
                                     </Grid.RowDefinitions>
 
-                                    <!-- 4-Tab Navigation Header -->
-                                    <Border Grid.Row="0" Background="{DynamicResource BrushCardBg}" BorderBrush="{DynamicResource BrushBorderSubtle}" BorderThickness="0,0,0,1" Padding="4,4">
+                                    <!-- 4-Tab Bento Pill Navigation Header -->
+                                    <Border Grid.Row="0" Background="{DynamicResource BrushWindowBg}" BorderBrush="{DynamicResource BrushBorderSubtle}" BorderThickness="0,0,0,1" Padding="8,7">
                                         <Grid>
                                             <Grid.ColumnDefinitions>
                                                 <ColumnDefinition Width="*"/>
@@ -545,28 +545,28 @@
                                                 <ColumnDefinition Width="*"/>
                                             </Grid.ColumnDefinitions>
 
-                                            <Button Grid.Column="0" x:Name="BtnInspectorTabInfo" Style="{StaticResource SettingsTabBtnActive}" Padding="4,4" Margin="1,0" FontSize="10.5" Click="BtnInspectorTab_Click" Tag="0">
+                                            <Button Grid.Column="0" x:Name="BtnInspectorTabInfo" Style="{StaticResource BentoTileBtnActive}" Padding="6,6" Margin="0,0,4,0" FontSize="10.5" Click="BtnInspectorTab_Click" Tag="0">
                                                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
-                                                    <Path Data="{StaticResource IconInfo}" Fill="{DynamicResource BrushTextSecondary}" Stretch="Uniform" Width="12" Height="12" VerticalAlignment="Center" Margin="0,0,5,0"/>
-                                                    <TextBlock Text="Info" VerticalAlignment="Center"/>
+                                                    <Path Data="{StaticResource IconInfo}" Fill="{DynamicResource BrushAccentLight}" Stretch="Uniform" Width="11.5" Height="11.5" VerticalAlignment="Center" Margin="0,0,5,0"/>
+                                                    <TextBlock Text="Info" FontWeight="SemiBold" VerticalAlignment="Center"/>
                                                 </StackPanel>
                                             </Button>
-                                            <Button Grid.Column="1" x:Name="BtnInspectorTabDiff" Style="{StaticResource SettingsTabBtn}" Padding="4,4" Margin="1,0" FontSize="10.5" Click="BtnInspectorTab_Click" Tag="1">
+                                            <Button Grid.Column="1" x:Name="BtnInspectorTabDiff" Style="{StaticResource BentoTileBtn}" Padding="6,6" Margin="0,0,4,0" FontSize="10.5" Click="BtnInspectorTab_Click" Tag="1">
                                                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
-                                                    <Path Data="{StaticResource IconDiff}" Fill="{DynamicResource BrushTextSecondary}" Stretch="Uniform" Width="12" Height="12" VerticalAlignment="Center" Margin="0,0,5,0"/>
-                                                    <TextBlock Text="Diff" VerticalAlignment="Center"/>
+                                                    <Path Data="{StaticResource IconDiff}" Fill="{DynamicResource BrushTextSecondary}" Stretch="Uniform" Width="11.5" Height="11.5" VerticalAlignment="Center" Margin="0,0,5,0"/>
+                                                    <TextBlock Text="Diff" FontWeight="SemiBold" VerticalAlignment="Center"/>
                                                 </StackPanel>
                                             </Button>
-                                            <Button Grid.Column="2" x:Name="BtnInspectorTabCmd" Style="{StaticResource SettingsTabBtn}" Padding="4,4" Margin="1,0" FontSize="10.5" Click="BtnInspectorTab_Click" Tag="2">
+                                            <Button Grid.Column="2" x:Name="BtnInspectorTabCmd" Style="{StaticResource BentoTileBtn}" Padding="6,6" Margin="0,0,4,0" FontSize="10.5" Click="BtnInspectorTab_Click" Tag="2">
                                                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
-                                                    <Path Data="{StaticResource IconTerminal}" Fill="{DynamicResource BrushTextSecondary}" Stretch="Uniform" Width="12" Height="12" VerticalAlignment="Center" Margin="0,0,5,0"/>
-                                                    <TextBlock Text="Cmd" VerticalAlignment="Center"/>
+                                                    <Path Data="{StaticResource IconTerminal}" Fill="{DynamicResource BrushTextSecondary}" Stretch="Uniform" Width="11.5" Height="11.5" VerticalAlignment="Center" Margin="0,0,5,0"/>
+                                                    <TextBlock Text="Cmd" FontWeight="SemiBold" VerticalAlignment="Center"/>
                                                 </StackPanel>
                                             </Button>
-                                            <Button Grid.Column="3" x:Name="BtnInspectorTabArtifacts" Style="{StaticResource SettingsTabBtn}" Padding="4,4" Margin="1,0" FontSize="10.5" Click="BtnInspectorTab_Click" Tag="3">
+                                            <Button Grid.Column="3" x:Name="BtnInspectorTabArtifacts" Style="{StaticResource BentoTileBtn}" Padding="6,6" Margin="0" FontSize="10.5" Click="BtnInspectorTab_Click" Tag="3">
                                                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
-                                                    <Path Data="{StaticResource IconImage}" Fill="{DynamicResource BrushTextSecondary}" Stretch="Uniform" Width="12" Height="12" VerticalAlignment="Center" Margin="0,0,5,0"/>
-                                                    <TextBlock Text="Media" VerticalAlignment="Center"/>
+                                                    <Path Data="{StaticResource IconImage}" Fill="{DynamicResource BrushTextSecondary}" Stretch="Uniform" Width="11.5" Height="11.5" VerticalAlignment="Center" Margin="0,0,5,0"/>
+                                                    <TextBlock Text="Media" FontWeight="SemiBold" VerticalAlignment="Center"/>
                                                 </StackPanel>
                                             </Button>
                                         </Grid>
@@ -727,8 +727,12 @@
                                                 </StackPanel>
 
                                                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
-                                                    <Button Content="🔄" Style="{StaticResource BlackBoxActionBtn}" Padding="6,2" Margin="0,0,3,0" FontSize="10" Click="BtnRefreshDiff_Click" ToolTip="Refresh diff"/>
-                                                    <Button Content="💾 Save" Style="{StaticResource PrimaryActionBtn}" Padding="8,2" FontSize="10" Click="BtnSaveFile_Click" ToolTip="Save changes to disk"/>
+                                                    <Button Style="{StaticResource BlackBoxActionBtn}" Padding="8,4" Margin="0,0,5,0" FontSize="10" Click="BtnRefreshDiff_Click" ToolTip="Refresh diff">
+                                                        <TextBlock Text="↻ Refresh"/>
+                                                    </Button>
+                                                    <Button Style="{StaticResource PrimaryActionBtn}" Padding="10,4" FontSize="10" Click="BtnSaveFile_Click" ToolTip="Save changes to disk">
+                                                        <TextBlock Text="Save File"/>
+                                                    </Button>
                                                 </StackPanel>
                                             </Grid>
                                         </Border>
@@ -788,75 +792,84 @@
                                     </Grid>
 
                                     <!-- Tab 2: Cmd Runs -->
-                                    <Grid Grid.Row="1" x:Name="TabContentCmd" Visibility="Collapsed">
+                                    <Grid Grid.Row="1" x:Name="TabContentCmd" Visibility="Collapsed" Margin="8">
                                         <Grid.RowDefinitions>
                                             <RowDefinition Height="Auto"/> <!-- Command Presets -->
-                                            <RowDefinition Height="Auto"/> <!-- Input Prompt -->
                                             <RowDefinition Height="*"/>    <!-- Output Stream -->
+                                            <RowDefinition Height="Auto"/> <!-- Input Prompt -->
                                         </Grid.RowDefinitions>
 
-                                        <!-- Command Presets -->
-                                        <Border Grid.Row="0" Background="{DynamicResource BrushCardBg}" BorderBrush="{DynamicResource BrushBorderSubtle}" BorderThickness="0,0,0,1" Padding="8,6">
-                                            <WrapPanel>
-                                                <Button Content="python main.py" Style="{StaticResource BlackBoxActionBtn}" Padding="6,3" Margin="0,0,4,4" FontSize="10" FontFamily="Consolas" Click="BtnCmdPreset_Click" Tag="python main.py"/>
-                                                <Button Content="dotnet build" Style="{StaticResource BlackBoxActionBtn}" Padding="6,3" Margin="0,0,4,4" FontSize="10" FontFamily="Consolas" Click="BtnCmdPreset_Click" Tag="dotnet build"/>
-                                                <Button Content="dir" Style="{StaticResource BlackBoxActionBtn}" Padding="6,3" Margin="0,0,4,4" FontSize="10" FontFamily="Consolas" Click="BtnCmdPreset_Click" Tag="dir"/>
-                                                <Button Content="git status" Style="{StaticResource BlackBoxActionBtn}" Padding="6,3" Margin="0,0,4,4" FontSize="10" FontFamily="Consolas" Click="BtnCmdPreset_Click" Tag="git status"/>
-                                            </WrapPanel>
+                                        <!-- Command Presets Bento Chips -->
+                                        <WrapPanel Grid.Row="0" Margin="0,0,0,7">
+                                            <Button Style="{StaticResource BentoTileBtn}" Padding="8,4" Margin="0,0,5,5" FontSize="10" FontFamily="Consolas" Click="BtnCmdPreset_Click" Tag="python main.py">
+                                                <TextBlock Text="python main.py"/>
+                                            </Button>
+                                            <Button Style="{StaticResource BentoTileBtn}" Padding="8,4" Margin="0,0,5,5" FontSize="10" FontFamily="Consolas" Click="BtnCmdPreset_Click" Tag="dotnet build">
+                                                <TextBlock Text="dotnet build"/>
+                                            </Button>
+                                            <Button Style="{StaticResource BentoTileBtn}" Padding="8,4" Margin="0,0,5,5" FontSize="10" FontFamily="Consolas" Click="BtnCmdPreset_Click" Tag="dir">
+                                                <TextBlock Text="dir"/>
+                                            </Button>
+                                            <Button Style="{StaticResource BentoTileBtn}" Padding="8,4" Margin="0,0,0,5" FontSize="10" FontFamily="Consolas" Click="BtnCmdPreset_Click" Tag="git status">
+                                                <TextBlock Text="git status"/>
+                                            </Button>
+                                        </WrapPanel>
+
+                                        <!-- CLI Terminal Output Card -->
+                                        <Border Grid.Row="1" Background="{DynamicResource BrushCardBg}" BorderBrush="{DynamicResource BrushBorder}" BorderThickness="1" CornerRadius="10">
+                                            <Grid>
+                                                <Grid.RowDefinitions>
+                                                    <RowDefinition Height="30"/>
+                                                    <RowDefinition Height="*"/>
+                                                </Grid.RowDefinitions>
+                                                <Border Grid.Row="0" Background="{DynamicResource BrushCardInnerBg}" BorderBrush="{DynamicResource BrushBorderSubtle}" BorderThickness="0,0,0,1" CornerRadius="9,9,0,0" Padding="10,0">
+                                                    <Grid VerticalAlignment="Center">
+                                                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                            <Ellipse Width="7" Height="7" Fill="{DynamicResource BrushSuccess}" Margin="0,0,7,0"/>
+                                                            <TextBlock Text="CONSOLE STREAM" Foreground="{DynamicResource BrushTextSecondary}" FontSize="9.5" FontWeight="Bold" FontFamily="Consolas"/>
+                                                        </StackPanel>
+                                                        <Button Content="Clear" Style="{StaticResource BlackBoxActionBtn}" Padding="7,2" HorizontalAlignment="Right" FontSize="9.5" Click="BtnClearCliOutput_Click"/>
+                                                    </Grid>
+                                                </Border>
+                                                <ScrollViewer Grid.Row="1" x:Name="CliOutputScrollViewer" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto" Padding="10,8">
+                                                    <TextBox x:Name="TxtCliOutput"
+                                                             Background="Transparent"
+                                                             Foreground="{DynamicResource BrushTextPrimary}"
+                                                             CaretBrush="{DynamicResource BrushAccentLight}"
+                                                             BorderThickness="0"
+                                                             FontFamily="Consolas, Cascadia Code, Courier New"
+                                                             FontSize="11.5"
+                                                             IsReadOnly="True"
+                                                             TextWrapping="Wrap"
+                                                             AcceptsReturn="True"/>
+                                                </ScrollViewer>
+                                            </Grid>
                                         </Border>
 
-                                        <!-- Command Input Bar -->
-                                        <Border Grid.Row="1" Background="{DynamicResource BrushCardBg}" BorderBrush="{DynamicResource BrushBorderSubtle}" BorderThickness="0,0,0,1" Padding="8,6">
+                                        <!-- Command Input Capsule -->
+                                        <Border Grid.Row="2" Background="{DynamicResource BrushCardBg}" BorderBrush="{DynamicResource BrushBorder}" BorderThickness="1" CornerRadius="10" Padding="8,6" Margin="0,7,0,0">
                                             <Grid>
                                                 <Grid.ColumnDefinitions>
                                                     <ColumnDefinition Width="Auto"/>
                                                     <ColumnDefinition Width="*"/>
                                                     <ColumnDefinition Width="Auto"/>
                                                 </Grid.ColumnDefinitions>
-                                                <TextBlock Grid.Column="0" Text="&gt;" Foreground="{DynamicResource BrushAccent}" FontWeight="Bold" FontSize="13" FontFamily="Consolas" VerticalAlignment="Center" Margin="0,0,6,0"/>
-                                                <Border Grid.Column="1" Background="{DynamicResource BrushCardInnerBg}" BorderBrush="{DynamicResource BrushBorder}" BorderThickness="1" CornerRadius="6">
-                                                    <TextBox x:Name="TxtCliCommandInput"
-                                                             Background="Transparent"
-                                                             Foreground="{DynamicResource BrushTextPrimary}"
-                                                             CaretBrush="{DynamicResource BrushAccentLight}"
-                                                             BorderThickness="0" 
-                                                             FontSize="11.5" 
-                                                             FontFamily="Consolas" 
-                                                             Padding="6,4" 
-                                                             KeyDown="TxtCliCommandInput_KeyDown"/>
-                                                </Border>
+                                                <TextBlock Grid.Column="0" Text="›" Foreground="{DynamicResource BrushAccentLight}" FontWeight="Bold" FontSize="15" FontFamily="Consolas" VerticalAlignment="Center" Margin="2,0,7,1"/>
+                                                <TextBox Grid.Column="1" x:Name="TxtCliCommandInput"
+                                                         Background="Transparent"
+                                                         Foreground="{DynamicResource BrushTextPrimary}"
+                                                         CaretBrush="{DynamicResource BrushAccentLight}"
+                                                         BorderThickness="0"
+                                                         FontSize="11.5"
+                                                         FontFamily="Consolas"
+                                                         VerticalAlignment="Center"
+                                                         KeyDown="TxtCliCommandInput_KeyDown"/>
                                                 <StackPanel Grid.Column="2" Orientation="Horizontal" Margin="6,0,0,0">
-                                                    <Button Content="▶ Run" Style="{StaticResource PrimaryActionBtn}" Padding="8,4" Margin="0,0,3,0" FontSize="10.5" Click="BtnRunCliCommand_Click"/>
-                                                    <Button Content="⏹" Style="{StaticResource BlackBoxActionBtn}" Padding="6,4" FontSize="10.5" Click="BtnStopCliCommand_Click" ToolTip="Stop command"/>
+                                                    <Button Content="▶ Run" Style="{StaticResource PrimaryActionBtn}" Padding="9,4" Margin="0,0,4,0" FontSize="10.5" Click="BtnRunCliCommand_Click"/>
+                                                    <Button Content="⏹" Style="{StaticResource BlackBoxActionBtn}" Padding="7,4" FontSize="10.5" Click="BtnStopCliCommand_Click" ToolTip="Stop command"/>
                                                 </StackPanel>
                                             </Grid>
                                         </Border>
-
-                                        <!-- CLI Terminal Output -->
-                                        <Grid Grid.Row="2" Background="{DynamicResource BrushCardInnerBg}">
-                                            <Grid.RowDefinitions>
-                                                <RowDefinition Height="26"/>
-                                                <RowDefinition Height="*"/>
-                                            </Grid.RowDefinitions>
-                                            <Border Grid.Row="0" Background="{DynamicResource BrushCardBg}" BorderBrush="{DynamicResource BrushBorderSubtle}" BorderThickness="0,0,0,1" Padding="8,0">
-                                                <Grid VerticalAlignment="Center">
-                                                    <TextBlock Text="CLI TERMINAL OUTPUT" Foreground="{DynamicResource BrushTextDim}" FontSize="9.5" FontWeight="Bold" FontFamily="Consolas" VerticalAlignment="Center"/>
-                                                    <Button Content="Clear" Style="{StaticResource CaptionSysButtonStyle}" Width="36" Height="22" HorizontalAlignment="Right" FontSize="9.5" Click="BtnClearCliOutput_Click"/>
-                                                </Grid>
-                                            </Border>
-                                            <ScrollViewer Grid.Row="1" x:Name="CliOutputScrollViewer" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto" Padding="8">
-                                                <TextBox x:Name="TxtCliOutput"
-                                                         Background="Transparent"
-                                                         Foreground="{DynamicResource BrushTextSecondary}"
-                                                         CaretBrush="{DynamicResource BrushAccentLight}"
-                                                         BorderThickness="0" 
-                                                         FontFamily="Consolas, Cascadia Code, Courier New" 
-                                                         FontSize="11.5" 
-                                                         IsReadOnly="True" 
-                                                         TextWrapping="Wrap" 
-                                                         AcceptsReturn="True"/>
-                                            </ScrollViewer>
-                                        </Grid>
                                     </Grid>
 
                                     <!-- Tab 3: Artifacts & Uploads -->
@@ -868,20 +881,20 @@
                                         </Grid.RowDefinitions>
 
                                         <!-- Upload Dropzone / Button -->
-                                        <Border Grid.Row="0" Background="{DynamicResource BrushCardBg}" BorderBrush="{DynamicResource BrushBorder}" BorderThickness="1" CornerRadius="8" Padding="14,12" Margin="10,10,10,6"
+                                        <Border Grid.Row="0" Background="{DynamicResource BrushCardBg}" BorderBrush="{DynamicResource BrushBorder}" BorderThickness="1" CornerRadius="10" Padding="14,12" Margin="10,10,10,6"
                                                 AllowDrop="True" Drop="ArtifactDropZone_Drop" DragOver="ArtifactDropZone_DragOver">
                                             <StackPanel HorizontalAlignment="Center">
-                                                <TextBlock Text="Drop images or files here" Foreground="{DynamicResource BrushTextSecondary}" FontWeight="SemiBold" FontSize="11.5" HorizontalAlignment="Center"/>
+                                                <TextBlock Text="Drop images or files here" Foreground="{DynamicResource BrushTextPrimary}" FontWeight="SemiBold" FontSize="11.5" HorizontalAlignment="Center"/>
                                                 <TextBlock Text="Images · Code · JSON · Logs · Docs" Foreground="{DynamicResource BrushTextDim}" FontSize="9.5" HorizontalAlignment="Center" Margin="0,3,0,10"/>
                                                 <Button Content="Browse Files…" Style="{StaticResource PrimaryActionBtn}" HorizontalAlignment="Center" Padding="14,6" FontSize="10.5" Click="BtnUploadArtifact_Click"/>
                                             </StackPanel>
                                         </Border>
 
                                         <!-- Section Header -->
-                                        <Border Grid.Row="1" Background="{DynamicResource BrushCardBg}" BorderBrush="{DynamicResource BrushBorderSubtle}" BorderThickness="0,1,0,1" Padding="10,0">
+                                        <Border Grid.Row="1" Background="{DynamicResource BrushWindowBg}" BorderBrush="{DynamicResource BrushBorderSubtle}" BorderThickness="0,1,0,1" Padding="10,0">
                                             <Grid VerticalAlignment="Center">
                                                 <TextBlock x:Name="TxtArtifactsCount" Text="PROJECT ARTIFACTS (0)" Foreground="{DynamicResource BrushTextMuted}" FontWeight="Bold" FontSize="10" FontFamily="Consolas" VerticalAlignment="Center"/>
-                                                <Button Content="🔄" Style="{StaticResource CaptionSysButtonStyle}" Width="24" Height="22" HorizontalAlignment="Right" Click="BtnRefreshArtifacts_Click" ToolTip="Refresh artifacts"/>
+                                                <Button Content="↻" Style="{StaticResource IdeIconButton}" Width="24" Height="22" HorizontalAlignment="Right" Click="BtnRefreshArtifacts_Click" ToolTip="Refresh artifacts"/>
                                             </Grid>
                                         </Border>
 
@@ -890,7 +903,7 @@
                                             <ItemsControl x:Name="ArtifactsList">
                                                 <ItemsControl.ItemTemplate>
                                                     <DataTemplate>
-                                                        <Border Background="{DynamicResource BrushCardBg}" BorderBrush="{DynamicResource BrushBorder}" BorderThickness="1" CornerRadius="7" Padding="9" Margin="0,0,0,7">
+                                                        <Border Background="{DynamicResource BrushCardBg}" BorderBrush="{DynamicResource BrushBorder}" BorderThickness="1" CornerRadius="9" Padding="10" Margin="0,0,0,7">
                                                             <Grid>
                                                                 <Grid.ColumnDefinitions>
                                                                     <ColumnDefinition Width="42"/>
@@ -899,7 +912,7 @@
                                                                 </Grid.ColumnDefinitions>
 
                                                                 <!-- Thumbnail / Icon -->
-                                                                <Border Grid.Column="0" Width="40" Height="40" Background="{DynamicResource BrushCardBg}" BorderBrush="{DynamicResource BrushBorder}" BorderThickness="1" CornerRadius="6" ClipToBounds="True">
+                                                                <Border Grid.Column="0" Width="40" Height="40" Background="{DynamicResource BrushCardInnerBg}" BorderBrush="{DynamicResource BrushBorder}" BorderThickness="1" CornerRadius="7" ClipToBounds="True">
                                                                     <Grid>
                                                                         <Image Source="{Binding ThumbnailUri}" Stretch="UniformToFill"/>
                                                                         <TextBlock Text="{Binding Icon}" FontSize="18" HorizontalAlignment="Center" VerticalAlignment="Center"/>
@@ -915,8 +928,8 @@
 
                                                                 <!-- Action Buttons -->
                                                                 <StackPanel Grid.Column="2" VerticalAlignment="Center">
-                                                                    <Button Content="📎 Attach" Style="{StaticResource PrimaryActionBtn}" Padding="6,2" Margin="0,0,0,3" FontSize="9.5" Click="BtnAttachArtifactToChat_Click" Tag="{Binding}" ToolTip="Attach to AI Chat"/>
-                                                                    <Button Content="👁 Open" Style="{StaticResource BlackBoxActionBtn}" Padding="6,2" FontSize="9.5" Click="BtnOpenArtifact_Click" Tag="{Binding}" ToolTip="Open file in editor or viewer"/>
+                                                                    <Button Content="+ Attach" Style="{StaticResource PrimaryActionBtn}" Padding="8,3" Margin="0,0,0,4" FontSize="9.5" Click="BtnAttachArtifactToChat_Click" Tag="{Binding}" ToolTip="Attach to AI Chat"/>
+                                                                    <Button Content="Open" Style="{StaticResource BlackBoxActionBtn}" Padding="8,3" FontSize="9.5" Click="BtnOpenArtifact_Click" Tag="{Binding}" ToolTip="Open file in editor or viewer"/>
                                                                 </StackPanel>
                                                             </Grid>
                                                         </Border>

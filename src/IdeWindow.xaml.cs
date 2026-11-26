@@ -52,20 +52,51 @@ namespace LlmodelBox
 
         private void BtnClose_Click(object sender, RoutedEventArgs e) => Close();
 
+        private bool _isCustomMaximized = false;
+        private Rect _restoreBounds = new Rect(100, 80, 1320, 800);
+
         private void ToggleMaximize()
         {
-            WindowState = WindowState == WindowState.Maximized
-                ? WindowState.Normal
-                : WindowState.Maximized;
+            if (_isCustomMaximized || WindowState == WindowState.Maximized)
+            {
+                WindowState = WindowState.Normal;
+                Left = _restoreBounds.Left;
+                Top = _restoreBounds.Top;
+                Width = _restoreBounds.Width;
+                Height = _restoreBounds.Height;
+                _isCustomMaximized = false;
+                if (RootBorder != null) RootBorder.Padding = new Thickness(0);
+            }
+            else
+            {
+                _restoreBounds = new Rect(Left, Top, Width, Height);
+                var wa = SystemParameters.WorkArea;
+                WindowState = WindowState.Normal;
+                Left = wa.Left;
+                Top = wa.Top;
+                Width = wa.Width;
+                Height = wa.Height;
+                _isCustomMaximized = true;
+                if (RootBorder != null) RootBorder.Padding = new Thickness(0);
+            }
         }
 
         private void IdeWindow_StateChanged(object? sender, System.EventArgs e)
         {
+            if (WindowState == WindowState.Maximized)
+            {
+                // Intercept OS maximize so WindowStyle=None never spills under the Windows Taskbar.
+                var wa = SystemParameters.WorkArea;
+                WindowState = WindowState.Normal;
+                Left = wa.Left;
+                Top = wa.Top;
+                Width = wa.Width;
+                Height = wa.Height;
+                _isCustomMaximized = true;
+            }
             if (RootBorder != null)
             {
-                RootBorder.Padding = WindowState == WindowState.Maximized
-                    ? new Thickness(7)
-                    : new Thickness(0);
+                RootBorder.Padding = new Thickness(0);
             }
         }
     }
