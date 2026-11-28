@@ -2,4 +2,10 @@
 setlocal
 cd /d "%~dp0"
 powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0build.ps1" %*
-exit /b %ERRORLEVEL%
+set "ERR=%ERRORLEVEL%"
+if not "%ERR%"=="0" (
+    echo.
+    echo [ERROR] build.ps1 exited with code %ERR%.
+    if "%~1"=="" pause
+)
+exit /b %ERR%

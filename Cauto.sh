@@ -318,6 +318,11 @@ start_server_if_needed() {
   if [[ -n "$SERVER_PID" ]] && kill -0 "$SERVER_PID" 2>/dev/null; then
     return 0
   fi
+  if [[ -n "${CODESPACE_NAME:-}" && "$(id -u)" -eq 0 ]]; then
+    echo "[cauto] Warning: running as root inside GitHub Codespaces (CODESPACE_NAME=$CODESPACE_NAME)."
+    echo "[cauto] Run Cauto.sh as your normal codespace user (without 'sudo su') so VS Code port forwarding stays attached cleanly."
+  fi
+
   if [[ ! -f "$RELEASE_DIR/LlmodelBox.exe" || ! -f "$SERVER_COPY" ]]; then
     return 0
   fi
@@ -327,6 +332,25 @@ start_server_if_needed() {
     --port "$PORT" \
     --serve-only &
   SERVER_PID=$!
+
+  sleep 1
+  if ! kill -0 "$SERVER_PID" 2>/dev/null; then
+    echo "[cauto] Error: local download server failed to start on port $PORT (port may already be in use)." >&2
+    SERVER_PID=""
+    return 1
+  fi
+
+  if command -v curl >/dev/null 2>&1; then
+    if curl -fsS --max-time 3 "http://127.0.0.1:$PORT/health" >/dev/null 2>&1; then
+      echo "[cauto] Verified local portal health: http://127.0.0.1:$PORT/health"
+    else
+      echo "[cauto] Warning: server PID $SERVER_PID is running, but http://127.0.0.1:$PORT/health did not respond yet." >&2
+    fi
+  fi
+
+  if [[ -n "${CODESPACE_NAME:-}" ]] && command -v gh >/dev/null 2>&1; then
+    gh codespace ports visibility "${PORT}:public" -c "$CODESPACE_NAME" >/dev/null 2>&1 || true
+  fi
 }
 
 get_remote_sha() {

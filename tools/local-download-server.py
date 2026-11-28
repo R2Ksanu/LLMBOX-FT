@@ -527,6 +527,28 @@ class ReusableTCPServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
     daemon_threads = True
 
 
+class ReusableDualStackTCPServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
+    allow_reuse_address = True
+    daemon_threads = True
+    address_family = socket.AF_INET6
+
+    def server_bind(self) -> None:
+        self.socket.setsockopt(socket.IPPROTO_IPV6, socket.IPV6_V6ONLY, 0)
+        super().server_bind()
+
+
+def create_http_server(host: str, port: int, handler_cls) -> socketserver.TCPServer:
+    if host in ("0.0.0.0", "::", "") and getattr(socket, "has_ipv6", False):
+        try:
+            return ReusableDualStackTCPServer(("::", port), handler_cls)
+        except OSError:
+            pass
+    bind_host = host or "0.0.0.0"
+    if ":" in bind_host and getattr(socket, "has_ipv6", False):
+        return ReusableDualStackTCPServer((bind_host, port), handler_cls)
+    return ReusableTCPServer((bind_host, port), handler_cls)
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Package and serve LlmodelBox release artifacts locally.")
     parser.add_argument("--build-dir", default="", help="Directory containing the built LlmodelBox.exe")
@@ -564,18 +586,41 @@ def main() -> int:
         if args.prepare_only:
             return 0
     else:
+        exe_path = release_dir / "LlmodelBox.exe"
+        if not exe_path.is_file():
+            sys.stderr.write(
+                f"Error: staged release executable not found at {exe_path}\n"
+                "Run build.ps1 / build.sh without --serve-only first to build and stage artifacts.\n"
+            )
+            return 1
         meta = load_release_meta(release_dir)
 
     handler_cls = functools.partial(ReleaseHandler, release_dir=release_dir, fallback_meta=meta)
     lan_ip = detect_lan_ip()
-    with ReusableTCPServer((args.host, args.port), handler_cls) as httpd:
+    try:
+        httpd = create_http_server(args.host, args.port, handler_cls)
+    except OSError as exc:
+        sys.stderr.write(
+            f"Error: failed to bind HTTP download server on {args.host}:{args.port}: {exc}\n"
+            f"Check if another process is already using port {args.port}, or pass --port <other>.\n"
+        )
+        return 1
+
+    with httpd:
         print("")
         print("Local Download Website is running:")
         print(f"  Local:   http://localhost:{args.port}/")
+        print(f"  IPv4:    http://127.0.0.1:{args.port}/")
         if lan_ip != "127.0.0.1":
             print(f"  Network: http://{lan_ip}:{args.port}/")
+        codespace_name = os.environ.get("CODESPACE_NAME", "").strip()
+        if codespace_name:
+            cs_domain = os.environ.get("GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN", "app.github.dev").strip() or "app.github.dev"
+            print(f"  Codespaces: https://{codespace_name}-{args.port}.{cs_domain}/")
+            print(f"  Note: If *.{cs_domain} returns HTTP 404, set port {args.port} Visibility to Public in the Ports tab (or run: gh codespace ports visibility {args.port}:public -c {codespace_name}).")
         print("Press Ctrl+C to stop.")
         print("")
+        sys.stdout.flush()
         try:
             httpd.serve_forever()
         except KeyboardInterrupt:
