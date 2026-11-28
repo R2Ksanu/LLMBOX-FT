@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using LlmodelBox.Runtime.Continuity;
 
 namespace LlmodelBox.Runtime.Memory
 {
@@ -10,15 +11,15 @@ namespace LlmodelBox.Runtime.Memory
         void ClearGlobal();
     }
 
-    // Part 5 Scoped Memory Engine. Manages 5 scopes (CurrentTurn, CurrentConversation,
-    // CurrentSession, CurrentProject, UserGlobal) with explicit user-approval gating for global
-    // promotion and full inspect / update / delete lifecycle operations.
     public interface IMemoryEngine
     {
+        PersistenceDiagnosticReport GetDiagnostics();
+
         MemorySnapshot Recall(string? projectKey);
         MemorySnapshot Recall(string? projectKey, string? conversationId, string? turnId = null);
 
         string? BuildPreamble(MemorySnapshot snapshot);
+        string? BuildPreamble(MemorySnapshot snapshot, string? query, int maxChars = 1200, string? activeConversationId = null);
 
         void Observe(string? projectKey, string userText, string assistantText);
         void Observe(string? projectKey, string? conversationId, string userText, string assistantText);
@@ -42,6 +43,8 @@ namespace LlmodelBox.Runtime.Memory
             string? projectKey = null,
             string? conversationId = null,
             bool explicitUserApproval = true);
+
+        bool SetPinned(string id, bool pinned, string? projectKey = null, string? conversationId = null);
 
         bool DeleteRecord(string id, string? projectKey = null, string? conversationId = null);
 

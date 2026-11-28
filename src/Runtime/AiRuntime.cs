@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using LlmodelBox.Models.Ai;
 using LlmodelBox.Providers;
 using LlmodelBox.Runtime.Context;
+using LlmodelBox.Runtime.Continuity;
 using LlmodelBox.Runtime.Intent;
 using LlmodelBox.Runtime.Knowledge;
 using LlmodelBox.Runtime.Memory;
@@ -36,13 +37,11 @@ namespace LlmodelBox.Runtime
         private readonly IKnowledgeEngine? _knowledge;
         private readonly IIntentEngine? _intent;
         private readonly TaskManager? _taskManager;
+        private readonly ContinuityService? _continuity;
 
-        // Max chars of retrieved project knowledge to fold into a single turn, and how many snippets.
         private const int KnowledgeBlockChars = 6000;
         private const int KnowledgeSnippets = 4;
 
-        // Backward-compatible: existing call sites (Phase 1/2) construct with just the router and get
-        // the default Context + Memory engines.
         public AiRuntime(IModelRouter router) : this(router, new ContextEngine(), new MemoryEngine()) { }
 
         public AiRuntime(IModelRouter router, IContextEngine contextEngine)
@@ -51,25 +50,17 @@ namespace LlmodelBox.Runtime
         public AiRuntime(IModelRouter router, IContextEngine contextEngine, IMemoryEngine memory)
             : this(router, contextEngine, memory, new ToolRegistry(), null) { }
 
-        // Phase 5: an optional tool registry + agent loop. With an empty registry (or a model that
-        // can't call tools) this behaves exactly as before — a single routed turn.
         public AiRuntime(IModelRouter router, IContextEngine contextEngine, IMemoryEngine memory,
             IToolRegistry tools, IAgentLoop? agentLoop)
             : this(router, contextEngine, memory, tools, agentLoop, null) { }
 
-        // Phase 6: an optional Knowledge Engine. When supplied (and a project root is known), the
-        // runtime retrieves relevant project excerpts and folds them into the Context Engine's budget.
-        // A null engine disables retrieval — every earlier phase behaves identically.
         public AiRuntime(IModelRouter router, IContextEngine contextEngine, IMemoryEngine memory,
             IToolRegistry tools, IAgentLoop? agentLoop, IKnowledgeEngine? knowledge)
-            : this(router, contextEngine, memory, tools, agentLoop, knowledge, null, null) { }
+            : this(router, contextEngine, memory, tools, agentLoop, knowledge, null, null, null) { }
 
-        // Phase 7: an optional Intent + Task Engine. When supplied, the runtime classifies each turn to
-        // gate tools/knowledge (a "hi" no longer indexes the repo) and records a task lifecycle on the
-        // AgentActivityBus. A null intent engine keeps the permissive Phase-6 behaviour unchanged.
         public AiRuntime(IModelRouter router, IContextEngine contextEngine, IMemoryEngine memory,
             IToolRegistry tools, IAgentLoop? agentLoop, IKnowledgeEngine? knowledge,
-            IIntentEngine? intent, TaskManager? taskManager)
+            IIntentEngine? intent, TaskManager? taskManager, ContinuityService? continuity = null)
         {
             _router = router;
             _contextEngine = contextEngine;
@@ -79,6 +70,7 @@ namespace LlmodelBox.Runtime
             _knowledge = knowledge;
             _intent = intent;
             _taskManager = taskManager;
+            _continuity = continuity;
         }
 
         public async Task<AiResponse> RunAsync(AiRequest request, CancellationToken cancellationToken)
@@ -359,7 +351,17 @@ namespace LlmodelBox.Runtime
             if (string.IsNullOrWhiteSpace(request.MemoryPreamble))
             {
                 var snapshot = _memory.Recall(request.ProjectKey, request.ConversationId);
-                request.MemoryPreamble = _memory.BuildPreamble(snapshot);
+                string? memPreamble = _memory.BuildPreamble(snapshot, request.UserPrompt, 1100, request.ConversationId);
+                string? continuityIndex = _continuity?.BuildCompactStartupContext(
+                    request.ProjectKey,
+                    request.ConversationId,
+                    request.UserPrompt,
+                    maxChars: 1300);
+
+                if (!string.IsNullOrWhiteSpace(memPreamble) && !string.IsNullOrWhiteSpace(continuityIndex))
+                    request.MemoryPreamble = $"{continuityIndex}\n\n{memPreamble}";
+                else
+                    request.MemoryPreamble = !string.IsNullOrWhiteSpace(continuityIndex) ? continuityIndex : memPreamble;
             }
 
             if (_knowledge == null || !wantsKnowledge || !string.IsNullOrWhiteSpace(request.KnowledgeBlock) ||

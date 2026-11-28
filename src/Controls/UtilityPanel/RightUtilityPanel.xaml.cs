@@ -18,6 +18,7 @@ using LlmodelBox.Models;
 using LlmodelBox.Models.Ai;
 using LlmodelBox.Runtime;
 using LlmodelBox.Runtime.Context;
+using LlmodelBox.Runtime.Continuity;
 using LlmodelBox.Runtime.Knowledge;
 using LlmodelBox.Runtime.Memory;
 using LlmodelBox.Runtime.Middleware;
@@ -53,7 +54,9 @@ namespace LlmodelBox.Controls.UtilityPanel
         private IGitService _git = new GitService();
         private IBuildTestRunner _buildRunner = new BuildTestRunner();
         private IMemoryStore _memoryStore = new JsonMemoryStore();
+        private ContinuityService? _continuity;
         private MemoryEngine? _memoryEngine;
+        private IMemoryEngine? _sharedMemoryEngine;
         private readonly KnowledgeEngine _knowledgeEngine = new();
         private MemoryScope? _inspectorScopeFilter = null;
         private ITokenUsageService? _tokenUsageService;
@@ -148,7 +151,9 @@ namespace LlmodelBox.Controls.UtilityPanel
             Func<List<ModelItem>> getModels,
             Func<ModelItem?> getActiveModel,
             Func<string?> getOpenFilePath,
-            Func<string> getOpenEditorText)
+            Func<string> getOpenEditorText,
+            ContinuityService? continuity = null,
+            IMemoryEngine? sharedMemory = null)
         {
             _runtime = runtime;
             _settingsService = settingsService;
@@ -163,6 +168,9 @@ namespace LlmodelBox.Controls.UtilityPanel
             _getActiveModel = getActiveModel;
             _getOpenFilePath = getOpenFilePath;
             _getOpenEditorText = getOpenEditorText;
+            _continuity = continuity;
+            _sharedMemoryEngine = sharedMemory;
+            _memoryEngine = sharedMemory as MemoryEngine;
 
             _reviewService = new WorkspaceReviewService(_workspace, _git);
             _omnibox = new OmniboxService(_toolRegistry, _plugins);
@@ -1837,16 +1845,78 @@ namespace LlmodelBox.Controls.UtilityPanel
             }
         }
 
-        private MemoryEngine GetMemoryEngine() => _memoryEngine ??= new MemoryEngine(_memoryStore);
+        private MemoryEngine GetMemoryEngine()
+        {
+            if (_memoryEngine != null) return _memoryEngine;
+            if (_continuity != null) _memoryEngine = new MemoryEngine(_continuity.Repository, _memoryStore);
+            else _memoryEngine = new MemoryEngine(_memoryStore);
+            return _memoryEngine;
+        }
 
         private void BuildMemoryInspectorView()
         {
             var memEngine = GetMemoryEngine();
+            var diag = memEngine.GetDiagnostics();
             var snap = memEngine.Recall(_workspaceRoot);
+
+            // Persistence health diagnostic banner
+            var diagColor = diag.State == PersistenceState.Healthy
+                ? Brush("BrushSuccess", "#22c55e")
+                : (diag.State == PersistenceState.DegradedError ? Brush("BrushDanger", "#f43f5e") : Brush("BrushWarning", "#f59e0b"));
+            var diagCard = new Border
+            {
+                Background = Brush("BrushGlassSurface", "#0b0e15"),
+                CornerRadius = new CornerRadius(10),
+                Padding = new Thickness(10, 7, 10, 7),
+                Margin = new Thickness(0, 0, 0, 8)
+            };
+            var diagRow = new DockPanel();
+            var diagBtns = new StackPanel { Orientation = Orientation.Horizontal };
+            DockPanel.SetDock(diagBtns, Dock.Right);
+            if (!string.IsNullOrWhiteSpace(_workspaceRoot))
+            {
+                var forgetBtn = new Button
+                {
+                    Content = "Forget Project Memory",
+                    Padding = new Thickness(7, 2, 7, 2),
+                    FontSize = 9.5,
+                    Margin = new Thickness(0, 0, 4, 0),
+                    ToolTip = "Explicitly delete project-derived memory only (keeps conversations & global preferences)",
+                    Style = TryFindResource("GhostToolBtn") as Style
+                };
+                forgetBtn.Click += (_, _) =>
+                {
+                    var res = MessageBox.Show(
+                        $"Forget all project-derived memory for '{Path.GetFileName(_workspaceRoot)}'?\n\nThis deletes project memories only. Your conversations, source files, and approved global preferences stay intact.",
+                        "Confirm Forget Project Memory",
+                        MessageBoxButton.YesNo,
+                        MessageBoxImage.Warning);
+                    if (res == MessageBoxResult.Yes)
+                    {
+                        memEngine.Forget(_workspaceRoot);
+                        RefreshUtilityView();
+                    }
+                };
+                diagBtns.Children.Add(forgetBtn);
+            }
+            if (diag.State != PersistenceState.Healthy && _continuity != null)
+            {
+                var retryBtn = new Button { Content = "↻ Retry Save", Padding = new Thickness(7, 2, 7, 2), FontSize = 9.5, Style = TryFindResource("PrimaryActionBtn") as Style };
+                retryBtn.Click += (_, _) => { _continuity.RetryPendingWrites(); RefreshUtilityView(); };
+                diagBtns.Children.Add(retryBtn);
+            }
+            diagRow.Children.Add(diagBtns);
+            string statusLine = $"Persistence: {diag.State}";
+            if (diag.PendingRetryCount > 0) statusLine += $" ({diag.PendingRetryCount} pending)";
+            if (!string.IsNullOrWhiteSpace(diag.LastError)) statusLine += $" · {diag.LastError}";
+            else if (!string.IsNullOrWhiteSpace(diag.LastWarning)) statusLine += $" · {diag.LastWarning}";
+            diagRow.Children.Add(new TextBlock { Text = statusLine, FontFamily = new FontFamily("Consolas"), FontSize = 9.5, Foreground = diagColor, TextWrapping = TextWrapping.Wrap, VerticalAlignment = VerticalAlignment.Center });
+            diagCard.Child = diagRow;
+            UtilityContentHost.Children.Add(diagCard);
 
             UtilityContentHost.Children.Add(new TextBlock
             {
-                Text = $"Session Goal: {(string.IsNullOrWhiteSpace(snap.SessionGoal) ? "(none)" : snap.SessionGoal)}",
+                Text = $"Conversation Goal: {(string.IsNullOrWhiteSpace(snap.SessionGoal) ? "(none)" : snap.SessionGoal)}",
                 TextWrapping = TextWrapping.Wrap,
                 FontWeight = FontWeights.SemiBold,
                 Foreground = Brush("BrushAccentLight", "#93c5fd"),
@@ -1964,6 +2034,18 @@ namespace LlmodelBox.Controls.UtilityPanel
 
                 var actions = new StackPanel { Orientation = Orientation.Horizontal };
                 DockPanel.SetDock(actions, Dock.Right);
+                var pinBtn = new Button
+                {
+                    Content = rec.IsPinned ? "★" : "☆",
+                    Padding = new Thickness(5, 2, 5, 2),
+                    FontSize = 10,
+                    Margin = new Thickness(0, 0, 3, 0),
+                    ToolTip = rec.IsPinned ? "Unpin memory" : "Pin important memory",
+                    Style = TryFindResource("GhostToolBtn") as Style
+                };
+                pinBtn.Click += (_, _) => { memEngine.SetPinned(rec.Id, !rec.IsPinned, _workspaceRoot, rec.ConversationId); RefreshUtilityView(); };
+                actions.Children.Add(pinBtn);
+
                 if (rec.Scope != MemoryScope.UserGlobal)
                 {
                     var promote = new Button { Content = "↑ Global", Padding = new Thickness(6, 2, 6, 2), FontSize = 9.5, Margin = new Thickness(0, 0, 4, 0), ToolTip = "Promote with explicit approval", Style = TryFindResource("GhostToolBtn") as Style };
@@ -1975,11 +2057,12 @@ namespace LlmodelBox.Controls.UtilityPanel
                 actions.Children.Add(del);
                 meta.Children.Add(actions);
 
+                string pinTag = rec.IsPinned ? "[PIN] " : string.Empty;
                 meta.Children.Add(new TextBlock
                 {
-                    Text = $"{rec.Scope} · {rec.Confidence:P0} · {rec.Source}",
+                    Text = $"{pinTag}{rec.Scope} · {rec.Provenance} · {rec.Confidence:P0} · {rec.UpdatedUtc:MM-dd HH:mm}Z",
                     FontFamily = new FontFamily("Consolas"),
-                    FontSize = 9.5,
+                    FontSize = 9,
                     Foreground = Brush("BrushAccentLight", "#93c5fd"),
                     VerticalAlignment = VerticalAlignment.Center
                 });

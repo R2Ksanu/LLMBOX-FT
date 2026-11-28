@@ -154,6 +154,7 @@ namespace LlmodelBox
         {
             AgentActivityBus.SignalEmitted -= OnAgentSignalForPresence;
             try { _discord.Dispose(); } catch { }
+            try { _services.Continuity.RetryPendingWrites(); _services.Continuity.Dispose(); } catch { }
             base.OnClosed(e);
         }
 
@@ -1408,7 +1409,8 @@ namespace LlmodelBox
 
             var workspace = new LlmodelBox.Controls.WorkspaceControl(_cloudApiService, _tokenUsageService, _settings, _httpClient,
                 () => _activeModel, () => _allModels, m => SetActiveModel(m), _aiRuntime, _toolRegistry,
-                _settingsService, _services.Git, _services.BuildRunner, _services.Middleware.RealtimeEvents);
+                _settingsService, _services.Git, _services.BuildRunner, _services.Middleware.RealtimeEvents,
+                _services.Continuity, _services.Middleware.Memory);
 
             var win = new IdeWindow(project, workspace, _settings.SelectedTheme, _settings.ThemeAccent) { Owner = this };
             workspace.BackRequested += () => win.Close();

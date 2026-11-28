@@ -1,12 +1,10 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using LlmodelBox.Runtime.Continuity;
 
 namespace LlmodelBox.Runtime.Memory
 {
-    /// <summary>
-    /// Scoped memory tiers ordered from shortest-lived (single turn) to longest-lived (approved global).
-    /// </summary>
     public enum MemoryScope
     {
         CurrentTurn = 0,
@@ -16,17 +14,24 @@ namespace LlmodelBox.Runtime.Memory
         UserGlobal = 4
     }
 
-    /// <summary>
-    /// Structured, user-inspectable memory entry with lifecycle, provenance, and confidence metadata.
-    /// </summary>
     public sealed class MemoryRecord
     {
         public string Id { get; set; } = Guid.NewGuid().ToString("N")[..12];
         public string Content { get; set; } = string.Empty;
         public MemoryScope Scope { get; set; } = MemoryScope.CurrentProject;
+        public MemoryCategory Category { get; set; } = MemoryCategory.General;
+        public MemoryLifecycleStatus Status { get; set; } = MemoryLifecycleStatus.Active;
+        public MemoryProvenance Provenance { get; set; } = MemoryProvenance.UserExplicit;
         public string Source { get; set; } = "user_manual";
+        public string? SourceMessageId { get; set; }
+        public string? SourceEventId { get; set; }
+        public string? SourceFilePath { get; set; }
+        public string CanonicalKey { get; set; } = string.Empty;
+        public string? SupersededById { get; set; }
+        public bool IsPinned { get; set; }
         public DateTime TimestampUtc { get; set; } = DateTime.UtcNow;
         public DateTime UpdatedUtc { get; set; } = DateTime.UtcNow;
+        public DateTime LastConfirmedUtc { get; set; } = DateTime.UtcNow;
         public double Confidence { get; set; } = 1.0;
         public DateTime? ExpiresUtc { get; set; }
         public bool IsUserEditable { get; set; } = true;
@@ -36,16 +41,30 @@ namespace LlmodelBox.Runtime.Memory
         public string? TurnId { get; set; }
 
         public bool IsExpired(DateTime? nowUtc = null)
-            => ExpiresUtc.HasValue && ExpiresUtc.Value <= (nowUtc ?? DateTime.UtcNow);
+            => Status == MemoryLifecycleStatus.Expired ||
+               (ExpiresUtc.HasValue && ExpiresUtc.Value <= (nowUtc ?? DateTime.UtcNow));
+
+        public bool IsActiveAt(DateTime? nowUtc = null)
+            => Status == MemoryLifecycleStatus.Active && !IsExpired(nowUtc);
 
         public MemoryRecord Clone() => new()
         {
             Id = Id,
             Content = Content,
             Scope = Scope,
+            Category = Category,
+            Status = Status,
+            Provenance = Provenance,
             Source = Source,
+            SourceMessageId = SourceMessageId,
+            SourceEventId = SourceEventId,
+            SourceFilePath = SourceFilePath,
+            CanonicalKey = CanonicalKey,
+            SupersededById = SupersededById,
+            IsPinned = IsPinned,
             TimestampUtc = TimestampUtc,
             UpdatedUtc = UpdatedUtc,
+            LastConfirmedUtc = LastConfirmedUtc,
             Confidence = Confidence,
             ExpiresUtc = ExpiresUtc,
             IsUserEditable = IsUserEditable,
@@ -55,33 +74,20 @@ namespace LlmodelBox.Runtime.Memory
         };
     }
 
-    // Durable, per-project memory the runtime accumulates across turns and sessions. Unlike the raw
-    // chat transcript (IChatHistoryStore), this is the *distilled* state that survives history
-    // compaction: the original session goal, structured MemoryRecords, and backward-compatible Facts.
     public sealed class ConversationMemory
     {
-        // The opening objective of the session — preserved even after old turns are dropped.
         public string? SessionGoal { get; set; }
-
-        // Salient, de-duplicated facts (kept synced for backward compatibility & legacy UI readers).
         public List<string> Facts { get; set; } = new();
-
-        // Part 5 structured memory records for this project.
         public List<MemoryRecord> Records { get; set; } = new();
-
         public int TurnCount { get; set; }
         public DateTime UpdatedUtc { get; set; } = DateTime.UtcNow;
 
-        /// <summary>
-        /// Ensures legacy Facts are represented as structured MemoryRecords and removes expired entries.
-        /// </summary>
         public void SynchronizeRecords(string? projectKey = null, DateTime? nowUtc = null)
         {
             var now = nowUtc ?? DateTime.UtcNow;
             Records ??= new List<MemoryRecord>();
             Facts ??= new List<string>();
 
-            // Migrate legacy string facts into structured MemoryRecords once.
             foreach (var f in Facts)
             {
                 if (string.IsNullOrWhiteSpace(f)) continue;
@@ -92,9 +98,13 @@ namespace LlmodelBox.Runtime.Memory
                         Id = DeterministicId("proj", f),
                         Content = f.Trim(),
                         Scope = MemoryScope.CurrentProject,
+                        Category = MemoryCategory.General,
+                        Status = MemoryLifecycleStatus.Active,
+                        Provenance = MemoryProvenance.UserExplicit,
                         Source = "legacy_fact",
                         TimestampUtc = UpdatedUtc == default ? now : UpdatedUtc,
                         UpdatedUtc = now,
+                        LastConfirmedUtc = now,
                         Confidence = 0.78,
                         IsUserEditable = true,
                         ProjectKey = projectKey
@@ -102,11 +112,10 @@ namespace LlmodelBox.Runtime.Memory
                 }
             }
 
-            Records.RemoveAll(r => string.IsNullOrWhiteSpace(r.Content) || r.IsExpired(now));
+            Records.RemoveAll(r => string.IsNullOrWhiteSpace(r.Content) || r.IsExpired(now) || r.Status == MemoryLifecycleStatus.Deleted);
 
-            // Keep legacy Facts projected from non-expired project records so callers reading Facts stay accurate.
             Facts.Clear();
-            foreach (var rec in Records.Where(r => r.Scope == MemoryScope.CurrentProject))
+            foreach (var rec in Records.Where(r => r.Scope == MemoryScope.CurrentProject && r.IsActiveAt(now)))
             {
                 if (!Facts.Any(x => string.Equals(x, rec.Content, StringComparison.OrdinalIgnoreCase)))
                     Facts.Add(rec.Content);
@@ -128,7 +137,6 @@ namespace LlmodelBox.Runtime.Memory
         }
     }
 
-    // Read-only view handed to callers so they cannot mutate persisted state directly.
     public sealed class MemorySnapshot
     {
         public string? SessionGoal { get; init; }

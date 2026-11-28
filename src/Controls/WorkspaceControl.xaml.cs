@@ -26,6 +26,7 @@ using LlmodelBox.Models.Ai;
 using LlmodelBox.Runtime;
 using LlmodelBox.Runtime.Content;
 using LlmodelBox.Runtime.Context;
+using LlmodelBox.Runtime.Continuity;
 using LlmodelBox.Runtime.Memory;
 using LlmodelBox.Runtime.Middleware;
 using LlmodelBox.Services;
@@ -69,10 +70,13 @@ namespace LlmodelBox.Controls
         private readonly IGitService _gitService;
         private readonly IBuildTestRunner _buildRunner;
         private readonly IRealtimeEventEngine? _realtimeEvents;
+        private readonly ContinuityService? _continuity;
+        private readonly IMemoryEngine? _sharedMemory;
         private RightPanelDisplayMode _rightPanelMode = RightPanelDisplayMode.Expanded;
         private bool _showingClassicInspector = false;
         private string? _conversationSummary;
         private string _activeConversationId = Guid.NewGuid().ToString("N")[..10];
+        private string? _prevWorkConvId;
 
         private ModelItem? _activeModel => _getActiveModel();
         private List<ModelItem> _allModels => _getAllModels();
@@ -93,7 +97,9 @@ namespace LlmodelBox.Controls
             ISettingsService? settingsService = null,
             IGitService? gitService = null,
             IBuildTestRunner? buildRunner = null,
-            IRealtimeEventEngine? realtimeEvents = null)
+            IRealtimeEventEngine? realtimeEvents = null,
+            ContinuityService? continuity = null,
+            IMemoryEngine? sharedMemory = null)
         {
             _cloudApiService = cloudApiService;
             _tokenUsageService = tokenUsageService;
@@ -108,6 +114,8 @@ namespace LlmodelBox.Controls
             _gitService = gitService ?? new GitService();
             _buildRunner = buildRunner ?? new BuildTestRunner();
             _realtimeEvents = realtimeEvents;
+            _continuity = continuity;
+            _sharedMemory = sharedMemory;
             InitializeComponent();
             InitializeRightUtilityPanelWiring();
         }
@@ -339,7 +347,20 @@ namespace LlmodelBox.Controls
         {
             _activeProject = project;
             RegisterProjectTools(project);
-            _chatMessages = _historyStore.Load(project.Path);
+
+            if (_continuity != null)
+            {
+                var activeConv = _continuity.GetOrCreateLatestProjectConversation(
+                    project.Path, project.Name, _activeModel?.Id, _activeModel?.Provider);
+                _activeConversationId = activeConv.Id;
+                _chatMessages = _continuity.LoadMessages(_activeConversationId);
+                _conversationSummary = _continuity.GetLatestCheckpoint(_activeConversationId)?.SummaryText;
+            }
+            else
+            {
+                _chatMessages = _historyStore.Load(project.Path);
+            }
+
             TxtActiveProjectName.Text = project.Name;
             TxtActiveProjectPath.Text = project.Path;
             string modelName = _activeModel?.Name ?? "GPT-4o";
@@ -349,6 +370,7 @@ namespace LlmodelBox.Controls
             LoadInitialProjectFile();
             RefreshArtifactsList();
             InitializeProjectChat();
+            RefreshWorkspaceContinuityBanner();
             UpdateInspectorInfo();
             SwitchInspectorTab(0);
             if (UtilityPanel != null)
@@ -366,7 +388,9 @@ namespace LlmodelBox.Controls
                     () => _allModels,
                     () => _activeModel,
                     () => CodeEditor?.ActiveFilePath ?? _currentOpenFilePath,
-                    () => CodeEditor?.ActiveText ?? string.Empty);
+                    () => CodeEditor?.ActiveText ?? string.Empty,
+                    _continuity,
+                    _sharedMemory);
                 ApplyRightPanelMode(RightUtilityPanel.ParseMode(_settings.RightPanelState), animate: false);
                 UtilityPanel.SetWorkspaceContext(project.Path, CollectFlatRelativeFiles(_projectFiles));
             }
@@ -1589,30 +1613,37 @@ namespace LlmodelBox.Controls
             var requestModel = _activeModel;
 
             List<string> messageImages;
+            ChatMessageItem? activeUserMsg = null;
             if (addUserMessage)
             {
                 messageImages = new List<string>(_pendingChatImages);
-                var userMsg = new ChatMessageItem
+                var nowUtc = DateTime.UtcNow;
+                activeUserMsg = new ChatMessageItem
                 {
+                    ConversationId = _activeConversationId,
+                    CreatedAtUtc = nowUtc,
+                    UpdatedAtUtc = nowUtc,
                     SenderRole = "User",
                     SenderName = _settings.ProfileName,
                     Content = prompt,
                     Timestamp = DateTime.Now.ToString("HH:mm:ss"),
                     ImageAttachments = messageImages
                 };
-                _chatMessages.Add(userMsg);
+                _chatMessages.Add(activeUserMsg);
                 if (ChatMessagesList.ItemsSource != _displayedChatMessages) ChatMessagesList.ItemsSource = _displayedChatMessages;
-                _displayedChatMessages.Add(userMsg);
+                _displayedChatMessages.Add(activeUserMsg);
                 TxtChatPromptInput.Clear();
                 _pendingChatImages.Clear();
                 PendingImagesList.ItemsSource = null;
                 PendingImagesBar.Visibility = Visibility.Collapsed;
                 if (TxtInfoChatTurns != null) TxtInfoChatTurns.Text = $"{_chatMessages.Count} messages";
                 PersistChat();
+                if (WorkspacePreviousWorkBanner != null) WorkspacePreviousWorkBanner.Visibility = Visibility.Collapsed;
             }
             else
             {
                 messageImages = new List<string>(pendingImgs);
+                activeUserMsg = _chatMessages.LastOrDefault(m => m.SenderRole == "User");
             }
 
             AgentActivityBus.Emit(AgentNode.Prompt, $"\"{Truncate(prompt, 90)}\" ({prompt.Length} chars)");
@@ -1644,8 +1675,13 @@ namespace LlmodelBox.Controls
                 AutoCompactThresholdRatio = Math.Clamp(_settings.AutoCompactThresholdPercent / 100.0, 0.40, 0.92)
             };
 
+            var aNowUtc = DateTime.UtcNow;
             var assistantMsg = new ChatMessageItem
             {
+                ConversationId = _activeConversationId,
+                SequenceNumber = _chatMessages.Count + 1,
+                CreatedAtUtc = aNowUtc,
+                UpdatedAtUtc = aNowUtc,
                 SenderRole = "Assistant",
                 SenderName = requestModel.Name,
                 ModelName = requestModel.Name,
@@ -1656,6 +1692,9 @@ namespace LlmodelBox.Controls
                 Timestamp = DateTime.Now.ToString("HH:mm:ss")
             };
             _chatMessages.Add(assistantMsg);
+            TurnRecord? activeTurn = activeUserMsg != null
+                ? _continuity?.BeginTurn(_activeConversationId, _activeProject?.Path, activeUserMsg, assistantMsg)
+                : null;
             if (ChatMessagesList.ItemsSource != _displayedChatMessages) ChatMessagesList.ItemsSource = _displayedChatMessages;
             _displayedChatMessages.Add(assistantMsg);
             _ = Dispatcher.BeginInvoke(new Action(() => ChatMessagesList.ScrollIntoView(assistantMsg)), DispatcherPriority.Background);
@@ -1692,6 +1731,8 @@ namespace LlmodelBox.Controls
                 if (snapshot != null)
                 {
                     assistantMsg.Content = snapshot;
+                    if (activeTurn != null)
+                        _continuity?.CheckpointStreamingProgress(activeTurn, assistantMsg, snapshot);
                     ChatMessagesList.ScrollIntoView(assistantMsg);
                 }
                 assistantMsg.ElapsedSeconds = sw.Elapsed.TotalSeconds;
@@ -1880,6 +1921,40 @@ namespace LlmodelBox.Controls
 
             if (TxtInfoChatTurns != null) TxtInfoChatTurns.Text = $"{_chatMessages.Count} messages";
             PersistChat();
+
+            if (activeTurn != null && _continuity != null)
+            {
+                var workEvents = new List<WorkEventRecord>();
+                foreach (var dsb in assistantMsg.Blocks.OfType<DiffSummaryBlock>())
+                {
+                    foreach (var f in dsb.Files)
+                    {
+                        workEvents.Add(new WorkEventRecord
+                        {
+                            CorrelationId = $"edit:{activeTurn.Id}:{f.FilePath}",
+                            EventType = "FileChanged",
+                            ToolName = "WriteFile",
+                            FilePath = f.FilePath,
+                            Summary = $"+{f.Additions}/-{f.Deletions} lines",
+                            Status = "Succeeded"
+                        });
+                    }
+                }
+                var tStatus = cancelled
+                    ? TurnLifecycleStatus.Cancelled
+                    : (isErr ? TurnLifecycleStatus.Failed : TurnLifecycleStatus.Completed);
+                var cp = _continuity.CompleteTurnAndCheckpoint(
+                    activeTurn,
+                    assistantMsg,
+                    tStatus,
+                    response,
+                    workEvents,
+                    _sharedMemory,
+                    overrideSummary: aiResp?.UpdatedConversationSummary,
+                    promptTokens: promptTokenEstimate);
+                _conversationSummary = cp.SummaryText;
+            }
+
             ChatMessagesList.ScrollIntoView(assistantMsg);
             AppendLog($"[AI CHAT] Received response from {requestModel.Name} ({sw.ElapsedMilliseconds}ms)");
         }
@@ -1997,20 +2072,163 @@ namespace LlmodelBox.Controls
         {
             _chatMessages.Clear();
             _conversationSummary = null;
-            _activeConversationId = Guid.NewGuid().ToString("N")[..10];
-            if (_activeProject != null)
+            if (_continuity != null && _activeProject != null)
             {
-                _historyStore.Clear(_activeProject.Path);
-                _memoryStore.Clear(_activeProject.Path);
+                // P0 fix: starting a new conversation NEVER deletes existing conversations or project memory!
+                var conv = _continuity.StartNewConversation(
+                    _activeProject.Path,
+                    _activeProject.Name,
+                    _activeModel?.Id,
+                    _activeModel?.Provider);
+                _activeConversationId = conv.Id;
+            }
+            else
+            {
+                _activeConversationId = Guid.NewGuid().ToString("N")[..10];
             }
             InitializeProjectChat();
-            AppendLog("[AI CHAT] Chat history cleared.");
+            RefreshWorkspaceContinuityBanner();
+            AppendLog("[AI CHAT] Started a new conversation (prior conversations and project memory preserved).");
         }
 
-        // Best-effort durable persistence of the current conversation, keyed by project path.
+        private void BtnWorkspaceHistory_Click(object sender, RoutedEventArgs e)
+        {
+            if (WorkspaceHistoryPopup == null || WorkspaceConversationsList == null) return;
+            if (_continuity != null && _activeProject != null)
+            {
+                var list = _continuity.ListConversations(_activeProject.Path, includeArchived: true, includeDeleted: false);
+                WorkspaceConversationsList.ItemsSource = list;
+            }
+            WorkspaceHistoryPopup.IsOpen = !WorkspaceHistoryPopup.IsOpen;
+        }
+
+        private void WorkspaceConversationsList_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (WorkspaceConversationsList?.SelectedItem is not ConversationRecord conv || _continuity == null) return;
+            if (WorkspaceHistoryPopup != null) WorkspaceHistoryPopup.IsOpen = false;
+            _activeConversationId = conv.Id;
+            _chatMessages = _continuity.LoadMessages(conv.Id);
+            _conversationSummary = _continuity.GetLatestCheckpoint(conv.Id)?.SummaryText;
+            if (conv.IsArchived) _continuity.RestoreConversation(conv.Id);
+            InitializeProjectChat();
+            RefreshWorkspaceContinuityBanner();
+            AppendLog($"[AI CHAT] Switched to conversation '{conv.Title}'.");
+        }
+
+        private void BtnWorkspaceArchiveChat_Click(object sender, RoutedEventArgs e)
+        {
+            if (_continuity == null || _activeProject == null) return;
+            _continuity.ArchiveConversation(_activeConversationId, archived: true);
+            BtnClearChat_Click(sender, e);
+            AppendLog("[AI CHAT] Conversation archived (retained in history & searchable).");
+        }
+
+        private void BtnForgetProjectMemory_Click(object sender, RoutedEventArgs e)
+        {
+            if (_activeProject == null) return;
+            if (WorkspaceHistoryPopup != null) WorkspaceHistoryPopup.IsOpen = false;
+            var res = MessageBox.Show(
+                $"Forget all project-derived memory for '{_activeProject.Name}'?\n\nThis deletes project memories only. Conversations, workspace files, and approved global preferences stay untouched.",
+                "Confirm Forget Project Memory",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Warning);
+            if (res != MessageBoxResult.Yes) return;
+
+            if (_sharedMemory != null) _sharedMemory.Forget(_activeProject.Path);
+            else if (_continuity != null) _continuity.ForgetProjectMemory(_activeProject.Path);
+            else _memoryStore.Clear(_activeProject.Path);
+
+            AppendLog($"[MEMORY] Explicitly forgot project memory for '{_activeProject.Name}'.");
+        }
+
+        private void RefreshWorkspaceContinuityBanner()
+        {
+            if (WorkspacePreviousWorkBanner == null || TxtWorkspacePrevBanner == null || _continuity == null || _activeProject == null)
+            {
+                if (WorkspacePreviousWorkBanner != null) WorkspacePreviousWorkBanner.Visibility = Visibility.Collapsed;
+                return;
+            }
+
+            var currentCp = _continuity.GetLatestCheckpoint(_activeConversationId);
+            if (currentCp != null && currentCp.Status == ConversationStatus.Interrupted)
+            {
+                _prevWorkConvId = _activeConversationId;
+                TxtWorkspacePrevBanner.Text = $"Interrupted turn · Goal: {Truncate(currentCp.CurrentGoal, 65)} · Next: {Truncate(currentCp.NextStep, 55)}";
+                if (BtnWorkspaceResumePrev != null) BtnWorkspaceResumePrev.Content = "Continue Interrupted Turn";
+                WorkspacePreviousWorkBanner.Visibility = Visibility.Visible;
+                return;
+            }
+
+            // Show previous-work pointer if active chat is brand new / welcome-only
+            bool isBlank = _chatMessages.Count <= 1 && _chatMessages.All(m => m.SenderRole != "User");
+            if (isBlank)
+            {
+                var prev = _continuity.GetPreviousWorkPointer(_activeProject.Path, _activeConversationId);
+                if (prev != null && !string.IsNullOrWhiteSpace(prev.CurrentGoal))
+                {
+                    _prevWorkConvId = prev.ConversationId;
+                    TxtWorkspacePrevBanner.Text = $"Previous work: {Truncate(prev.CurrentGoal, 65)} · Next: {Truncate(prev.NextStep, 55)}";
+                    if (BtnWorkspaceResumePrev != null) BtnWorkspaceResumePrev.Content = "Resume Prev Chat";
+                    WorkspacePreviousWorkBanner.Visibility = Visibility.Visible;
+                    return;
+                }
+            }
+
+            WorkspacePreviousWorkBanner.Visibility = Visibility.Collapsed;
+        }
+
+        private async void BtnWorkspaceResumePrev_Click(object sender, RoutedEventArgs e)
+        {
+            if (WorkspacePreviousWorkBanner != null) WorkspacePreviousWorkBanner.Visibility = Visibility.Collapsed;
+            if (_continuity == null || string.IsNullOrWhiteSpace(_prevWorkConvId)) return;
+
+            if (!string.Equals(_prevWorkConvId, _activeConversationId, StringComparison.Ordinal))
+            {
+                _activeConversationId = _prevWorkConvId!;
+                _chatMessages = _continuity.LoadMessages(_activeConversationId);
+                _conversationSummary = _continuity.GetLatestCheckpoint(_activeConversationId)?.SummaryText;
+                InitializeProjectChat();
+            }
+
+            var cp = _continuity.GetLatestCheckpoint(_activeConversationId);
+            if (cp != null && (cp.Status == ConversationStatus.Interrupted || !string.IsNullOrWhiteSpace(cp.NextStep)))
+            {
+                await DispatchChatMessageAsync(
+                    $"Continue from the verified handoff checkpoint. Goal: {cp.CurrentGoal}. Next step: {cp.NextStep}",
+                    addUserMessage: true);
+            }
+        }
+
+        private void BtnDismissWorkspacePrevBanner_Click(object sender, RoutedEventArgs e)
+        {
+            if (WorkspacePreviousWorkBanner != null) WorkspacePreviousWorkBanner.Visibility = Visibility.Collapsed;
+        }
+
+        // Durable persistence through unified ContinuityService (with JSON store fallback for isolated callers).
         private void PersistChat()
         {
-            if (_activeProject != null) _historyStore.Save(_activeProject.Path, _chatMessages);
+            if (_activeProject == null) return;
+            if (_continuity != null)
+            {
+                _continuity.SaveConversationMessages(
+                    _activeConversationId,
+                    _activeProject.Path,
+                    _activeProject.Name,
+                    _chatMessages,
+                    modelId: _activeModel?.Id,
+                    provider: _activeModel?.Provider);
+                if (TxtWorkspacePersistState != null)
+                {
+                    var d = _continuity.GetDiagnostics();
+                    TxtWorkspacePersistState.Text = d.State == PersistenceState.Healthy
+                        ? "· Saved"
+                        : (d.State == PersistenceState.DegradedError ? $"· Save Err ({d.PendingRetryCount})" : "· Recovered");
+                }
+            }
+            else
+            {
+                _historyStore.Save(_activeProject.Path, _chatMessages);
+            }
         }
 
         private void BtnCopyChatMessage_Click(object sender, RoutedEventArgs e)

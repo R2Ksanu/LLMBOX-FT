@@ -765,7 +765,12 @@
                                     <RowDefinition Height="Auto"/>
                                     <RowDefinition Height="Auto"/>
                                 </Grid.RowDefinitions>
-                                <TextBlock Grid.Row="0" Text="Conversations" FontSize="11" FontWeight="Medium" Foreground="{DynamicResource BrushTextMuted}" Margin="2,0,0,6"/>
+                                <Grid Grid.Row="0" Margin="2,0,0,6">
+                                    <TextBlock Text="Conversations" FontSize="11" FontWeight="Medium" Foreground="{DynamicResource BrushTextMuted}" VerticalAlignment="Center"/>
+                                    <Button x:Name="BtnToggleArchivedConversations" Content="Archived" HorizontalAlignment="Right" Padding="6,2" FontSize="9.5"
+                                            Background="Transparent" BorderThickness="0" Foreground="{DynamicResource BrushTextDim}"
+                                            Cursor="Hand" ToolTip="Toggle archived conversations" Click="BtnToggleArchivedConversations_Click"/>
+                                </Grid>
                                 <Grid Grid.Row="1">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*"/>
@@ -835,7 +840,10 @@
                                                             </StackPanel>
                                                         </StackPanel>
                                                         <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Top" Margin="6,0,0,0">
+                                                            <TextBlock Text="{Binding StatusBadgeText}" Visibility="{Binding StatusBadgeVisibility}" FontSize="8.5" FontWeight="Bold" FontFamily="Consolas" Foreground="{DynamicResource BrushAccentLight}" Margin="0,1.5,5,0"/>
                                                             <TextBlock Text="{Binding RelativeTime}" FontSize="10" Foreground="{DynamicResource BrushTextDim}" Margin="0,1,4,0"/>
+                                                            <Button Content="{Binding ArchiveActionGlyph}" Width="16" Height="16" Padding="0" Background="Transparent" BorderThickness="0" Foreground="{DynamicResource BrushTextDim}"
+                                                                    FontSize="9.5" Cursor="Hand" Tag="{Binding}" Click="BtnArchiveHomeConversation_Click" ToolTip="{Binding ArchiveActionTooltip}" Margin="0,0,2,0"/>
                                                             <Button Content="✕" Width="16" Height="16" Padding="0" Background="Transparent" BorderThickness="0" Foreground="{DynamicResource BrushTextDim}"
                                                                     FontSize="9.5" Cursor="Hand" Tag="{Binding}" Click="BtnDeleteHomeConversation_Click" ToolTip="Delete conversation"/>
                                                         </StackPanel>
@@ -861,6 +869,15 @@
                                         <StackPanel Orientation="Horizontal">
                                             <TextBlock Text="⚙" FontSize="13" Foreground="{DynamicResource BrushTextMuted}" VerticalAlignment="Center" Margin="0,0,9,0"/>
                                             <TextBlock Text="Settings" FontSize="12" FontWeight="Medium" VerticalAlignment="Center"/>
+                                        </StackPanel>
+                                    </Button>
+
+                                    <Button x:Name="BtnPersistenceStatus" HorizontalContentAlignment="Left" Padding="8,4" Margin="0,0,0,4"
+                                            Background="Transparent" BorderThickness="0" Cursor="Hand" Click="BtnPersistenceStatus_Click"
+                                            ToolTip="Click to check continuity storage status or retry pending writes">
+                                        <StackPanel Orientation="Horizontal">
+                                            <Ellipse x:Name="PersistenceStatusDot" Width="6" Height="6" Fill="{DynamicResource BrushSuccess}" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                                            <TextBlock x:Name="TxtPersistenceStatus" Text="Storage: Saved" FontSize="10" FontFamily="Consolas" Foreground="{DynamicResource BrushTextDim}" VerticalAlignment="Center"/>
                                         </StackPanel>
                                     </Button>
 
@@ -914,6 +931,21 @@
                             <TextBlock x:Name="TxtHomeGreetingSub" Text="Choose a workspace above or start a general conversation."
                                        FontSize="12.5" Foreground="{DynamicResource BrushTextMuted}" Margin="0,8,0,0"
                                        HorizontalAlignment="Center" TextAlignment="Center" MaxWidth="460" TextWrapping="Wrap"/>
+
+                            <Border x:Name="HomePreviousWorkCard" Visibility="Collapsed" Margin="0,18,0,0" Padding="14,12" MaxWidth="520"
+                                    Background="{DynamicResource BrushGlassHeader}" BorderBrush="{DynamicResource BrushGlassBorder}" BorderThickness="1" CornerRadius="12">
+                                <StackPanel>
+                                    <DockPanel Margin="0,0,0,6">
+                                        <Button x:Name="BtnHomeContinuePrev" DockPanel.Dock="Right" Content="Resume Previous Chat"
+                                                Style="{StaticResource PrimaryActionBtn}" Padding="10,4" FontSize="10.5"
+                                                Click="BtnHomeContinuePrev_Click"/>
+                                        <TextBlock Text="CONTINUE WHERE YOU LEFT OFF" FontFamily="Consolas" FontSize="9.5" FontWeight="Bold"
+                                                   Foreground="{DynamicResource BrushAccentLight}" VerticalAlignment="Center"/>
+                                    </DockPanel>
+                                    <TextBlock x:Name="TxtHomePrevGoal" Text="" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource BrushTextPrimary}" TextWrapping="Wrap"/>
+                                    <TextBlock x:Name="TxtHomePrevDetail" Text="" FontSize="11" Foreground="{DynamicResource BrushTextSecondary}" TextWrapping="Wrap" Margin="0,4,0,0"/>
+                                </StackPanel>
+                            </Border>
                         </StackPanel>
 
                         <!-- Active Chat Messages Thread (Virtualized ListBox) -->

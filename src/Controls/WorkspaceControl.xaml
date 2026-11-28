@@ -327,17 +327,49 @@
                                                     <Border Background="{DynamicResource BrushAccentGlow}" BorderBrush="{DynamicResource BrushAccent}" BorderThickness="1" CornerRadius="999" Margin="9,0,0,0" Padding="8,1.5">
                                                         <TextBlock x:Name="TxtChatActiveModelBadge" Text="GPT-4o // Direct Cloud API" Foreground="{DynamicResource BrushAccentLight}" FontSize="9.5" FontWeight="Bold" FontFamily="Consolas"/>
                                                     </Border>
+                                                    <TextBlock x:Name="TxtWorkspacePersistState" Text="" Foreground="{DynamicResource BrushTextDim}" FontSize="9" FontFamily="Consolas" VerticalAlignment="Center" Margin="8,0,0,0"/>
                                                 </StackPanel>
 
                                                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
-                                                    <Button Style="{StaticResource GhostToolBtn}" Padding="8,3.5" FontSize="10" Click="BtnClearChat_Click">
+                                                    <Button x:Name="BtnWorkspaceHistory" Content="History ⌄" Style="{StaticResource GhostToolBtn}" Padding="8,3.5" FontSize="10" Margin="0,0,2,0" ToolTip="Switch or restore project conversations" Click="BtnWorkspaceHistory_Click"/>
+                                                    <Popup x:Name="WorkspaceHistoryPopup" PlacementTarget="{Binding ElementName=BtnWorkspaceHistory}" Placement="Bottom" StaysOpen="False" AllowsTransparency="True" VerticalOffset="4">
+                                                        <Border Background="{DynamicResource BrushGlassHeader}" BorderBrush="{DynamicResource BrushGlassBorder}" BorderThickness="1" CornerRadius="12" Padding="8" Width="280" MaxHeight="300">
+                                                            <StackPanel>
+                                                                <DockPanel Margin="0,0,0,6">
+                                                                    <Button DockPanel.Dock="Right" Content="Forget Memory" Style="{StaticResource GhostToolBtn}" Padding="6,2" FontSize="9.5" ToolTip="Explicitly delete project-derived memory" Click="BtnForgetProjectMemory_Click"/>
+                                                                    <TextBlock Text="PROJECT CONVERSATIONS" FontFamily="Consolas" FontSize="9" FontWeight="Bold" Foreground="{DynamicResource BrushTextDim}" VerticalAlignment="Center"/>
+                                                                </DockPanel>
+                                                                <ListBox x:Name="WorkspaceConversationsList" Background="Transparent" BorderThickness="0" MaxHeight="220" SelectionChanged="WorkspaceConversationsList_SelectionChanged">
+                                                                    <ListBox.ItemTemplate>
+                                                                        <DataTemplate>
+                                                                            <TextBlock Text="{Binding Title}" FontSize="11" Foreground="{DynamicResource BrushTextPrimary}" Padding="4,3" TextTrimming="CharacterEllipsis"/>
+                                                                        </DataTemplate>
+                                                                    </ListBox.ItemTemplate>
+                                                                </ListBox>
+                                                            </StackPanel>
+                                                        </Border>
+                                                    </Popup>
+                                                    <Button Style="{StaticResource GhostToolBtn}" Padding="7,3.5" FontSize="10" Margin="0,0,2,0" ToolTip="Archive current conversation" Click="BtnWorkspaceArchiveChat_Click">
+                                                        <TextBlock Text="Archive" VerticalAlignment="Center"/>
+                                                    </Button>
+                                                    <Button Style="{StaticResource GhostToolBtn}" Padding="8,3.5" FontSize="10" ToolTip="Start a fresh conversation (keeps prior chats and project memory)" Click="BtnClearChat_Click">
                                                         <StackPanel Orientation="Horizontal">
-                                                            <Path Data="{StaticResource IconTrash}" Fill="{DynamicResource BrushTextSecondary}" Stretch="Uniform" Width="11" Height="11" VerticalAlignment="Center" Margin="0,0,5,0"/>
-                                                            <TextBlock Text="Clear" VerticalAlignment="Center"/>
+                                                            <Path Data="{StaticResource IconPlus}" Fill="{DynamicResource BrushTextSecondary}" Stretch="Uniform" Width="10" Height="10" VerticalAlignment="Center" Margin="0,0,5,0"/>
+                                                            <TextBlock Text="New Chat" VerticalAlignment="Center"/>
                                                         </StackPanel>
                                                     </Button>
                                                 </StackPanel>
                                             </Grid>
+                                        </Border>
+
+                                        <!-- Compact Handoff / Previous Work Banner -->
+                                        <Border x:Name="WorkspacePreviousWorkBanner" Grid.Row="1" Visibility="Collapsed" VerticalAlignment="Top" Panel.ZIndex="5"
+                                                Background="{DynamicResource BrushGlassHeader}" BorderBrush="{DynamicResource BrushGlassBorder}" BorderThickness="0,0,0,1" Padding="10,6">
+                                            <DockPanel>
+                                                <Button DockPanel.Dock="Right" Content="Dismiss" Style="{StaticResource GhostToolBtn}" Padding="6,2" FontSize="9.5" Click="BtnDismissWorkspacePrevBanner_Click"/>
+                                                <Button x:Name="BtnWorkspaceResumePrev" DockPanel.Dock="Right" Content="Resume" Style="{StaticResource PrimaryActionBtn}" Padding="8,2" FontSize="9.5" Margin="0,0,4,0" Click="BtnWorkspaceResumePrev_Click"/>
+                                                <TextBlock x:Name="TxtWorkspacePrevBanner" Text="" FontSize="10.5" Foreground="{DynamicResource BrushTextSecondary}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
+                                            </DockPanel>
                                         </Border>
 
                                         <!-- Messages Stream (Virtualized ListBox) -->

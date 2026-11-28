@@ -22,6 +22,7 @@ using LlmodelBox.Providers;
 using LlmodelBox.Runtime;
 using LlmodelBox.Runtime.Content;
 using LlmodelBox.Runtime.Context;
+using LlmodelBox.Runtime.Continuity;
 using LlmodelBox.Runtime.Memory;
 using LlmodelBox.Services;
 using Microsoft.Win32;
@@ -35,6 +36,9 @@ namespace LlmodelBox
         public string ProjectPath { get; set; } = string.Empty;
         public string ProjectName { get; set; } = string.Empty;
         public DateTime UpdatedAtUtc { get; set; } = DateTime.UtcNow;
+        public ConversationStatus Status { get; set; } = ConversationStatus.Active;
+        public bool IsArchived { get; set; }
+        public string? LatestCheckpointSummary { get; set; }
         public List<ChatMessageItem> Messages { get; set; } = new();
 
         [JsonIgnore]
@@ -42,6 +46,20 @@ namespace LlmodelBox
 
         [JsonIgnore]
         public string Subtitle => string.IsNullOrWhiteSpace(ProjectName) ? "General Chat" : ProjectName;
+
+        [JsonIgnore]
+        public string StatusBadgeText => IsArchived
+            ? "ARCHIVED"
+            : (Status == ConversationStatus.Interrupted ? "INTERRUPTED" : string.Empty);
+
+        [JsonIgnore]
+        public Visibility StatusBadgeVisibility => string.IsNullOrEmpty(StatusBadgeText) ? Visibility.Collapsed : Visibility.Visible;
+
+        [JsonIgnore]
+        public string ArchiveActionGlyph => IsArchived ? "↩" : "⊟";
+
+        [JsonIgnore]
+        public string ArchiveActionTooltip => IsArchived ? "Restore from archive" : "Archive conversation";
 
         [JsonIgnore]
         public string RelativeTime
@@ -78,6 +96,9 @@ namespace LlmodelBox
         private bool _sidebarFilterGeneralOnly = false;
         private string _homeModelFilter = "All";
         private bool _homeChatBusy = false;
+        private bool _showArchivedThreads = false;
+        private string? _previousWorkConversationId = null;
+        private bool _continuityEventsHooked = false;
         private CancellationTokenSource? _homeGenerationCts = null;
         private DiffSummaryBlock? _activeDiffSummary = null;
 
@@ -100,11 +121,23 @@ namespace LlmodelBox
 
         private void InitHomeChat()
         {
-            LoadHomeThreads();
-            foreach (var p in _projects)
+            if (!_continuityEventsHooked && _services?.Continuity != null)
             {
-                EnsureProjectIdeHistoryImported(p);
+                _continuityEventsHooked = true;
+                _services.Continuity.DiagnosticsChanged += rep => Dispatcher.BeginInvoke(() => UpdatePersistenceStatusUi(rep));
+                _services.Continuity.ArchiveUpdated += () => Dispatcher.BeginInvoke(() =>
+                {
+                    if (!_homeChatBusy)
+                    {
+                        LoadHomeThreads();
+                        RefreshHomeConversationsUi();
+                        RefreshProjectsUi();
+                        UpdateHomePreviousWorkCard();
+                    }
+                });
             }
+
+            LoadHomeThreads();
             if (_activeHomeThread == null)
             {
                 _activeHomeThread = new HomeChatThread();
@@ -114,71 +147,167 @@ namespace LlmodelBox
             RefreshHomeChatThreadUi();
             RefreshProjectsUi();
             UpdateHomeContextRing();
+            UpdateHomePreviousWorkCard();
+            UpdatePersistenceStatusUi(_services?.Continuity?.GetDiagnostics());
         }
 
         private void LoadHomeThreads()
         {
             _homeThreads.Clear();
-            try
+            var records = _services?.Continuity?.ListConversations(
+                projectKey: null,
+                includeArchived: _showArchivedThreads,
+                includeDeleted: false,
+                offset: 0,
+                limit: int.MaxValue);
+
+            if (records == null) return;
+
+            foreach (var r in records)
             {
-                if (File.Exists(HomeThreadsFilePath))
+                _homeThreads.Add(new HomeChatThread
                 {
-                    string json = File.ReadAllText(HomeThreadsFilePath);
-                    var loaded = JsonSerializer.Deserialize<List<HomeChatThread>>(json);
-                    if (loaded != null)
-                    {
-                        _homeThreads.AddRange(loaded.OrderByDescending(t => t.UpdatedAtUtc));
-                    }
-                }
+                    Id = r.Id,
+                    Title = r.Title,
+                    ProjectPath = r.ProjectKey,
+                    ProjectName = r.ProjectName,
+                    UpdatedAtUtc = r.UpdatedAtUtc,
+                    Status = r.Status,
+                    IsArchived = r.IsArchived,
+                    LatestCheckpointSummary = r.LatestCheckpointSummary
+                });
             }
-            catch { }
         }
 
         private void SaveHomeThreads()
         {
-            try
-            {
-                Directory.CreateDirectory(AppConstants.ChatHistoryDir);
-                string json = JsonSerializer.Serialize(_homeThreads.Take(100).ToList(), new JsonSerializerOptions { WriteIndented = false });
-                AtomicFile.WriteAllText(HomeThreadsFilePath, json);
-            }
-            catch { }
+            if (_services?.Continuity == null || _activeHomeThread == null) return;
+            if (_activeHomeThread.Messages.Count == 0 && _services.Continuity.GetConversation(_activeHomeThread.Id) == null)
+                return;
+
+            _services.Continuity.SaveConversationMessages(
+                _activeHomeThread.Id,
+                _activeHomeThread.ProjectPath,
+                _activeHomeThread.ProjectName,
+                _activeHomeThread.Messages,
+                _activeHomeThread.Title,
+                _activeModel?.Id,
+                _activeModel?.Provider);
+            UpdatePersistenceStatusUi(_services.Continuity.GetDiagnostics());
         }
 
-        // Surfaces existing per-project IDE history (chat/<hash>.json) inside the project's
-        // conversation list if no HomeChatThread has been created for that project yet.
         private void EnsureProjectIdeHistoryImported(ProjectItem project)
         {
+            // Unified repository supersedes legacy one-time import; reload indexed project conversations.
             if (project == null || string.IsNullOrWhiteSpace(project.Path)) return;
-            bool hasAnyForProject = _homeThreads.Any(t => string.Equals(t.ProjectPath, project.Path, StringComparison.OrdinalIgnoreCase));
-            if (hasAnyForProject) return;
-
-            var legacy = _ideChatHistoryStore.Load(project.Path);
-            if (legacy.Count == 0) return;
-
-            var firstUser = legacy.FirstOrDefault(m => m.IsUser && !string.IsNullOrWhiteSpace(m.Content));
-            string title = firstUser != null
-                ? firstUser.Content.Replace("\r", " ").Replace("\n", " ").Trim()
-                : $"{project.Name} History";
-            if (title.Length > 48) title = title.Substring(0, 48).TrimEnd() + "...";
-
-            _homeThreads.Add(new HomeChatThread
-            {
-                Title = title,
-                ProjectPath = project.Path,
-                ProjectName = project.Name,
-                UpdatedAtUtc = DateTime.UtcNow,
-                Messages = legacy
-            });
-            SaveHomeThreads();
+            LoadHomeThreads();
         }
 
         internal int GetConversationCountForProject(ProjectItem project)
         {
             if (project == null || string.IsNullOrWhiteSpace(project.Path)) return 0;
-            int count = _homeThreads.Count(t => string.Equals(t.ProjectPath, project.Path, StringComparison.OrdinalIgnoreCase));
-            if (count == 0 && _ideChatHistoryStore.Load(project.Path).Count > 0) count = 1;
-            return count;
+            if (_services?.Continuity != null)
+                return _services.Continuity.ListConversations(project.Path, includeArchived: false, includeDeleted: false).Count;
+            return _homeThreads.Count(t => !t.IsArchived && string.Equals(t.ProjectPath, project.Path, StringComparison.OrdinalIgnoreCase));
+        }
+
+        private void UpdatePersistenceStatusUi(PersistenceDiagnosticReport? rep)
+        {
+            if (TxtPersistenceStatus == null || PersistenceStatusDot == null || rep == null) return;
+            switch (rep.State)
+            {
+                case PersistenceState.Healthy:
+                    TxtPersistenceStatus.Text = rep.LastSavedUtc.HasValue ? "Storage: Saved" : "Storage: Ready";
+                    PersistenceStatusDot.Fill = TryFindResource("BrushSuccess") as Brush ?? Brushes.LimeGreen;
+                    break;
+                case PersistenceState.PendingSave:
+                    TxtPersistenceStatus.Text = $"Storage: Saving ({rep.PendingRetryCount})";
+                    PersistenceStatusDot.Fill = TryFindResource("BrushWarning") as Brush ?? Brushes.Orange;
+                    break;
+                case PersistenceState.RecoveredFromBackup:
+                    TxtPersistenceStatus.Text = "Storage: Recovered Backup";
+                    PersistenceStatusDot.Fill = TryFindResource("BrushWarning") as Brush ?? Brushes.Orange;
+                    break;
+                case PersistenceState.DegradedError:
+                    TxtPersistenceStatus.Text = $"Storage Error ({rep.PendingRetryCount} queued)";
+                    PersistenceStatusDot.Fill = TryFindResource("BrushDanger") as Brush ?? Brushes.Red;
+                    break;
+            }
+        }
+
+        private void UpdateHomePreviousWorkCard()
+        {
+            if (HomePreviousWorkCard == null || TxtHomePrevGoal == null || TxtHomePrevDetail == null) return;
+            string? pk = _homeChatProject?.Path;
+            if (string.IsNullOrWhiteSpace(pk) || (_activeHomeThread?.Messages.Count ?? 0) > 0)
+            {
+                HomePreviousWorkCard.Visibility = Visibility.Collapsed;
+                _previousWorkConversationId = null;
+                return;
+            }
+
+            var ptr = _services?.Continuity?.GetPreviousWorkPointer(pk, _activeHomeThread?.Id);
+            if (ptr == null || string.IsNullOrWhiteSpace(ptr.CurrentGoal))
+            {
+                HomePreviousWorkCard.Visibility = Visibility.Collapsed;
+                _previousWorkConversationId = null;
+                return;
+            }
+
+            _previousWorkConversationId = ptr.ConversationId;
+            TxtHomePrevGoal.Text = $"{ptr.ConversationTitle} · {ptr.CurrentGoal}";
+            string detail = !string.IsNullOrWhiteSpace(ptr.Blocker)
+                ? $"Blocker: {ptr.Blocker}"
+                : (!string.IsNullOrWhiteSpace(ptr.NextStep) ? $"Next: {ptr.NextStep}" : ptr.CompletedSummary);
+            TxtHomePrevDetail.Text = detail;
+            HomePreviousWorkCard.Visibility = Visibility.Visible;
+        }
+
+        private void BtnHomeContinuePrev_Click(object sender, RoutedEventArgs e)
+        {
+            if (string.IsNullOrWhiteSpace(_previousWorkConversationId)) return;
+            var hit = _homeThreads.FirstOrDefault(t => string.Equals(t.Id, _previousWorkConversationId, StringComparison.Ordinal));
+            if (hit == null)
+            {
+                var conv = _services?.Continuity?.GetConversation(_previousWorkConversationId!);
+                if (conv != null)
+                {
+                    hit = new HomeChatThread
+                    {
+                        Id = conv.Id,
+                        Title = conv.Title,
+                        ProjectPath = conv.ProjectKey,
+                        ProjectName = conv.ProjectName,
+                        UpdatedAtUtc = conv.UpdatedAtUtc,
+                        Status = conv.Status,
+                        IsArchived = conv.IsArchived
+                    };
+                }
+            }
+            if (hit != null) OpenHomeThread(hit);
+        }
+
+        private void BtnPersistenceStatus_Click(object sender, RoutedEventArgs e)
+        {
+            if (_services?.Continuity == null) return;
+            bool ok = _services.Continuity.RetryPendingWrites();
+            var rep = _services.Continuity.GetDiagnostics();
+            UpdatePersistenceStatusUi(rep);
+            string msg = $"State: {rep.State}\nPending Writes: {rep.PendingRetryCount}\nRecovered Interrupted Turns: {rep.RecoveredInterruptedTurns}";
+            if (!string.IsNullOrWhiteSpace(rep.LastWarning)) msg += $"\nWarning: {rep.LastWarning}";
+            if (!string.IsNullOrWhiteSpace(rep.LastError)) msg += $"\nError: {rep.LastError}";
+            if (rep.QuarantineBackups.Count > 0) msg += $"\nQuarantine Backups: {string.Join(", ", rep.QuarantineBackups)}";
+            MessageBox.Show(msg, ok ? "Continuity Persistence Health" : "Persistence Error Diagnostics", MessageBoxButton.OK,
+                rep.State == PersistenceState.DegradedError ? MessageBoxImage.Warning : MessageBoxImage.Information);
+        }
+
+        private void BtnToggleArchivedConversations_Click(object sender, RoutedEventArgs e)
+        {
+            _showArchivedThreads = !_showArchivedThreads;
+            if (BtnToggleArchivedConversations != null)
+                BtnToggleArchivedConversations.Content = _showArchivedThreads ? "Hide Arch" : "Archived";
+            LoadHomeThreads();
+            RefreshHomeConversationsUi();
         }
 
         private void UpdateHomeGreetingAndLabels()
@@ -326,7 +455,8 @@ namespace LlmodelBox
 
                 if (openMostRecentThread && projectThreads.Count > 0)
                 {
-                    _activeHomeThread = projectThreads[0];
+                    OpenHomeThread(projectThreads[0]);
+                    return;
                 }
                 else
                 {
@@ -341,6 +471,7 @@ namespace LlmodelBox
             UpdateHomeGreetingAndLabels();
             RefreshHomeConversationsUi();
             RefreshHomeChatThreadUi();
+            UpdateHomePreviousWorkCard();
             ShowView(ViewChatHome, ChatHomeTranslate);
             TxtHomePrompt?.Focus();
         }
@@ -433,21 +564,46 @@ namespace LlmodelBox
             ShowView(ViewChatHome, ChatHomeTranslate);
             RefreshHomeConversationsUi();
             RefreshHomeChatThreadUi();
+            UpdateHomePreviousWorkCard();
             TxtHomePrompt?.Focus();
+        }
+
+        private void OpenHomeThread(HomeChatThread thread)
+        {
+            if (thread.Messages.Count == 0 && _services?.Continuity != null)
+            {
+                thread.Messages = _services.Continuity.LoadMessages(thread.Id);
+            }
+            _activeHomeThread = thread;
+            _homeChatProject = !string.IsNullOrWhiteSpace(thread.ProjectPath)
+                ? _projects.FirstOrDefault(p => string.Equals(p.Path, thread.ProjectPath, StringComparison.OrdinalIgnoreCase))
+                : null;
+            UpdateHomeGreetingAndLabels();
+            ShowView(ViewChatHome, ChatHomeTranslate);
+            RefreshHomeConversationsUi();
+            RefreshHomeChatThreadUi();
+            UpdateHomePreviousWorkCard();
         }
 
         private void HomeConversation_Click(object sender, MouseButtonEventArgs e)
         {
             if (sender is FrameworkElement fe && fe.Tag is HomeChatThread thread)
             {
-                _activeHomeThread = thread;
-                _homeChatProject = !string.IsNullOrWhiteSpace(thread.ProjectPath)
-                    ? _projects.FirstOrDefault(p => string.Equals(p.Path, thread.ProjectPath, StringComparison.OrdinalIgnoreCase))
-                    : null;
-                UpdateHomeGreetingAndLabels();
-                ShowView(ViewChatHome, ChatHomeTranslate);
+                OpenHomeThread(thread);
+            }
+        }
+
+        private void BtnArchiveHomeConversation_Click(object sender, RoutedEventArgs e)
+        {
+            e.Handled = true;
+            if (sender is Button btn && btn.Tag is HomeChatThread thread && _services?.Continuity != null)
+            {
+                bool targetArchived = !thread.IsArchived;
+                _services.Continuity.ArchiveConversation(thread.Id, targetArchived);
+                LoadHomeThreads();
                 RefreshHomeConversationsUi();
-                RefreshHomeChatThreadUi();
+                RefreshProjectsUi();
+                UpdateHomePreviousWorkCard();
             }
         }
 
@@ -456,8 +612,16 @@ namespace LlmodelBox
             e.Handled = true;
             if (sender is Button btn && btn.Tag is HomeChatThread thread)
             {
+                var confirm = MessageBox.Show(
+                    $"Delete conversation \"{thread.Title}\"?\n\nThis hides/removes only this conversation and does NOT delete your project memory, global preferences, or other conversations.",
+                    "Confirm Conversation Deletion",
+                    MessageBoxButton.YesNoCancel,
+                    MessageBoxImage.Question);
+
+                if (confirm != MessageBoxResult.Yes) return;
+
+                _services?.Continuity?.SoftDeleteConversation(thread.Id, deleteDerivedMemories: false);
                 _homeThreads.RemoveAll(t => t.Id == thread.Id);
-                SaveHomeThreads();
                 if (_activeHomeThread?.Id == thread.Id)
                 {
                     var scopedProject = _sidebarFilterProject ?? _homeChatProject;
@@ -470,6 +634,7 @@ namespace LlmodelBox
                 }
                 RefreshHomeConversationsUi();
                 RefreshProjectsUi();
+                UpdateHomePreviousWorkCard();
             }
         }
 
@@ -878,25 +1043,35 @@ namespace LlmodelBox
                 _homeThreads.Insert(0, _activeHomeThread);
             }
 
+            ChatMessageItem? userMsg = null;
             if (addUserMessage)
             {
                 if (TxtHomePrompt != null) TxtHomePrompt.Text = string.Empty;
                 ShowView(ViewChatHome, null);
 
                 string userInitials = string.IsNullOrWhiteSpace(_settings.ProfileName) ? "Operator" : _settings.ProfileName;
-                var userMsg = new ChatMessageItem
+                var nowUtc = DateTime.UtcNow;
+                userMsg = new ChatMessageItem
                 {
+                    ConversationId = _activeHomeThread.Id,
+                    CreatedAtUtc = nowUtc,
+                    UpdatedAtUtc = nowUtc,
                     SenderRole = "User",
                     SenderName = userInitials,
                     Content = prompt,
-                    Timestamp = DateTime.Now.ToString("HH:mm")
+                    Timestamp = DateTime.Now.ToString("HH:mm:ss")
                 };
                 _activeHomeThread.Messages.Add(userMsg);
-                _activeHomeThread.UpdatedAtUtc = DateTime.UtcNow;
+                _activeHomeThread.UpdatedAtUtc = nowUtc;
                 SaveHomeThreads();
                 RefreshHomeConversationsUi();
                 RefreshHomeChatThreadUi();
                 RefreshProjectsUi();
+                UpdateHomePreviousWorkCard();
+            }
+            else
+            {
+                userMsg = _activeHomeThread.Messages.LastOrDefault(m => m.IsUser);
             }
 
             var requestModel = _activeModel!;
@@ -927,6 +1102,9 @@ namespace LlmodelBox
                 RefreshHomeAttachedFilesUi();
             }
 
+            string? priorSummary = _activeHomeThread.LatestCheckpointSummary
+                ?? _services?.Continuity?.GetLatestCheckpoint(_activeHomeThread.Id)?.SummaryText;
+
             var ctxRequest = new ContextRequest
             {
                 Model = requestModel,
@@ -935,11 +1113,20 @@ namespace LlmodelBox
                 SystemInstruction = (_settings.SystemInstructionEnabled && !string.IsNullOrWhiteSpace(_settings.SystemInstruction))
                     ? _settings.SystemInstruction : null,
                 History = history,
-                ProjectKey = _homeChatProject?.Path
+                ProjectKey = _homeChatProject?.Path,
+                ConversationId = _activeHomeThread.Id,
+                ConversationSummary = priorSummary,
+                EnableAutoCompact = _settings.AutoCompactEnabled,
+                AutoCompactThresholdRatio = Math.Clamp(_settings.AutoCompactThresholdPercent / 100.0, 0.40, 0.92)
             };
 
+            var assistantUtc = DateTime.UtcNow;
             var assistantMsg = new ChatMessageItem
             {
+                ConversationId = _activeHomeThread.Id,
+                SequenceNumber = _activeHomeThread.Messages.Count + 1,
+                CreatedAtUtc = assistantUtc,
+                UpdatedAtUtc = assistantUtc,
                 SenderRole = "Assistant",
                 SenderName = requestModel.Name,
                 ModelName = requestModel.Name,
@@ -947,9 +1134,12 @@ namespace LlmodelBox
                 ActivityState = MessageActivityState.Connecting,
                 ActivityDetail = $"Connecting to {requestModel.Name}...",
                 IsStreaming = true,
-                Timestamp = DateTime.Now.ToString("HH:mm")
+                Timestamp = DateTime.Now.ToString("HH:mm:ss")
             };
             _activeHomeThread.Messages.Add(assistantMsg);
+            TurnRecord? activeTurn = userMsg != null
+                ? _services?.Continuity?.BeginTurn(_activeHomeThread.Id, _homeChatProject?.Path, userMsg, assistantMsg)
+                : null;
             if (HomeChatMessagesList != null)
             {
                 if (HomeChatMessagesList.ItemsSource != _homeDisplayedMessages)
@@ -990,6 +1180,8 @@ namespace LlmodelBox
                 if (snapshot != null)
                 {
                     assistantMsg.Content = snapshot;
+                    if (activeTurn != null)
+                        _services?.Continuity?.CheckpointStreamingProgress(activeTurn, assistantMsg, snapshot);
                     HomeChatMessagesList?.ScrollIntoView(assistantMsg);
                 }
                 assistantMsg.ElapsedSeconds = sw.Elapsed.TotalSeconds;
@@ -1128,12 +1320,33 @@ namespace LlmodelBox
             assistantMsg.NotifyBlocksUpdated();
 
             _activeHomeThread.UpdatedAtUtc = DateTime.UtcNow;
+            _activeHomeThread.LatestCheckpointSummary = aiResp?.UpdatedConversationSummary ?? _activeHomeThread.LatestCheckpointSummary;
             _homeThreads.RemoveAll(t => t.Id == _activeHomeThread.Id);
             _homeThreads.Insert(0, _activeHomeThread);
             SaveHomeThreads();
+
+            if (activeTurn != null && _services?.Continuity != null)
+            {
+                var turnStatus = cancelled
+                    ? TurnLifecycleStatus.Cancelled
+                    : (isErr ? TurnLifecycleStatus.Failed : TurnLifecycleStatus.Completed);
+                var cp = _services.Continuity.CompleteTurnAndCheckpoint(
+                    activeTurn,
+                    assistantMsg,
+                    turnStatus,
+                    responseText,
+                    runtimeWorkEvents: null,
+                    memoryEngine: _services.Middleware.Memory,
+                    overrideSummary: aiResp?.UpdatedConversationSummary,
+                    promptTokens: promptTokenEstimate);
+                _activeHomeThread.LatestCheckpointSummary = cp.SummaryText;
+                _activeHomeThread.Status = cp.Status;
+            }
+
             RefreshHomeConversationsUi();
             RefreshProjectsUi();
             UpdateHomeContextRing();
+            UpdatePersistenceStatusUi(_services?.Continuity?.GetDiagnostics());
             if (HomeChatMessagesList != null)
             {
                 _ = Dispatcher.BeginInvoke(new Action(() => HomeChatMessagesList.ScrollIntoView(assistantMsg)), DispatcherPriority.Background);

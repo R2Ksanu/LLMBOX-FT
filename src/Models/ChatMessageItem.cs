@@ -28,6 +28,11 @@ namespace LlmodelBox.Models
         public event PropertyChangedEventHandler? PropertyChanged;
 
         public string Id { get; set; } = Guid.NewGuid().ToString();
+        public string ConversationId { get; set; } = string.Empty;
+        public string TurnId { get; set; } = string.Empty;
+        public int SequenceNumber { get; set; }
+        public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
+        public DateTime UpdatedAtUtc { get; set; } = DateTime.UtcNow;
         public string SenderRole { get; set; } = "User"; // User, Assistant, System
         public string SenderName { get; set; } = "Operator";
         public string Timestamp { get; set; } = DateTime.Now.ToString("HH:mm:ss");
