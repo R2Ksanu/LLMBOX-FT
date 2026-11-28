@@ -125,38 +125,8 @@ namespace LlmodelBox.Runtime
                 }
             }
 
-            // Recall durable memory and let the Context Engine fold it into the live turn prefix. We
-            // only supply a preamble when the caller has not already set one.
-            if (string.IsNullOrWhiteSpace(request.MemoryPreamble))
-            {
-                var snapshot = _memory.Recall(request.ProjectKey);
-                request.MemoryPreamble = _memory.BuildPreamble(snapshot);
-            }
-
-            // Phase 6: retrieval-augmented context. When a Knowledge Engine is present and the project
-            // key names a real directory, index it and fold the most relevant excerpts into the turn.
-            // Best-effort and deterministic: indexing/retrieval failures never break the request. Phase 7
-            // suppresses retrieval for turns the Intent Engine judged not to need it (e.g. small talk).
-            if (_knowledge != null && wantsKnowledge && string.IsNullOrWhiteSpace(request.KnowledgeBlock)
-                && !string.IsNullOrWhiteSpace(request.UserPrompt))
-            {
-                try
-                {
-                    var index = _knowledge.Index(request.ProjectKey);
-                    if (!index.IsEmpty)
-                    {
-                        var snippets = _knowledge.Retrieve(index, request.UserPrompt, KnowledgeSnippets);
-                        var block = _knowledge.BuildKnowledgeBlock(snippets, KnowledgeBlockChars);
-                        if (!string.IsNullOrWhiteSpace(block))
-                        {
-                            request.KnowledgeBlock = block;
-                            AgentActivityBus.Emit(AgentNode.Context,
-                                $"Knowledge: {snippets.Count} excerpt(s) from {index.DocumentCount} indexed chunk(s)");
-                        }
-                    }
-                }
-                catch { /* retrieval is best-effort; never fail the turn on it */ }
-            }
+            // Part 5: scoped memory recall + incremental/hybrid knowledge retrieval.
+            await PrepareRequestContextAsync(request, wantsKnowledge, cancellationToken).ConfigureAwait(false);
 
             var probe = new AiRequest { Model = request.Model ?? new Models.ModelItem(), Settings = request.Settings ?? new Models.UserSettings() };
             probe.Messages.Add(AiMessage.User(request.UserPrompt ?? string.Empty));
@@ -185,12 +155,12 @@ namespace LlmodelBox.Runtime
             }
 
             response.PromptTokensEstimate = built.InputTokenEstimate;
+            ApplyBuildMetadata(response, built);
 
-            // Distil this exchange into durable memory — cheap, deterministic, best-effort. Never let a
-            // memory write failure surface into the turn.
+            // Distil this exchange into scoped memory without promoting raw turns to UserGlobal.
             if (!response.IsError)
             {
-                try { _memory.Observe(request.ProjectKey, request.UserPrompt ?? string.Empty, response.Text); }
+                try { _memory.Observe(request.ProjectKey, request.ConversationId, request.UserPrompt ?? string.Empty, response.Text); }
                 catch { /* best-effort */ }
             }
 
@@ -242,13 +212,7 @@ namespace LlmodelBox.Runtime
                 }
             }
 
-            if (string.IsNullOrWhiteSpace(request.MemoryPreamble))
-            {
-                var snapshot = _memory.Recall(request.ProjectKey);
-                request.MemoryPreamble = _memory.BuildPreamble(snapshot);
-            }
-
-            if (_knowledge != null && wantsKnowledge && string.IsNullOrWhiteSpace(request.KnowledgeBlock)
+            if (wantsKnowledge && _knowledge != null && string.IsNullOrWhiteSpace(request.KnowledgeBlock)
                 && !string.IsNullOrWhiteSpace(request.UserPrompt))
             {
                 onProgress?.Invoke(new RuntimeProgressEvent
@@ -256,23 +220,8 @@ namespace LlmodelBox.Runtime
                     State = Models.MessageActivityState.ExecutingTool,
                     Detail = "Searching project files..."
                 });
-                try
-                {
-                    var index = _knowledge.Index(request.ProjectKey);
-                    if (!index.IsEmpty)
-                    {
-                        var snippets = _knowledge.Retrieve(index, request.UserPrompt, KnowledgeSnippets);
-                        var block = _knowledge.BuildKnowledgeBlock(snippets, KnowledgeBlockChars);
-                        if (!string.IsNullOrWhiteSpace(block))
-                        {
-                            request.KnowledgeBlock = block;
-                            AgentActivityBus.Emit(AgentNode.Context,
-                                $"Knowledge: {snippets.Count} excerpt(s) from {index.DocumentCount} indexed chunk(s)");
-                        }
-                    }
-                }
-                catch { }
             }
+            await PrepareRequestContextAsync(request, wantsKnowledge, cancellationToken).ConfigureAwait(false);
 
             var probe = new AiRequest { Model = request.Model ?? new Models.ModelItem(), Settings = request.Settings ?? new Models.UserSettings() };
             probe.Messages.Add(AiMessage.User(request.UserPrompt ?? string.Empty));
@@ -370,6 +319,7 @@ namespace LlmodelBox.Runtime
             }
 
             response.PromptTokensEstimate = built.InputTokenEstimate;
+            ApplyBuildMetadata(response, built);
 
             var edits = turnSession.SnapshotEdits();
             if (edits.Count > 0)
@@ -388,7 +338,7 @@ namespace LlmodelBox.Runtime
 
             if (!response.IsError)
             {
-                try { _memory.Observe(request.ProjectKey, request.UserPrompt ?? string.Empty, response.Text); }
+                try { _memory.Observe(request.ProjectKey, request.ConversationId, request.UserPrompt ?? string.Empty, response.Text); }
                 catch { }
             }
 
@@ -402,6 +352,60 @@ namespace LlmodelBox.Runtime
             });
 
             return response;
+        }
+
+        private async Task PrepareRequestContextAsync(ContextRequest request, bool wantsKnowledge, CancellationToken cancellationToken)
+        {
+            if (string.IsNullOrWhiteSpace(request.MemoryPreamble))
+            {
+                var snapshot = _memory.Recall(request.ProjectKey, request.ConversationId);
+                request.MemoryPreamble = _memory.BuildPreamble(snapshot);
+            }
+
+            if (_knowledge == null || !wantsKnowledge || !string.IsNullOrWhiteSpace(request.KnowledgeBlock) ||
+                string.IsNullOrWhiteSpace(request.UserPrompt))
+            {
+                return;
+            }
+
+            try
+            {
+                var opts = new KnowledgeIndexOptions();
+                if (request.Settings?.KnowledgeExcludedGlobs != null)
+                    opts.ExcludedGlobs.AddRange(request.Settings.KnowledgeExcludedGlobs);
+
+                var index = _knowledge.Index(request.ProjectKey, opts);
+                if (index.IsEmpty) return;
+
+                IKnowledgeEmbeddingProvider? embProvider = null;
+                if (request.Settings?.KnowledgeUseEmbeddings == true &&
+                    !string.IsNullOrWhiteSpace(request.Settings.ApiKeys?.OpenAI))
+                {
+                    embProvider = new OpenAiCompatibleEmbeddingProvider(
+                        () => request.Settings.ApiKeys.OpenAI,
+                        request.Settings.KnowledgeEmbeddingModel);
+                }
+
+                var snippets = await _knowledge.RetrieveAsync(index, request.UserPrompt, KnowledgeSnippets, embProvider, cancellationToken)
+                    .ConfigureAwait(false);
+                var block = _knowledge.BuildKnowledgeBlock(snippets, KnowledgeBlockChars);
+                if (!string.IsNullOrWhiteSpace(block))
+                {
+                    request.KnowledgeBlock = block;
+                    string modeTag = snippets.Count > 0 ? snippets[0].RetrievalMode.ToString() : "Deterministic";
+                    AgentActivityBus.Emit(AgentNode.Context,
+                        $"Knowledge ({modeTag}): {snippets.Count} excerpt(s) · {index.DocumentCount} chunks ({index.LastStats.ReusedFiles} reused, {index.LastStats.ReindexedFiles} updated)");
+                }
+            }
+            catch { }
+        }
+
+        private static void ApplyBuildMetadata(AiResponse response, ContextBuildResult built)
+        {
+            response.AutoCompacted = built.AutoCompacted;
+            response.CompactionReason = built.CompactionReason;
+            response.UpdatedConversationSummary = built.UpdatedConversationSummary;
+            response.DeduplicatedContextItems = built.DeduplicatedItemsCount;
         }
 
         private static string Truncate(string s, int max)

@@ -1,12 +1,21 @@
 namespace LlmodelBox.Runtime.Knowledge
 {
-    // A single retrieved fragment of project knowledge: where it came from, the text itself, and the
-    // relevance score the engine assigned it for the current query. Kept tiny and immutable-ish so it
-    // is trivial to test and to render on the bus.
+    public enum KnowledgeRetrievalMode
+    {
+        Deterministic = 0,
+        Hybrid = 1,
+        DeterministicFallback = 2
+    }
+
+    // A retrieved fragment of project knowledge: path, line span, text, relevance score, and mode.
     public sealed class KnowledgeSnippet
     {
         public string RelativePath { get; set; } = string.Empty;
         public string Text { get; set; } = string.Empty;
         public double Score { get; set; }
+        public int StartLine { get; set; } = 1;
+        public int EndLine { get; set; } = 1;
+        public string ChunkSha256 { get; set; } = string.Empty;
+        public KnowledgeRetrievalMode RetrievalMode { get; set; } = KnowledgeRetrievalMode.Deterministic;
     }
 }

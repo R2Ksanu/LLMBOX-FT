@@ -23,6 +23,12 @@ namespace LlmodelBox.Models.Ai
         // accounting when the provider omits authoritative live usage. 0 when not assembled by the engine.
         public int PromptTokensEstimate { get; set; }
 
+        // Part 5 Auto-Compaction & Context Intelligence outcome metadata.
+        public bool AutoCompacted { get; set; }
+        public string CompactionReason { get; set; } = "None";
+        public string? UpdatedConversationSummary { get; set; }
+        public int DeduplicatedContextItems { get; set; }
+
         public List<ChatContentBlock> StructuredBlocks { get; set; } = new();
 
         public static AiResponse Error(string message) =>

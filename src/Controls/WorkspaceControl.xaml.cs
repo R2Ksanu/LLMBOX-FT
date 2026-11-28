@@ -71,6 +71,8 @@ namespace LlmodelBox.Controls
         private readonly IRealtimeEventEngine? _realtimeEvents;
         private RightPanelDisplayMode _rightPanelMode = RightPanelDisplayMode.Expanded;
         private bool _showingClassicInspector = false;
+        private string? _conversationSummary;
+        private string _activeConversationId = Guid.NewGuid().ToString("N")[..10];
 
         private ModelItem? _activeModel => _getActiveModel();
         private List<ModelItem> _allModels => _getAllModels();
@@ -1442,6 +1444,124 @@ namespace LlmodelBox.Controls
             try { _chatCts?.Cancel(); } catch { }
         }
 
+        private Task<bool> TryHandleWorkspaceSlashCommandAsync(string prompt)
+        {
+            if (string.IsNullOrWhiteSpace(prompt) || !prompt.StartsWith("/", StringComparison.Ordinal))
+                return Task.FromResult(false);
+
+            string trimmed = prompt.Trim();
+            if (trimmed.Equals("/context", StringComparison.OrdinalIgnoreCase))
+            {
+                if (_rightPanelMode != RightPanelDisplayMode.Expanded)
+                    ApplyRightPanelMode(RightPanelDisplayMode.Expanded, animate: true);
+                UtilityPanel?.SelectTool("Context");
+                return Task.FromResult(true);
+            }
+
+            if (trimmed.StartsWith("/autocompact", StringComparison.OrdinalIgnoreCase))
+            {
+                string arg = trimmed.Length > "/autocompact".Length ? trimmed["/autocompact".Length..].Trim() : string.Empty;
+                string feedback;
+                if (arg.Equals("off", StringComparison.OrdinalIgnoreCase) || arg.Equals("false", StringComparison.OrdinalIgnoreCase))
+                {
+                    _settings.AutoCompactEnabled = false;
+                    _settingsService?.SaveSettings(_settings);
+                    feedback = "Auto-Compact disabled for subsequent turns.";
+                }
+                else if (arg.Equals("on", StringComparison.OrdinalIgnoreCase) || arg.Equals("true", StringComparison.OrdinalIgnoreCase))
+                {
+                    _settings.AutoCompactEnabled = true;
+                    _settingsService?.SaveSettings(_settings);
+                    feedback = $"Auto-Compact enabled (soft threshold: {_settings.AutoCompactThresholdPercent}% of input budget).";
+                }
+                else if (int.TryParse(arg.TrimEnd('%'), out int pct) && pct >= 40 && pct <= 92)
+                {
+                    _settings.AutoCompactEnabled = true;
+                    _settings.AutoCompactThresholdPercent = pct;
+                    _settingsService?.SaveSettings(_settings);
+                    feedback = $"Auto-Compact threshold updated to {pct}% of input budget.";
+                }
+                else
+                {
+                    feedback = $"Auto-Compact is currently {(_settings.AutoCompactEnabled ? "ON" : "OFF")} at {_settings.AutoCompactThresholdPercent}%. Usage: `/autocompact on|off|72`.";
+                }
+
+                AddLocalSystemNotice("Context & Auto-Compact", feedback);
+                return Task.FromResult(true);
+            }
+
+            if (trimmed.StartsWith("/compact", StringComparison.OrdinalIgnoreCase))
+            {
+                string focus = trimmed.Length > "/compact".Length ? trimmed["/compact".Length..].Trim() : string.Empty;
+                var history = new List<AiMessage>();
+                for (int h = 0; h < _chatMessages.Count; h++)
+                {
+                    var cm = _chatMessages[h];
+                    if (string.IsNullOrWhiteSpace(cm.Content)) continue;
+                    if (cm.SenderRole == "User") history.Add(AiMessage.User(cm.Content));
+                    else if (cm.SenderRole == "Assistant" && !cm.IsError) history.Add(AiMessage.Assistant(cm.Content));
+                }
+
+                var model = _activeModel;
+                var counter = LlmodelBox.Runtime.Tokens.TokenizerRegistry.Default.Resolve(model);
+                var caps = LlmodelBox.Providers.ModelCapabilityResolver.Resolve(model);
+                int win = Math.Max(caps.ContextWindow, caps.InputTokenLimit);
+                if (win <= 0) win = 8192;
+                int budget = Math.Max(512, win - Math.Clamp(caps.OutputTokenLimit, 256, win / 4) - 256);
+
+                var compressor = new LlmodelBox.Runtime.Context.ContextCompressionEngine(new AutoCompactOptions
+                {
+                    Enabled = true,
+                    SoftTriggerRatio = Math.Clamp(_settings.AutoCompactThresholdPercent / 100.0, 0.40, 0.92)
+                });
+
+                var compactResult = compressor.CompactIfNeeded(
+                    history,
+                    _conversationSummary,
+                    budget,
+                    0,
+                    counter,
+                    manualForce: true,
+                    focusInstruction: string.IsNullOrWhiteSpace(focus) ? null : focus);
+
+                if (compactResult.CompactionTriggered)
+                {
+                    _conversationSummary = compactResult.ConversationSummary;
+                    AgentActivityBus.Emit(AgentNode.Compaction,
+                        $"Manual compact summarized {compactResult.SummarizedMessagesCount} turn(s), saved {compactResult.TokensSaved:N0} tok");
+                    AddLocalSystemNotice(
+                        "Conversation Compacted",
+                        $"Compacted **{compactResult.SummarizedMessagesCount}** turn(s) and pruned **{compactResult.PrunedToolMessages}** verbose tool payload(s) (`{compactResult.TokensBefore:N0}` → `{compactResult.TokensAfter:N0}` tok, saved `{compactResult.TokensSaved:N0}` tok).\n\n```\n{compactResult.ConversationSummary}\n```");
+                }
+                else
+                {
+                    AddLocalSystemNotice("Conversation Compaction", "Conversation is already compact — fewer than 2 older turns to condense.");
+                }
+
+                return Task.FromResult(true);
+            }
+
+            return Task.FromResult(false);
+        }
+
+        private void AddLocalSystemNotice(string title, string body)
+        {
+            var notice = new ChatMessageItem
+            {
+                SenderRole = "Assistant",
+                SenderName = title,
+                ModelName = "Context Engine",
+                Provider = "Local Runtime",
+                Content = body,
+                Timestamp = DateTime.Now.ToString("HH:mm:ss")
+            };
+            _chatMessages.Add(notice);
+            if (ChatMessagesList.ItemsSource != _displayedChatMessages) ChatMessagesList.ItemsSource = _displayedChatMessages;
+            _displayedChatMessages.Add(notice);
+            PersistChat();
+            _ = Dispatcher.BeginInvoke(new Action(() => ChatMessagesList.ScrollIntoView(notice)), DispatcherPriority.Background);
+        }
+
         private async Task DispatchChatMessageAsync(string? overridePrompt = null, bool addUserMessage = true, List<string>? overrideImages = null)
         {
             if (_workspaceChatBusy) return;
@@ -1449,6 +1569,12 @@ namespace LlmodelBox.Controls
             string prompt = (overridePrompt ?? TxtChatPromptInput.Text ?? string.Empty).Trim();
             var pendingImgs = overrideImages ?? _pendingChatImages;
             if (string.IsNullOrEmpty(prompt) && pendingImgs.Count == 0) return;
+
+            if (addUserMessage && await TryHandleWorkspaceSlashCommandAsync(prompt))
+            {
+                TxtChatPromptInput.Clear();
+                return;
+            }
 
             if (_activeModel == null)
             {
@@ -1511,7 +1637,11 @@ namespace LlmodelBox.Controls
                 OpenFileText = CodeEditor?.ActiveText ?? string.Empty,
                 Attachments = messageImages.Select(Path.GetFileName).Where(n => !string.IsNullOrEmpty(n)).Select(n => n!).ToList(),
                 History = history,
-                ProjectKey = _activeProject?.Path
+                ProjectKey = _activeProject?.Path,
+                ConversationId = _activeConversationId,
+                ConversationSummary = _conversationSummary,
+                EnableAutoCompact = _settings.AutoCompactEnabled,
+                AutoCompactThresholdRatio = Math.Clamp(_settings.AutoCompactThresholdPercent / 100.0, 0.40, 0.92)
             };
 
             var assistantMsg = new ChatMessageItem
@@ -1617,6 +1747,11 @@ namespace LlmodelBox.Controls
                 aiResp = await _runtime.RunWithProgressAsync(ctxRequest, OnProgress, _chatCts.Token);
                 runtimeError = aiResp.IsError;
                 promptTokenEstimate = aiResp.PromptTokensEstimate;
+                if (aiResp.AutoCompacted && !string.IsNullOrWhiteSpace(aiResp.UpdatedConversationSummary))
+                {
+                    _conversationSummary = aiResp.UpdatedConversationSummary;
+                    AppendLog($"[AUTO-COMPACT] Triggered ({aiResp.CompactionReason}); handoff summary preserved.");
+                }
                 response = aiResp.IsError ? (aiResp.ErrorMessage ?? aiResp.Text) : aiResp.Text;
             }
             catch (OperationCanceledException)
@@ -1861,6 +1996,8 @@ namespace LlmodelBox.Controls
         private void BtnClearChat_Click(object sender, RoutedEventArgs e)
         {
             _chatMessages.Clear();
+            _conversationSummary = null;
+            _activeConversationId = Guid.NewGuid().ToString("N")[..10];
             if (_activeProject != null)
             {
                 _historyStore.Clear(_activeProject.Path);

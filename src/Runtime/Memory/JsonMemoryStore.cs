@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Security.Cryptography;
 using System.Text;
@@ -7,12 +8,27 @@ using LlmodelBox.Common;
 
 namespace LlmodelBox.Runtime.Memory
 {
-    // JSON-file implementation of IMemoryStore. One "<hash>.mem.json" per project under
-    // AppConstants.ChatHistoryDir, alongside the raw transcript. Best-effort: a missing/corrupt file
-    // yields fresh, empty memory rather than throwing into the runtime.
-    public sealed class JsonMemoryStore : IMemoryStore
+    // JSON-file implementation of IMemoryStore and IGlobalMemoryStore.
+    // Project scope: "<hash>.mem.json" under ChatHistoryDir.
+    // Global scope: "global-preferences.mem.json" (user-approved only).
+    public sealed class JsonMemoryStore : IMemoryStore, IGlobalMemoryStore
     {
         private static readonly JsonSerializerOptions Options = new() { WriteIndented = false };
+        private readonly string _directory;
+        private readonly string _globalFilePath;
+
+        public JsonMemoryStore()
+            : this(AppConstants.ChatHistoryDir, Path.Combine(AppConstants.ChatHistoryDir, "global-preferences.mem.json"))
+        {
+        }
+
+        public JsonMemoryStore(string directory, string? globalFilePath = null)
+        {
+            _directory = string.IsNullOrWhiteSpace(directory) ? AppConstants.ChatHistoryDir : directory;
+            _globalFilePath = string.IsNullOrWhiteSpace(globalFilePath)
+                ? Path.Combine(_directory, "global-preferences.mem.json")
+                : globalFilePath;
+        }
 
         public ConversationMemory Load(string projectKey)
         {
@@ -22,7 +38,9 @@ namespace LlmodelBox.Runtime.Memory
                 if (!File.Exists(path)) return new ConversationMemory();
                 string json = File.ReadAllText(path);
                 if (string.IsNullOrWhiteSpace(json)) return new ConversationMemory();
-                return JsonSerializer.Deserialize<ConversationMemory>(json, Options) ?? new ConversationMemory();
+                var mem = JsonSerializer.Deserialize<ConversationMemory>(json, Options) ?? new ConversationMemory();
+                mem.SynchronizeRecords(projectKey);
+                return mem;
             }
             catch
             {
@@ -34,7 +52,8 @@ namespace LlmodelBox.Runtime.Memory
         {
             try
             {
-                Directory.CreateDirectory(AppConstants.ChatHistoryDir);
+                Directory.CreateDirectory(_directory);
+                memory.SynchronizeRecords(projectKey);
                 LlmodelBox.Common.AtomicFile.WriteAllText(PathFor(projectKey), JsonSerializer.Serialize(memory, Options));
             }
             catch
@@ -53,8 +72,47 @@ namespace LlmodelBox.Runtime.Memory
             catch { }
         }
 
-        private static string PathFor(string projectKey)
-            => Path.Combine(AppConstants.ChatHistoryDir, Hash(projectKey ?? string.Empty) + ".mem.json");
+        public List<MemoryRecord> LoadGlobal()
+        {
+            try
+            {
+                if (!File.Exists(_globalFilePath)) return new List<MemoryRecord>();
+                string json = File.ReadAllText(_globalFilePath);
+                if (string.IsNullOrWhiteSpace(json)) return new List<MemoryRecord>();
+                var list = JsonSerializer.Deserialize<List<MemoryRecord>>(json, Options) ?? new List<MemoryRecord>();
+                var now = DateTime.UtcNow;
+                list.RemoveAll(r => string.IsNullOrWhiteSpace(r.Content) || r.IsExpired(now));
+                foreach (var r in list) r.Scope = MemoryScope.UserGlobal;
+                return list;
+            }
+            catch
+            {
+                return new List<MemoryRecord>();
+            }
+        }
+
+        public void SaveGlobal(IReadOnlyList<MemoryRecord> records)
+        {
+            try
+            {
+                var dir = Path.GetDirectoryName(_globalFilePath);
+                if (!string.IsNullOrWhiteSpace(dir)) Directory.CreateDirectory(dir);
+                LlmodelBox.Common.AtomicFile.WriteAllText(_globalFilePath, JsonSerializer.Serialize(records, Options));
+            }
+            catch { }
+        }
+
+        public void ClearGlobal()
+        {
+            try
+            {
+                if (File.Exists(_globalFilePath)) File.Delete(_globalFilePath);
+            }
+            catch { }
+        }
+
+        private string PathFor(string projectKey)
+            => Path.Combine(_directory, Hash(projectKey ?? string.Empty) + ".mem.json");
 
         private static string Hash(string value)
         {

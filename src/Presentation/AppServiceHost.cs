@@ -102,7 +102,7 @@ namespace LlmodelBox.Presentation
                 Memory = memoryEngine,
                 Context = contextEngine,
                 TokenIntelligence = new TokenIntelligenceEngine(),
-                ContextCompression = new ContextCompressionEngine(),
+                ContextCompression = new LlmodelBox.Runtime.Middleware.ContextCompressionEngine(),
                 Knowledge = knowledgeEngine,
                 ToolRegistry = toolRegistry,
                 ToolExecutor = toolExecutor,

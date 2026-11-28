@@ -18,6 +18,7 @@ using LlmodelBox.Models;
 using LlmodelBox.Models.Ai;
 using LlmodelBox.Runtime;
 using LlmodelBox.Runtime.Context;
+using LlmodelBox.Runtime.Knowledge;
 using LlmodelBox.Runtime.Memory;
 using LlmodelBox.Runtime.Middleware;
 using LlmodelBox.Runtime.Tools;
@@ -52,6 +53,9 @@ namespace LlmodelBox.Controls.UtilityPanel
         private IGitService _git = new GitService();
         private IBuildTestRunner _buildRunner = new BuildTestRunner();
         private IMemoryStore _memoryStore = new JsonMemoryStore();
+        private MemoryEngine? _memoryEngine;
+        private readonly KnowledgeEngine _knowledgeEngine = new();
+        private MemoryScope? _inspectorScopeFilter = null;
         private ITokenUsageService? _tokenUsageService;
         private ToolRegistry? _toolRegistry;
         private IRealtimeEventEngine? _realtimeEvents;
@@ -1833,22 +1837,175 @@ namespace LlmodelBox.Controls.UtilityPanel
             }
         }
 
+        private MemoryEngine GetMemoryEngine() => _memoryEngine ??= new MemoryEngine(_memoryStore);
+
         private void BuildMemoryInspectorView()
         {
-            if (string.IsNullOrWhiteSpace(_workspaceRoot)) return;
-            var mem = _memoryStore.Load(_workspaceRoot);
-            UtilityContentHost.Children.Add(new TextBlock { Text = $"Session Goal: {(string.IsNullOrWhiteSpace(mem.SessionGoal) ? "(none)" : mem.SessionGoal)}", TextWrapping = TextWrapping.Wrap, FontWeight = FontWeights.SemiBold, Foreground = Brush("BrushAccentLight", "#93c5fd"), Margin = new Thickness(0, 0, 0, 6) });
-            UtilityContentHost.Children.Add(new TextBlock { Text = $"Facts ({mem.Facts.Count})  |  Turns: {mem.TurnCount}", FontWeight = FontWeights.SemiBold, Foreground = Brush("BrushTextPrimary", "#fafafa"), Margin = new Thickness(0, 0, 0, 6) });
-            for (int i = 0; i < mem.Facts.Count; i++)
+            var memEngine = GetMemoryEngine();
+            var snap = memEngine.Recall(_workspaceRoot);
+
+            UtilityContentHost.Children.Add(new TextBlock
             {
-                int idx = i;
-                var row = new DockPanel { Margin = new Thickness(0, 2, 0, 2) };
-                var del = new Button { Content = "✕", Padding = new Thickness(5, 1, 5, 1), FontSize = 9.5 };
-                DockPanel.SetDock(del, Dock.Right);
-                del.Click += (_, _) => { mem.Facts.RemoveAt(idx); _memoryStore.Save(_workspaceRoot, mem); BuildMemoryInspectorView(); };
-                row.Children.Add(del);
-                row.Children.Add(new TextBlock { Text = "• " + mem.Facts[i], TextWrapping = TextWrapping.Wrap, FontSize = 11, Foreground = Brush("BrushTextSecondary", "#d4d4d8") });
-                UtilityContentHost.Children.Add(row);
+                Text = $"Session Goal: {(string.IsNullOrWhiteSpace(snap.SessionGoal) ? "(none)" : snap.SessionGoal)}",
+                TextWrapping = TextWrapping.Wrap,
+                FontWeight = FontWeights.SemiBold,
+                Foreground = Brush("BrushAccentLight", "#93c5fd"),
+                Margin = new Thickness(0, 0, 0, 8)
+            });
+
+            // Scope filter pills
+            var scopeBar = new WrapPanel { Margin = new Thickness(0, 0, 0, 8) };
+            void AddFilterBtn(string label, MemoryScope? scope)
+            {
+                bool active = _inspectorScopeFilter == scope;
+                var b = new Button
+                {
+                    Content = label,
+                    Padding = new Thickness(8, 3, 8, 3),
+                    Margin = new Thickness(0, 0, 4, 4),
+                    FontSize = 10,
+                    Cursor = Cursors.Hand,
+                    Style = TryFindResource(active ? "SettingsTabBtnActive" : "SettingsTabBtn") as Style
+                };
+                b.Click += (_, _) => { _inspectorScopeFilter = scope; RefreshUtilityView(); };
+                scopeBar.Children.Add(b);
+            }
+            AddFilterBtn("All Scopes", null);
+            AddFilterBtn("Global", MemoryScope.UserGlobal);
+            AddFilterBtn("Project", MemoryScope.CurrentProject);
+            AddFilterBtn("Session", MemoryScope.CurrentSession);
+            AddFilterBtn("Conversation", MemoryScope.CurrentConversation);
+            AddFilterBtn("Turn", MemoryScope.CurrentTurn);
+            UtilityContentHost.Children.Add(scopeBar);
+
+            // Interactive Add Memory Card (UserGlobal requires explicit checkbox approval)
+            var addCard = new Border
+            {
+                Background = Brush("BrushGlassSurface", "#0b0e15"),
+                CornerRadius = new CornerRadius(10),
+                Padding = new Thickness(10, 8, 10, 8),
+                Margin = new Thickness(0, 0, 0, 10)
+            };
+            var addStack = new StackPanel();
+            var inputBox = new TextBox
+            {
+                Padding = new Thickness(8, 5, 8, 5),
+                FontSize = 11,
+                Background = Brush("BrushInputBg", "#0f151f"),
+                Foreground = Brush("BrushTextPrimary", "#fafafa"),
+                BorderThickness = new Thickness(0)
+            };
+            addStack.Children.Add(new TextBlock { Text = "ADD MEMORY RECORD", FontFamily = new FontFamily("Consolas"), FontSize = 9, FontWeight = FontWeights.Bold, Foreground = Brush("BrushTextDim", "#71717a"), Margin = new Thickness(0, 0, 0, 4) });
+            addStack.Children.Add(inputBox);
+
+            var controlsRow = new DockPanel { Margin = new Thickness(0, 6, 0, 0) };
+            var scopeCombo = new ComboBox { Width = 115, FontSize = 10.5, SelectedIndex = 3 };
+            foreach (MemoryScope s in Enum.GetValues(typeof(MemoryScope))) scopeCombo.Items.Add(s);
+            var saveBtn = new Button { Content = "+ Save", Padding = new Thickness(10, 3, 10, 3), FontSize = 10.5, Margin = new Thickness(6, 0, 0, 0), Style = TryFindResource("PrimaryActionBtn") as Style };
+            DockPanel.SetDock(saveBtn, Dock.Right);
+            controlsRow.Children.Add(saveBtn);
+            controlsRow.Children.Add(scopeCombo);
+            addStack.Children.Add(controlsRow);
+
+            var approvalNote = new CheckBox
+            {
+                Content = "Explicitly approve UserGlobal preference persistence",
+                IsChecked = true,
+                FontSize = 10,
+                Foreground = Brush("BrushTextMuted", "#71717a"),
+                Margin = new Thickness(0, 5, 0, 0)
+            };
+            addStack.Children.Add(approvalNote);
+
+            saveBtn.Click += (_, _) =>
+            {
+                string txt = (inputBox.Text ?? string.Empty).Trim();
+                if (string.IsNullOrEmpty(txt)) return;
+                var selScope = scopeCombo.SelectedItem is MemoryScope ms ? ms : MemoryScope.CurrentProject;
+                if (selScope == MemoryScope.CurrentProject && string.IsNullOrWhiteSpace(_workspaceRoot)) return;
+                if (selScope == MemoryScope.UserGlobal && approvalNote.IsChecked != true) return;
+
+                memEngine.AddOrUpdate(new MemoryRecord
+                {
+                    Content = txt,
+                    Scope = selScope,
+                    Source = "user_inspector",
+                    Confidence = 1.0,
+                    ProjectKey = _workspaceRoot,
+                    IsUserEditable = true
+                }, explicitUserApproval: approvalNote.IsChecked == true);
+                RefreshUtilityView();
+            };
+
+            addCard.Child = addStack;
+            UtilityContentHost.Children.Add(addCard);
+
+            // Inspect records across selected scopes
+            var records = memEngine.Inspect(_inspectorScopeFilter, _workspaceRoot);
+            UtilityContentHost.Children.Add(new TextBlock
+            {
+                Text = $"Scoped Records ({records.Count})",
+                FontWeight = FontWeights.SemiBold,
+                Foreground = Brush("BrushTextPrimary", "#fafafa"),
+                Margin = new Thickness(0, 0, 0, 6)
+            });
+
+            foreach (var rec in records)
+            {
+                var card = new Border
+                {
+                    Background = Brush("BrushGlassSurface", "#0b0e15"),
+                    CornerRadius = new CornerRadius(10),
+                    Padding = new Thickness(10, 8, 10, 8),
+                    Margin = new Thickness(0, 0, 0, 6)
+                };
+                var st = new StackPanel();
+                var meta = new DockPanel { Margin = new Thickness(0, 0, 0, 4) };
+
+                var actions = new StackPanel { Orientation = Orientation.Horizontal };
+                DockPanel.SetDock(actions, Dock.Right);
+                if (rec.Scope != MemoryScope.UserGlobal)
+                {
+                    var promote = new Button { Content = "↑ Global", Padding = new Thickness(6, 2, 6, 2), FontSize = 9.5, Margin = new Thickness(0, 0, 4, 0), ToolTip = "Promote with explicit approval", Style = TryFindResource("GhostToolBtn") as Style };
+                    promote.Click += (_, _) => { memEngine.Promote(rec.Id, MemoryScope.UserGlobal, _workspaceRoot, rec.ConversationId, explicitUserApproval: true); RefreshUtilityView(); };
+                    actions.Children.Add(promote);
+                }
+                var del = new Button { Content = "✕", Padding = new Thickness(6, 2, 6, 2), FontSize = 9.5, Style = TryFindResource("GhostToolBtn") as Style };
+                del.Click += (_, _) => { memEngine.DeleteRecord(rec.Id, _workspaceRoot, rec.ConversationId); RefreshUtilityView(); };
+                actions.Children.Add(del);
+                meta.Children.Add(actions);
+
+                meta.Children.Add(new TextBlock
+                {
+                    Text = $"{rec.Scope} · {rec.Confidence:P0} · {rec.Source}",
+                    FontFamily = new FontFamily("Consolas"),
+                    FontSize = 9.5,
+                    Foreground = Brush("BrushAccentLight", "#93c5fd"),
+                    VerticalAlignment = VerticalAlignment.Center
+                });
+                st.Children.Add(meta);
+
+                var editBox = new TextBox
+                {
+                    Text = rec.Content,
+                    IsReadOnly = !rec.IsUserEditable,
+                    TextWrapping = TextWrapping.Wrap,
+                    FontSize = 11,
+                    Background = Brushes.Transparent,
+                    Foreground = Brush("BrushTextSecondary", "#d4d4d8"),
+                    BorderThickness = new Thickness(0)
+                };
+                editBox.LostFocus += (_, _) =>
+                {
+                    string updated = (editBox.Text ?? string.Empty).Trim();
+                    if (!string.IsNullOrEmpty(updated) && !string.Equals(updated, rec.Content, StringComparison.Ordinal))
+                    {
+                        memEngine.UpdateRecord(rec.Id, updated, rec.Scope, rec.ExpiresUtc, _workspaceRoot, rec.ConversationId, explicitUserApproval: true);
+                    }
+                };
+                st.Children.Add(editBox);
+                card.Child = st;
+                UtilityContentHost.Children.Add(card);
             }
         }
 
@@ -1857,57 +2014,76 @@ namespace LlmodelBox.Controls.UtilityPanel
             string? openPath = _getOpenFilePath?.Invoke();
             string editorText = _getOpenEditorText?.Invoke() ?? string.Empty;
             var model = _getActiveModel?.Invoke();
-            var counter = LlmodelBox.Runtime.Tokens.TokenizerRegistry.Default.Resolve(model);
             var caps = LlmodelBox.Providers.ModelCapabilityResolver.Resolve(model);
-            string memText = string.Empty;
-            if (!string.IsNullOrWhiteSpace(_workspaceRoot))
-            {
-                var mem = _memoryStore.Load(_workspaceRoot);
-                if (!string.IsNullOrWhiteSpace(mem.SessionGoal) || mem.Facts.Count > 0)
-                    memText = $"Goal: {mem.SessionGoal}\n" + string.Join("\n", mem.Facts);
-            }
+            var memEngine = GetMemoryEngine();
+            string? memText = memEngine.BuildPreamble(memEngine.Recall(_workspaceRoot));
 
-            var report = new LlmodelBox.Runtime.Tokens.TokenBudgetManager().Allocate(new LlmodelBox.Runtime.Tokens.TokenBudgetRequest
+            var kbIndex = _knowledgeEngine.Index(_workspaceRoot);
+            var built = new ContextEngine().Build(new ContextRequest
             {
-                Model = model,
-                Capabilities = caps,
-                SystemInstructions = _settings.SystemInstructionEnabled ? _settings.SystemInstruction : null,
+                Model = model ?? new ModelItem(),
+                Settings = _settings,
+                SystemInstruction = _settings.SystemInstructionEnabled ? _settings.SystemInstruction : null,
                 UserPrompt = string.Empty,
                 OpenFilePath = openPath,
                 OpenFileText = editorText,
-                ToolSchemas = _toolRegistry?.Definitions() ?? Array.Empty<LlmodelBox.Models.Ai.AiToolDefinition>(),
-                Memory = memText
-            }, counter);
+                ProjectKey = _workspaceRoot,
+                MemoryPreamble = memText,
+                ToolSchemas = (_toolRegistry?.Definitions() ?? Array.Empty<AiToolDefinition>()).ToList(),
+                EnableAutoCompact = _settings.AutoCompactEnabled,
+                AutoCompactThresholdRatio = Math.Clamp(_settings.AutoCompactThresholdPercent / 100.0, 0.40, 0.92)
+            }, caps);
+
+            var report = built.BudgetReport!;
 
             var topGrid = new System.Windows.Controls.Primitives.UniformGrid { Rows = 2, Columns = 2, Margin = new Thickness(0, 0, 0, 8) };
             topGrid.Children.Add(CreateMetricBentoCard("MODEL", model?.Name ?? "None", model?.Context ?? "?", new Thickness(0, 0, 6, 6)));
             topGrid.Children.Add(CreateMetricBentoCard("TOKENIZER", report.SourceLabel, report.TruncationMethod, new Thickness(0, 0, 0, 6)));
             topGrid.Children.Add(CreateMetricBentoCard("ALLOCATED INPUT", $"{report.TotalInputAllocatedTokens:N0} tok", $"Budget {report.EffectiveInputBudget:N0} ({report.ContextUtilizationPercent:0.0}%)", new Thickness(0, 0, 6, 0)));
-            topGrid.Children.Add(CreateMetricBentoCard("EST. INPUT COST", TokenHelper.FormatCostOrUnknown(report.EstimatedCost), model?.Pricing ?? "Unknown", new Thickness(0)));
+            topGrid.Children.Add(CreateMetricBentoCard("AUTO-COMPACT & KB", _settings.AutoCompactEnabled ? $"On @ {_settings.AutoCompactThresholdPercent}%" : "Disabled", $"{kbIndex.DocumentCount} chunks ({kbIndex.LastStats.ReusedFiles} reused)", new Thickness(0)));
             UtilityContentHost.Children.Add(topGrid);
 
-            // 10-Bucket Token Budget Manager breakdown
-            var buckets = new (string Label, int Tokens)[]
+            var actionRow = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 0, 8) };
+            var reindexBtn = new Button { Content = "↻ Re-Index Project", Padding = new Thickness(10, 4, 10, 4), FontSize = 10.5, Margin = new Thickness(0, 0, 6, 0), Style = TryFindResource("GhostToolBtn") as Style };
+            reindexBtn.Click += (_, _) =>
             {
-                ("System Instructions", report.SystemInstructionsTokens),
-                ("Recent History", report.RecentHistoryTokens),
-                ("Conversation Summaries", report.ConversationSummariesTokens),
-                ("Current User Prompt", report.CurrentUserPromptTokens),
-                ("Open Files", report.OpenFilesTokens),
-                ("Retrieved Code Snippets", report.RetrievedCodeSnippetsTokens),
-                ("Attachments", report.AttachmentsTokens),
-                ("Tool Schemas", report.ToolSchemasTokens),
-                ("Memory", report.MemoryTokens),
-                ("Output Reserve", report.OutputReserveTokens)
+                _knowledgeEngine.Index(_workspaceRoot, new KnowledgeIndexOptions { ExcludedGlobs = new List<string>(_settings.KnowledgeExcludedGlobs ?? new()) });
+                RefreshUtilityView();
             };
+            actionRow.Children.Add(reindexBtn);
+
+            var compactToggleBtn = new Button
+            {
+                Content = _settings.AutoCompactEnabled ? $"Auto-Compact: ON ({_settings.AutoCompactThresholdPercent}%)" : "Auto-Compact: OFF",
+                Padding = new Thickness(10, 4, 10, 4),
+                FontSize = 10.5,
+                Style = TryFindResource("GhostToolBtn") as Style
+            };
+            compactToggleBtn.Click += (_, _) =>
+            {
+                _settings.AutoCompactEnabled = !_settings.AutoCompactEnabled;
+                _settingsService?.SaveSettings(_settings);
+                RefreshUtilityView();
+            };
+            actionRow.Children.Add(compactToggleBtn);
+            UtilityContentHost.Children.Add(actionRow);
+
+            UtilityContentHost.Children.Add(new TextBlock
+            {
+                Text = $"Priority Source Attribution ({built.DeduplicatedItemsCount} deduped)",
+                FontWeight = FontWeights.SemiBold,
+                Foreground = Brush("BrushTextPrimary", "#fafafa"),
+                Margin = new Thickness(0, 2, 0, 6)
+            });
 
             var bGrid = new System.Windows.Controls.Primitives.UniformGrid { Columns = 2 };
-            for (int i = 0; i < buckets.Length; i++)
+            for (int i = 0; i < built.SourceReport.Count; i++)
             {
+                var src = built.SourceReport[i];
                 bGrid.Children.Add(CreateMetricBentoCard(
-                    buckets[i].Label.ToUpperInvariant(),
-                    $"{buckets[i].Tokens:N0} tok",
-                    i == 9 ? "Reserved completion headroom" : (report.OpenFileTruncated && i == 4 ? "Token-truncated to fit" : "Allocated"),
+                    src.Category.ToUpperInvariant(),
+                    $"{src.TokensAllocated:N0} tok",
+                    $"{src.SourceName} · {src.Reason}",
                     new Thickness(i % 2 == 0 ? 0 : 3, 0, i % 2 == 0 ? 3 : 0, 5)));
             }
             UtilityContentHost.Children.Add(bGrid);

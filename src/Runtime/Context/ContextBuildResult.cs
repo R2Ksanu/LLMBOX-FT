@@ -1,18 +1,16 @@
+using System.Collections.Generic;
 using LlmodelBox.Models.Ai;
 using LlmodelBox.Runtime.Tokens;
 
 namespace LlmodelBox.Runtime.Context
 {
-    // Outcome of a context assembly pass: the ready-to-route request plus what the engine had to do
-    // to fit the model's budget (surfaced for telemetry / the Neural Net view).
+    // Outcome of a context assembly pass: ready-to-route request, token budget telemetry,
+    // auto-compaction handoff state, file relevance scores, deduplication count, and source report.
     public sealed class ContextBuildResult
     {
         public AiRequest Request { get; set; } = new();
 
-        // Estimated input tokens actually assembled (system + history + open file + user turn).
         public int InputTokenEstimate { get; set; }
-
-        // Token budget the engine targeted for the input (context window minus an output reserve).
         public int InputBudget { get; set; }
 
         public int IncludedHistoryTurns { get; set; }
@@ -22,5 +20,13 @@ namespace LlmodelBox.Runtime.Context
 
         // Part 4 Token Budget breakdown & confidence metadata.
         public TokenBudgetReport? BudgetReport { get; set; }
+
+        // Part 5 Context Intelligence & Auto-Compact telemetry.
+        public bool AutoCompacted { get; set; }
+        public string CompactionReason { get; set; } = "None";
+        public string? UpdatedConversationSummary { get; set; }
+        public int DeduplicatedItemsCount { get; set; }
+        public List<ScoredFileResult> ScoredFiles { get; set; } = new();
+        public List<ContextSourceEntry> SourceReport { get; set; } = new();
     }
 }

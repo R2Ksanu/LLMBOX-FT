@@ -1,21 +1,33 @@
 using System.Collections.Generic;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace LlmodelBox.Runtime.Knowledge
 {
-    // Phase 6 — the Knowledge Engine. Indexes a project's text/code files and retrieves the fragments
-    // most relevant to the live user turn, so the Context Engine can fold real project knowledge into
-    // the prompt (retrieval-augmented context) WITHOUT a model round-trip or any network access.
+    public interface IKnowledgeEmbeddingProvider
+    {
+        string ProviderId { get; }
+        bool IsConfigured { get; }
+        Task<IReadOnlyList<float[]?>> EmbedBatchAsync(IReadOnlyList<string> inputs, CancellationToken cancellationToken = default);
+    }
+
+    // Part 5 upgraded Knowledge Engine: incremental SHA-256 content hashing, configurable
+    // exclusions, overlapping line-tracked code chunks, and optional embedding-based hybrid
+    // retrieval with automatic deterministic BM25 fallback.
     public interface IKnowledgeEngine
     {
-        // Build (or return a cached) index for the given project root. Missing/invalid roots yield an
-        // empty index rather than throwing — callers can always index unconditionally.
         KnowledgeIndex Index(string? projectRoot);
+        KnowledgeIndex Index(string? projectRoot, KnowledgeIndexOptions? options);
 
-        // Rank the index against a query and return the top snippets, highest score first.
         IReadOnlyList<KnowledgeSnippet> Retrieve(KnowledgeIndex index, string? query, int maxSnippets);
 
-        // Assemble a budgeted, human-readable knowledge block to prepend to the live turn, or null when
-        // nothing relevant was found. maxChars caps the block so it cannot dominate the context budget.
+        Task<IReadOnlyList<KnowledgeSnippet>> RetrieveAsync(
+            KnowledgeIndex index,
+            string? query,
+            int maxSnippets,
+            IKnowledgeEmbeddingProvider? embeddingProvider = null,
+            CancellationToken cancellationToken = default);
+
         string? BuildKnowledgeBlock(IReadOnlyList<KnowledgeSnippet> snippets, int maxChars);
     }
 }

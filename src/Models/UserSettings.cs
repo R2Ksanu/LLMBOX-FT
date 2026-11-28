@@ -27,6 +27,13 @@ namespace LlmodelBox.Models
         public List<string> RecentFiles { get; set; } = new();
         public List<string> RecentCommands { get; set; } = new();
 
+        // Part 5: Auto-Compaction, Scoped Memory & Knowledge Indexing Preferences
+        public bool AutoCompactEnabled { get; set; } = true;
+        public int AutoCompactThresholdPercent { get; set; } = 72;
+        public bool KnowledgeUseEmbeddings { get; set; } = false;
+        public string KnowledgeEmbeddingModel { get; set; } = "text-embedding-3-small";
+        public List<string> KnowledgeExcludedGlobs { get; set; } = new();
+
         // Discord Rich Presence. When enabled, the app publishes its name, a live activity
         // line ("Neural Net" / current stage) and elapsed session time to the local Discord client.
         // Requires a Discord Application (client) ID from https://discord.com/developers/applications.
