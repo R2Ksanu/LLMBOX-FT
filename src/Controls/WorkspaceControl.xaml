@@ -97,31 +97,31 @@
                                             </Border>
                                         </Popup>
                                     </Grid>
-                                    <Button Style="{StaticResource BlackBoxActionBtn}" Margin="0,0,6,0" Click="BtnWorkspaceExplorer_Click" Padding="10,5" FontSize="11">
+                                    <Button Style="{StaticResource GhostToolBtn}" Margin="0,0,4,0" Click="BtnWorkspaceExplorer_Click" Padding="9,5" FontSize="11">
                                         <StackPanel Orientation="Horizontal">
                                             <Path Data="{StaticResource IconFolder}" Fill="{DynamicResource BrushTextSecondary}" Stretch="Uniform" Width="14" Height="14" VerticalAlignment="Center" Margin="0,0,7,0"/>
                                             <TextBlock Text="Explorer" VerticalAlignment="Center"/>
                                         </StackPanel>
                                     </Button>
-                                    <Button Style="{StaticResource BlackBoxActionBtn}" Margin="0,0,6,0" Click="BtnSystemInstruction_Click" Padding="10,5" FontSize="11" ToolTip="Edit the system instruction sent on every request">
+                                    <Button Style="{StaticResource GhostToolBtn}" Margin="0,0,4,0" Click="BtnSystemInstruction_Click" Padding="9,5" FontSize="11" ToolTip="Edit the system instruction sent on every request">
                                         <StackPanel Orientation="Horizontal">
                                             <Path Data="{StaticResource IconBolt}" Fill="{DynamicResource BrushTextSecondary}" Stretch="Uniform" Width="14" Height="14" VerticalAlignment="Center" Margin="0,0,7,0"/>
                                             <TextBlock Text="System Prompt" VerticalAlignment="Center"/>
                                         </StackPanel>
                                     </Button>
-                                    <Button Style="{StaticResource BlackBoxActionBtn}" Click="BtnClearChat_Click" Padding="10,5" FontSize="11" Margin="0,0,6,0">
+                                    <Button Style="{StaticResource GhostToolBtn}" Click="BtnClearChat_Click" Padding="9,5" FontSize="11" Margin="0,0,4,0">
                                         <StackPanel Orientation="Horizontal">
                                             <Path Data="{StaticResource IconTrash}" Fill="{DynamicResource BrushTextSecondary}" Stretch="Uniform" Width="14" Height="14" VerticalAlignment="Center" Margin="0,0,7,0"/>
                                             <TextBlock Text="Clear Chat" VerticalAlignment="Center"/>
                                         </StackPanel>
                                     </Button>
-                                    <Button x:Name="BtnToggleUtilityPanel" ToolTip="Toggle / Restore Right Utility Panel (Ctrl+Shift+U)" Style="{StaticResource BlackBoxActionBtn}" Padding="10,5" FontSize="11" Margin="0,0,6,0" Click="BtnToggleUtilityPanel_Click">
+                                    <Button x:Name="BtnToggleUtilityPanel" ToolTip="Toggle / Restore Right Utility Panel (Ctrl+Shift+U)" Style="{StaticResource GhostToolBtn}" Padding="9,5" FontSize="11" Margin="0,0,4,0" Click="BtnToggleUtilityPanel_Click">
                                         <StackPanel Orientation="Horizontal">
                                             <Path Data="{StaticResource IconChart}" Fill="{DynamicResource BrushTextSecondary}" Stretch="Uniform" Width="13" Height="13" VerticalAlignment="Center" Margin="0,0,6,0"/>
                                             <TextBlock Text="Panel" VerticalAlignment="Center"/>
                                         </StackPanel>
                                     </Button>
-                                    <Button x:Name="BtnToggleClassicInspector" Content="Classic" ToolTip="Switch between Modern Right Utility Panel and Legacy Inspector / Cmd Runner" Style="{StaticResource BlackBoxActionBtn}" Padding="9,5" FontSize="10.5" Click="BtnToggleClassicInspector_Click"/>
+                                    <Button x:Name="BtnToggleClassicInspector" Content="Classic" ToolTip="Switch between Modern Right Utility Panel and Legacy Inspector / Cmd Runner" Style="{StaticResource GhostToolBtn}" Padding="9,5" FontSize="10.5" Click="BtnToggleClassicInspector_Click"/>
                                 </StackPanel>
                             </Grid>
                         </Border>
@@ -146,26 +146,26 @@
                                     </Grid.RowDefinitions>
 
                                     <!-- Explorer Header -->
-                                    <Border Grid.Row="0" Background="{DynamicResource BrushGlassHeader}" BorderBrush="{DynamicResource BrushGlassBorder}" BorderThickness="0,0,0,1" Padding="10,0">
+                                    <Border Grid.Row="0" Background="{DynamicResource BrushGlassHeader}" BorderThickness="0" CornerRadius="14,14,0,0" Padding="12,0">
                                         <Grid VerticalAlignment="Center">
                                             <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                                                 <Path Data="{StaticResource IconFolder}" Fill="{DynamicResource BrushAccentLight}" Stretch="Uniform" Width="13" Height="13" VerticalAlignment="Center" Margin="0,0,7,0"/>
                                                 <TextBlock Text="EXPLORER" Foreground="{DynamicResource BrushTextSecondary}" FontWeight="Bold" FontSize="10.5" FontFamily="Consolas" VerticalAlignment="Center"/>
                                             </StackPanel>
                                             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                                                <Button Style="{StaticResource BlackBoxActionBtn}" Padding="6,3" Margin="0,0,3,0" FontSize="10" Click="BtnNewFile_Click" ToolTip="New file in selected folder">
+                                                <Button Style="{StaticResource GhostToolBtn}" Padding="6,3" Margin="0,0,2,0" FontSize="10" Click="BtnNewFile_Click" ToolTip="New file in selected folder">
                                                     <StackPanel Orientation="Horizontal">
                                                         <Path Data="{StaticResource IconPlus}" Fill="{DynamicResource BrushTextSecondary}" Stretch="Uniform" Width="9.5" Height="9.5" VerticalAlignment="Center" Margin="0,0,4,0"/>
                                                         <TextBlock Text="File" VerticalAlignment="Center"/>
                                                     </StackPanel>
                                                 </Button>
-                                                <Button Style="{StaticResource BlackBoxActionBtn}" Padding="6,3" Margin="0,0,3,0" FontSize="10" Click="BtnNewFolder_Click" ToolTip="New folder in selected folder">
+                                                <Button Style="{StaticResource GhostToolBtn}" Padding="6,3" Margin="0,0,2,0" FontSize="10" Click="BtnNewFolder_Click" ToolTip="New folder in selected folder">
                                                     <StackPanel Orientation="Horizontal">
                                                         <Path Data="{StaticResource IconFolder}" Fill="{DynamicResource BrushTextSecondary}" Stretch="Uniform" Width="11" Height="11" VerticalAlignment="Center" Margin="0,0,4,0"/>
                                                         <TextBlock Text="Dir" VerticalAlignment="Center"/>
                                                     </StackPanel>
                                                 </Button>
-                                                <Button Style="{StaticResource BlackBoxActionBtn}" Padding="6,3" FontSize="10" Click="BtnRefreshFiles_Click" ToolTip="Refresh file tree">
+                                                <Button Style="{StaticResource GhostToolBtn}" Padding="6,3" FontSize="10" Click="BtnRefreshFiles_Click" ToolTip="Refresh file tree">
                                                     <Path Data="{StaticResource IconRefresh}" Fill="{DynamicResource BrushTextSecondary}" Stretch="Uniform" Width="11" Height="11"/>
                                                 </Button>
                                             </StackPanel>
@@ -283,7 +283,7 @@
                                     </ScrollViewer>
 
                                     <!-- Explorer Footer -->
-                                    <Border Grid.Row="2" Background="{DynamicResource BrushGlassHeader}" BorderBrush="{DynamicResource BrushGlassBorder}" BorderThickness="0,1,0,0" Padding="10,0">
+                                    <Border Grid.Row="2" Background="{DynamicResource BrushGlassHeader}" BorderThickness="0" CornerRadius="0,0,14,14" Padding="12,0">
                                         <TextBlock x:Name="TxtExplorerStats" Text="0 items" Foreground="{DynamicResource BrushTextDim}" FontSize="10" FontFamily="Consolas" VerticalAlignment="Center"/>
                                     </Border>
                                 </Grid>
@@ -319,7 +319,7 @@
                                         </Grid.RowDefinitions>
 
                                         <!-- Chat Header -->
-                                        <Border Grid.Row="0" Background="{DynamicResource BrushGlassHeader}" BorderBrush="{DynamicResource BrushGlassBorder}" BorderThickness="0,0,0,1" Padding="11,0">
+                                        <Border Grid.Row="0" Background="{DynamicResource BrushGlassHeader}" BorderThickness="0" CornerRadius="14,14,0,0" Padding="12,0">
                                             <Grid VerticalAlignment="Center">
                                                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                                                     <Path Data="{StaticResource IconBolt}" Fill="{DynamicResource BrushAccentLight}" Stretch="Uniform" Width="12.5" Height="12.5" VerticalAlignment="Center" Margin="0,0,7,0"/>
@@ -330,7 +330,7 @@
                                                 </StackPanel>
 
                                                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
-                                                    <Button Style="{StaticResource BlackBoxActionBtn}" Padding="8,3" FontSize="10" Click="BtnClearChat_Click">
+                                                    <Button Style="{StaticResource GhostToolBtn}" Padding="8,3.5" FontSize="10" Click="BtnClearChat_Click">
                                                         <StackPanel Orientation="Horizontal">
                                                             <Path Data="{StaticResource IconTrash}" Fill="{DynamicResource BrushTextSecondary}" Stretch="Uniform" Width="11" Height="11" VerticalAlignment="Center" Margin="0,0,5,0"/>
                                                             <TextBlock Text="Clear" VerticalAlignment="Center"/>
@@ -369,35 +369,49 @@
                                             </ListBox.ItemContainerStyle>
                                             <ListBox.ItemTemplate>
                                                 <DataTemplate>
-                                                    <Grid HorizontalAlignment="{Binding Alignment}" Margin="0,3,0,5" MaxWidth="660">
-                                                        <Border BorderThickness="1" CornerRadius="6" Padding="10,8">
+                                                    <Grid HorizontalAlignment="{Binding Alignment}" Margin="0,4,0,6" MaxWidth="660">
+                                                        <Border BorderThickness="0" CornerRadius="12" Padding="12,10" RenderTransformOrigin="0.5,0.5">
+                                                            <Border.RenderTransform>
+                                                                <TranslateTransform x:Name="msgLift" Y="0"/>
+                                                            </Border.RenderTransform>
+                                                            <Border.Triggers>
+                                                                <EventTrigger RoutedEvent="Loaded">
+                                                                    <BeginStoryboard>
+                                                                        <Storyboard>
+                                                                            <DoubleAnimation From="0.35" To="1" Duration="0:0:0.2" Storyboard.TargetProperty="Opacity">
+                                                                                <DoubleAnimation.EasingFunction><CubicEase EasingMode="EaseOut"/></DoubleAnimation.EasingFunction>
+                                                                            </DoubleAnimation>
+                                                                            <DoubleAnimation Storyboard.TargetName="msgLift" Storyboard.TargetProperty="Y" From="6" To="0" Duration="0:0:0.22">
+                                                                                <DoubleAnimation.EasingFunction><CubicEase EasingMode="EaseOut"/></DoubleAnimation.EasingFunction>
+                                                                            </DoubleAnimation>
+                                                                        </Storyboard>
+                                                                    </BeginStoryboard>
+                                                                </EventTrigger>
+                                                            </Border.Triggers>
                                                             <Border.Style>
                                                                 <Style TargetType="Border">
-                                                                    <Setter Property="Background" Value="{DynamicResource BrushCardBg}"/>
-                                                                    <Setter Property="BorderBrush" Value="{DynamicResource BrushBorder}"/>
+                                                                    <Setter Property="Background" Value="{DynamicResource BrushGlassHeader}"/>
                                                                     <Style.Triggers>
                                                                         <DataTrigger Binding="{Binding IsUser}" Value="True">
                                                                             <Setter Property="Background" Value="{DynamicResource BrushAccentGlow}"/>
-                                                                            <Setter Property="BorderBrush" Value="{DynamicResource BrushAccentMuted}"/>
                                                                         </DataTrigger>
                                                                         <DataTrigger Binding="{Binding IsError}" Value="True">
                                                                             <Setter Property="Background" Value="{DynamicResource BrushDangerGlow}"/>
-                                                                            <Setter Property="BorderBrush" Value="{DynamicResource BrushDanger}"/>
                                                                         </DataTrigger>
                                                                     </Style.Triggers>
                                                                 </Style>
                                                             </Border.Style>
                                                             <StackPanel>
                                                                 <!-- Header row -->
-                                                                <Grid Margin="0,0,0,4">
+                                                                <Grid Margin="0,0,0,5">
                                                                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                                                        <Border Width="18" Height="18" Background="{Binding AvatarBackground}" CornerRadius="9" Margin="0,0,6,0">
-                                                                            <TextBlock Text="{Binding AvatarText}" Foreground="{DynamicResource BrushTextPrimary}" FontSize="8.5" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                                        <Border Width="20" Height="20" Background="{Binding AvatarBackground}" CornerRadius="10" Margin="0,0,7,0">
+                                                                            <TextBlock Text="{Binding AvatarText}" Foreground="{DynamicResource BrushTextPrimary}" FontSize="9" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                                                         </Border>
                                                                         <TextBlock Text="{Binding RoleBadgeText}" Foreground="{Binding RoleColor}" FontWeight="Bold" FontSize="10" FontFamily="Consolas" VerticalAlignment="Center"/>
                                                                         <TextBlock Text="{Binding Timestamp}" Foreground="{DynamicResource BrushTextDim}" FontSize="9.5" FontFamily="Consolas" VerticalAlignment="Center" Margin="8,0,0,0"/>
                                                                     </StackPanel>
-                                                                    <Button Style="{StaticResource CaptionSysButtonStyle}" Width="22" Height="22" HorizontalAlignment="Right" Click="BtnCopyChatMessage_Click" Tag="{Binding}" ToolTip="Copy message">
+                                                                    <Button Style="{StaticResource GhostToolBtn}" Width="24" Height="24" Padding="0" HorizontalAlignment="Right" Click="BtnCopyChatMessage_Click" Tag="{Binding}" ToolTip="Copy message">
                                                                         <Path Data="{StaticResource IconCopy}" Fill="{DynamicResource BrushTextMuted}" Stretch="Uniform" Width="11" Height="11"/>
                                                                     </Button>
                                                                 </Grid>
@@ -411,7 +425,7 @@
                                                                     </ItemsControl.ItemsPanel>
                                                                     <ItemsControl.ItemTemplate>
                                                                         <DataTemplate>
-                                                                            <Border Width="56" Height="56" Margin="0,0,6,4" CornerRadius="4" BorderBrush="{DynamicResource BrushAccent}" BorderThickness="1" ClipToBounds="True">
+                                                                            <Border Width="56" Height="56" Margin="0,0,6,4" CornerRadius="8" BorderThickness="0" ClipToBounds="True">
                                                                                 <Image Source="{Binding}" Stretch="UniformToFill"/>
                                                                             </Border>
                                                                         </DataTemplate>
@@ -432,7 +446,7 @@
                                         </ListBox>
 
                                         <!-- Pending Attached Images Bar -->
-                                        <Border Grid.Row="2" x:Name="PendingImagesBar" Visibility="Collapsed" Background="{DynamicResource BrushCardBg}" BorderBrush="{DynamicResource BrushBorder}" BorderThickness="0,1,0,0" Padding="8,4">
+                                        <Border Grid.Row="2" x:Name="PendingImagesBar" Visibility="Collapsed" Background="{DynamicResource BrushGlassHeader}" BorderThickness="0" Padding="10,5">
                                             <ItemsControl x:Name="PendingImagesList">
                                                 <ItemsControl.ItemsPanel>
                                                     <ItemsPanelTemplate>
@@ -454,7 +468,7 @@
                                         </Border>
 
                                         <!-- Prompt Composer -->
-                                        <Border Grid.Row="3" Background="{DynamicResource BrushCardBg}" BorderBrush="{DynamicResource BrushBorderSubtle}" BorderThickness="0,1,0,0" Padding="8,6">
+                                        <Border Grid.Row="3" Background="{DynamicResource BrushGlassHeader}" BorderThickness="0" CornerRadius="0,0,14,14" Padding="10,8">
                                             <StackPanel>
                                                 <!-- Thinking indicator (animated while the model generates) -->
                                                 <Border x:Name="ThinkingIndicator" Visibility="Collapsed" Margin="0,0,0,6" Padding="10,6"
@@ -490,7 +504,7 @@
                                                 </Grid.ColumnDefinitions>
 
                                                 <!-- Chat Prompt Textbox Capsule -->
-                                                <Border Grid.Column="0" Background="{DynamicResource BrushCardBg}" BorderBrush="{DynamicResource BrushGlassBorder}" BorderThickness="1" CornerRadius="9" Padding="2,1">
+                                                <Border Grid.Column="0" Background="{DynamicResource BrushGlassSurface}" BorderThickness="0" CornerRadius="10" Padding="4,2">
                                                     <TextBox x:Name="TxtChatPromptInput"
                                                              Background="Transparent"
                                                              Foreground="{DynamicResource BrushTextPrimary}"
@@ -508,7 +522,7 @@
 
                                                 <!-- Action Buttons -->
                                                 <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Bottom" Margin="6,0,0,0">
-                                                    <Button ToolTip="Attach Image or Asset to Chat" Style="{StaticResource BlackBoxActionBtn}" Padding="9,7" Margin="0,0,5,0" Click="BtnAttachImage_Click">
+                                                    <Button ToolTip="Attach Image or Asset to Chat" Style="{StaticResource GhostToolBtn}" Padding="9,7" Margin="0,0,5,0" Click="BtnAttachImage_Click">
                                                         <Path Data="{StaticResource IconImage}" Fill="{DynamicResource BrushTextSecondary}" Stretch="Uniform" Width="13" Height="13"/>
                                                     </Button>
                                                     <Button x:Name="BtnStopChatGeneration" Content="■ Stop" Visibility="Collapsed" Background="#ef4444" Foreground="White" BorderThickness="0" Padding="12,6" Cursor="Hand" FontWeight="SemiBold" Click="BtnStopChatGeneration_Click"/>
@@ -539,8 +553,8 @@
                                         <RowDefinition Height="*"/>  <!-- Tab Contents -->
                                     </Grid.RowDefinitions>
 
-                                    <!-- 4-Tab Bento Pill Navigation Header -->
-                                    <Border Grid.Row="0" Background="{DynamicResource BrushWindowBg}" BorderBrush="{DynamicResource BrushBorderSubtle}" BorderThickness="0,0,0,1" Padding="8,7">
+                                    <!-- 4-Tab Bento Pill Navigation Header (Borderless Tonal Container) -->
+                                    <Border Grid.Row="0" Background="{DynamicResource BrushGlassHeader}" BorderThickness="0" CornerRadius="14,14,0,0" Padding="8,7">
                                         <Grid>
                                             <Grid.ColumnDefinitions>
                                                 <ColumnDefinition Width="*"/>
@@ -580,7 +594,7 @@
                                     <ScrollViewer Grid.Row="1" x:Name="TabContentInfo" Visibility="Visible" VerticalScrollBarVisibility="Auto" Padding="10">
                                         <StackPanel>
                                             <!-- Card: Project Metadata -->
-                                            <Border Background="{DynamicResource BrushCardBg}" BorderBrush="{DynamicResource BrushBorder}" BorderThickness="1" CornerRadius="8" Padding="14,12" Margin="0,0,0,10">
+                                            <Border Background="{DynamicResource BrushGlassHeader}" BorderThickness="0" CornerRadius="12" Padding="14,12" Margin="0,0,0,10">
                                                 <StackPanel>
                                                     <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
                                                         <Border Width="3" Height="12" CornerRadius="1.5" Background="{DynamicResource BrushAccent}" VerticalAlignment="Center" Margin="0,0,8,0"/>
@@ -598,14 +612,14 @@
                                                         <TextBlock Text="Total Size" Foreground="{DynamicResource BrushTextMuted}" FontSize="11"/>
                                                         <TextBlock x:Name="TxtInfoProjectSize" Text="4.2 KB" Foreground="{DynamicResource BrushTextSecondary}" FontSize="11" FontFamily="Consolas" HorizontalAlignment="Right"/>
                                                     </Grid>
-                                                    <Border Height="1" Background="{DynamicResource BrushBorderSubtle}" Margin="0,9,0,8"/>
+                                                    <Border Height="1" Background="{DynamicResource BrushHoverTint}" Margin="0,9,0,8"/>
                                                     <TextBlock Text="Location" Foreground="{DynamicResource BrushTextDim}" FontSize="10.5" Margin="0,0,0,2"/>
                                                     <TextBlock x:Name="TxtInfoProjectPath" Text="G:\tools\LlmodelBox\projects\Alpha" Foreground="{DynamicResource BrushTextMuted}" FontSize="10" FontFamily="Consolas" TextWrapping="Wrap"/>
                                                 </StackPanel>
                                             </Border>
 
                                             <!-- Card: Active Model Telemetry -->
-                                            <Border Background="{DynamicResource BrushCardBg}" BorderBrush="{DynamicResource BrushBorder}" BorderThickness="1" CornerRadius="8" Padding="14,12" Margin="0,0,0,10">
+                                            <Border Background="{DynamicResource BrushGlassHeader}" BorderThickness="0" CornerRadius="12" Padding="14,12" Margin="0,0,0,10">
                                                 <StackPanel>
                                                     <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
                                                         <Border Width="3" Height="12" CornerRadius="1.5" Background="{DynamicResource BrushAccent}" VerticalAlignment="Center" Margin="0,0,8,0"/>
@@ -631,7 +645,7 @@
                                                         <TextBlock Text="Pricing" Foreground="{DynamicResource BrushTextMuted}" FontSize="11"/>
                                                         <TextBlock x:Name="TxtInfoModelPricing" Text="$0.005 / 1k" Foreground="{DynamicResource BrushTextSecondary}" FontSize="11" FontFamily="Consolas" HorizontalAlignment="Right"/>
                                                     </Grid>
-                                                    <Border Height="1" Background="{DynamicResource BrushBorderSubtle}" Margin="0,9,0,8"/>
+                                                    <Border Height="1" Background="{DynamicResource BrushHoverTint}" Margin="0,9,0,8"/>
                                                     <Grid>
                                                         <TextBlock Text="API Key" Foreground="{DynamicResource BrushTextMuted}" FontSize="11" VerticalAlignment="Center"/>
                                                         <TextBlock x:Name="TxtInfoModelKeyStatus" Text="VALIDATED ✓" Foreground="{DynamicResource BrushSuccess}" FontWeight="SemiBold" FontSize="10.5" FontFamily="Consolas" HorizontalAlignment="Right"/>
@@ -640,7 +654,7 @@
                                             </Border>
 
                                             <!-- Card: Real-time Ping Latency -->
-                                            <Border Background="{DynamicResource BrushCardBg}" BorderBrush="{DynamicResource BrushBorder}" BorderThickness="1" CornerRadius="8" Padding="14,12" Margin="0,0,0,10">
+                                            <Border Background="{DynamicResource BrushGlassHeader}" BorderThickness="0" CornerRadius="12" Padding="14,12" Margin="0,0,0,10">
                                                 <StackPanel>
                                                     <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
                                                         <Border Width="3" Height="12" CornerRadius="1.5" Background="{DynamicResource BrushAccent}" VerticalAlignment="Center" Margin="0,0,8,0"/>
@@ -652,7 +666,7 @@
                                             </Border>
 
                                             <!-- Card: Token & Context Analysis Engine -->
-                                            <Border Background="{DynamicResource BrushCardBg}" BorderBrush="{DynamicResource BrushBorder}" BorderThickness="1" CornerRadius="8" Padding="14,12">
+                                            <Border Background="{DynamicResource BrushGlassHeader}" BorderThickness="0" CornerRadius="12" Padding="14,12">
                                                 <StackPanel>
                                                     <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
                                                         <Border Width="3" Height="12" CornerRadius="1.5" Background="{DynamicResource BrushAccent}" VerticalAlignment="Center" Margin="0,0,8,0"/>

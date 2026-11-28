@@ -639,55 +639,162 @@
     <Geometry x:Key="IconCopy">M9 2 H20 V16 H9 Z M4 6 H7 V19 H16 V22 H4 Z</Geometry>
     <Geometry x:Key="IconKey">M14 3 A5 5 0 0 0 9.1 9 L3 15 V18 H6 L7 17 H9 V15 H11 L12.9 13.1 A5 5 0 1 0 14 3 Z M15 6 A1.3 1.3 0 1 1 15 8.6 A1.3 1.3 0 1 1 15 6 Z</Geometry>
 
+    <!-- ===== Borderless Tonal Pill Action Button ===== -->
     <Style x:Key="BlackBoxActionBtn" TargetType="Button">
         <Setter Property="Foreground" Value="{DynamicResource BrushTextSecondary}"/>
-        <Setter Property="BorderBrush" Value="{DynamicResource BrushBorder}"/>
-        <Setter Property="BorderThickness" Value="1"/>
-        <Setter Property="Padding" Value="14,7"/>
+        <Setter Property="BorderBrush" Value="Transparent"/>
+        <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="Padding" Value="13,7"/>
         <Setter Property="FontWeight" Value="Medium"/>
         <Setter Property="FontSize" Value="12"/>
         <Setter Property="Cursor" Value="Hand"/>
-        <Setter Property="Background" Value="{DynamicResource BrushCardInnerBg}"/>
+        <Setter Property="Background" Value="{DynamicResource BrushGlassHeader}"/>
         <Setter Property="SnapsToDevicePixels" Value="True"/>
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="Button">
-                    <Border x:Name="bdr" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="7" RenderTransformOrigin="0.5,0.5" SnapsToDevicePixels="True">
+                    <Border x:Name="bdr" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="8" RenderTransformOrigin="0.5,0.5" SnapsToDevicePixels="True">
                         <Border.RenderTransform>
-                            <ScaleTransform x:Name="btnScale" ScaleX="1" ScaleY="1"/>
+                            <TransformGroup>
+                                <ScaleTransform x:Name="btnScale" ScaleX="1" ScaleY="1"/>
+                                <TranslateTransform x:Name="btnLift" Y="0"/>
+                            </TransformGroup>
                         </Border.RenderTransform>
-                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" Margin="{TemplateBinding Padding}"/>
+                        <Grid>
+                            <Border x:Name="hoverGlow" Background="{DynamicResource BrushHoverTint}" CornerRadius="8" Opacity="0" IsHitTestVisible="False"/>
+                            <Border x:Name="pressGlow" Background="{DynamicResource BrushPressTint}" CornerRadius="8" Opacity="0" IsHitTestVisible="False"/>
+                            <Border x:Name="focusRim" BorderBrush="{DynamicResource BrushAccent}" BorderThickness="1" CornerRadius="8" Opacity="0" IsHitTestVisible="False"/>
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" Margin="{TemplateBinding Padding}"/>
+                        </Grid>
                     </Border>
                     <ControlTemplate.Triggers>
                         <EventTrigger RoutedEvent="MouseEnter">
                             <BeginStoryboard>
                                 <Storyboard>
-                                    <DoubleAnimation Storyboard.TargetName="btnScale" Storyboard.TargetProperty="ScaleX" To="1.02" Duration="0:0:0.1"/>
-                                    <DoubleAnimation Storyboard.TargetName="btnScale" Storyboard.TargetProperty="ScaleY" To="1.02" Duration="0:0:0.1"/>
+                                    <DoubleAnimation Storyboard.TargetName="hoverGlow" Storyboard.TargetProperty="Opacity" To="1" Duration="0:0:0.14">
+                                        <DoubleAnimation.EasingFunction><CubicEase EasingMode="EaseOut"/></DoubleAnimation.EasingFunction>
+                                    </DoubleAnimation>
+                                    <DoubleAnimation Storyboard.TargetName="btnScale" Storyboard.TargetProperty="ScaleX" To="1.028" Duration="0:0:0.15">
+                                        <DoubleAnimation.EasingFunction><CubicEase EasingMode="EaseOut"/></DoubleAnimation.EasingFunction>
+                                    </DoubleAnimation>
+                                    <DoubleAnimation Storyboard.TargetName="btnScale" Storyboard.TargetProperty="ScaleY" To="1.028" Duration="0:0:0.15">
+                                        <DoubleAnimation.EasingFunction><CubicEase EasingMode="EaseOut"/></DoubleAnimation.EasingFunction>
+                                    </DoubleAnimation>
+                                    <DoubleAnimation Storyboard.TargetName="btnLift" Storyboard.TargetProperty="Y" To="-1" Duration="0:0:0.15">
+                                        <DoubleAnimation.EasingFunction><CubicEase EasingMode="EaseOut"/></DoubleAnimation.EasingFunction>
+                                    </DoubleAnimation>
                                 </Storyboard>
                             </BeginStoryboard>
                         </EventTrigger>
                         <EventTrigger RoutedEvent="MouseLeave">
                             <BeginStoryboard>
                                 <Storyboard>
-                                    <DoubleAnimation Storyboard.TargetName="btnScale" Storyboard.TargetProperty="ScaleX" To="1.0" Duration="0:0:0.12"/>
-                                    <DoubleAnimation Storyboard.TargetName="btnScale" Storyboard.TargetProperty="ScaleY" To="1.0" Duration="0:0:0.12"/>
+                                    <DoubleAnimation Storyboard.TargetName="hoverGlow" Storyboard.TargetProperty="Opacity" To="0" Duration="0:0:0.18">
+                                        <DoubleAnimation.EasingFunction><CubicEase EasingMode="EaseOut"/></DoubleAnimation.EasingFunction>
+                                    </DoubleAnimation>
+                                    <DoubleAnimation Storyboard.TargetName="btnScale" Storyboard.TargetProperty="ScaleX" To="1.0" Duration="0:0:0.18">
+                                        <DoubleAnimation.EasingFunction><CubicEase EasingMode="EaseOut"/></DoubleAnimation.EasingFunction>
+                                    </DoubleAnimation>
+                                    <DoubleAnimation Storyboard.TargetName="btnScale" Storyboard.TargetProperty="ScaleY" To="1.0" Duration="0:0:0.18">
+                                        <DoubleAnimation.EasingFunction><CubicEase EasingMode="EaseOut"/></DoubleAnimation.EasingFunction>
+                                    </DoubleAnimation>
+                                    <DoubleAnimation Storyboard.TargetName="btnLift" Storyboard.TargetProperty="Y" To="0" Duration="0:0:0.18">
+                                        <DoubleAnimation.EasingFunction><CubicEase EasingMode="EaseOut"/></DoubleAnimation.EasingFunction>
+                                    </DoubleAnimation>
                                 </Storyboard>
                             </BeginStoryboard>
                         </EventTrigger>
                         <Trigger Property="IsMouseOver" Value="True">
-                            <Setter TargetName="bdr" Property="Background" Value="{DynamicResource BrushBorderSubtle}"/>
-                            <Setter TargetName="bdr" Property="BorderBrush" Value="{DynamicResource BrushBorderHover}"/>
                             <Setter Property="Foreground" Value="{DynamicResource BrushTextPrimary}"/>
                         </Trigger>
                         <Trigger Property="IsPressed" Value="True">
-                            <Setter TargetName="bdr" Property="Background" Value="{DynamicResource BrushCardBg}"/>
+                            <Setter TargetName="pressGlow" Property="Opacity" Value="1"/>
                         </Trigger>
                         <Trigger Property="IsKeyboardFocused" Value="True">
-                            <Setter TargetName="bdr" Property="BorderBrush" Value="{DynamicResource BrushAccent}"/>
+                            <Setter TargetName="focusRim" Property="Opacity" Value="0.75"/>
                         </Trigger>
                         <Trigger Property="IsEnabled" Value="False">
-                            <Setter Property="Opacity" Value="0.4"/>
+                            <Setter Property="Opacity" Value="0.38"/>
+                            <Setter Property="Cursor" Value="Arrow"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- ===== Ultra-Clean Borderless Ghost Toolbar Button (Zed/Linear Style) ===== -->
+    <Style x:Key="GhostToolBtn" TargetType="Button">
+        <Setter Property="Foreground" Value="{DynamicResource BrushTextMuted}"/>
+        <Setter Property="BorderBrush" Value="Transparent"/>
+        <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="Padding" Value="9,5"/>
+        <Setter Property="FontWeight" Value="Medium"/>
+        <Setter Property="FontSize" Value="11"/>
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="SnapsToDevicePixels" Value="True"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <Border x:Name="bdr" Background="{TemplateBinding Background}" CornerRadius="7" RenderTransformOrigin="0.5,0.5" SnapsToDevicePixels="True">
+                        <Border.RenderTransform>
+                            <TransformGroup>
+                                <ScaleTransform x:Name="gScale" ScaleX="1" ScaleY="1"/>
+                                <TranslateTransform x:Name="gLift" Y="0"/>
+                            </TransformGroup>
+                        </Border.RenderTransform>
+                        <Grid>
+                            <Border x:Name="hoverBg" Background="{DynamicResource BrushHoverTint}" CornerRadius="7" Opacity="0" IsHitTestVisible="False"/>
+                            <Border x:Name="pressBg" Background="{DynamicResource BrushPressTint}" CornerRadius="7" Opacity="0" IsHitTestVisible="False"/>
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" Margin="{TemplateBinding Padding}"/>
+                        </Grid>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <EventTrigger RoutedEvent="MouseEnter">
+                            <BeginStoryboard>
+                                <Storyboard>
+                                    <DoubleAnimation Storyboard.TargetName="hoverBg" Storyboard.TargetProperty="Opacity" To="1" Duration="0:0:0.13">
+                                        <DoubleAnimation.EasingFunction><CubicEase EasingMode="EaseOut"/></DoubleAnimation.EasingFunction>
+                                    </DoubleAnimation>
+                                    <DoubleAnimation Storyboard.TargetName="gScale" Storyboard.TargetProperty="ScaleX" To="1.035" Duration="0:0:0.14">
+                                        <DoubleAnimation.EasingFunction><CubicEase EasingMode="EaseOut"/></DoubleAnimation.EasingFunction>
+                                    </DoubleAnimation>
+                                    <DoubleAnimation Storyboard.TargetName="gScale" Storyboard.TargetProperty="ScaleY" To="1.035" Duration="0:0:0.14">
+                                        <DoubleAnimation.EasingFunction><CubicEase EasingMode="EaseOut"/></DoubleAnimation.EasingFunction>
+                                    </DoubleAnimation>
+                                    <DoubleAnimation Storyboard.TargetName="gLift" Storyboard.TargetProperty="Y" To="-0.8" Duration="0:0:0.14">
+                                        <DoubleAnimation.EasingFunction><CubicEase EasingMode="EaseOut"/></DoubleAnimation.EasingFunction>
+                                    </DoubleAnimation>
+                                </Storyboard>
+                            </BeginStoryboard>
+                        </EventTrigger>
+                        <EventTrigger RoutedEvent="MouseLeave">
+                            <BeginStoryboard>
+                                <Storyboard>
+                                    <DoubleAnimation Storyboard.TargetName="hoverBg" Storyboard.TargetProperty="Opacity" To="0" Duration="0:0:0.18">
+                                        <DoubleAnimation.EasingFunction><CubicEase EasingMode="EaseOut"/></DoubleAnimation.EasingFunction>
+                                    </DoubleAnimation>
+                                    <DoubleAnimation Storyboard.TargetName="gScale" Storyboard.TargetProperty="ScaleX" To="1.0" Duration="0:0:0.18">
+                                        <DoubleAnimation.EasingFunction><CubicEase EasingMode="EaseOut"/></DoubleAnimation.EasingFunction>
+                                    </DoubleAnimation>
+                                    <DoubleAnimation Storyboard.TargetName="gScale" Storyboard.TargetProperty="ScaleY" To="1.0" Duration="0:0:0.18">
+                                        <DoubleAnimation.EasingFunction><CubicEase EasingMode="EaseOut"/></DoubleAnimation.EasingFunction>
+                                    </DoubleAnimation>
+                                    <DoubleAnimation Storyboard.TargetName="gLift" Storyboard.TargetProperty="Y" To="0" Duration="0:0:0.18">
+                                        <DoubleAnimation.EasingFunction><CubicEase EasingMode="EaseOut"/></DoubleAnimation.EasingFunction>
+                                    </DoubleAnimation>
+                                </Storyboard>
+                            </BeginStoryboard>
+                        </EventTrigger>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter Property="Foreground" Value="{DynamicResource BrushTextPrimary}"/>
+                        </Trigger>
+                        <Trigger Property="IsPressed" Value="True">
+                            <Setter TargetName="pressBg" Property="Opacity" Value="1"/>
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter Property="Opacity" Value="0.35"/>
                             <Setter Property="Cursor" Value="Arrow"/>
                         </Trigger>
                     </ControlTemplate.Triggers>
@@ -698,10 +805,10 @@
 
     <Style x:Key="PrimaryActionBtn" TargetType="Button">
         <Setter Property="Foreground" Value="{DynamicResource BrushAccentText}"/>
-        <Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}"/>
-        <Setter Property="BorderThickness" Value="1"/>
-        <Setter Property="Padding" Value="16,7"/>
-        <Setter Property="FontWeight" Value="Medium"/>
+        <Setter Property="BorderBrush" Value="Transparent"/>
+        <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="Padding" Value="15,7"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
         <Setter Property="FontSize" Value="12"/>
         <Setter Property="Cursor" Value="Hand"/>
         <Setter Property="Background" Value="{DynamicResource BrushAccent}"/>
@@ -709,39 +816,61 @@
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="Button">
-                    <Border x:Name="bdr" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="7" RenderTransformOrigin="0.5,0.5" SnapsToDevicePixels="True">
+                    <Border x:Name="bdr" Background="{TemplateBinding Background}" CornerRadius="8" RenderTransformOrigin="0.5,0.5" SnapsToDevicePixels="True">
                         <Border.RenderTransform>
-                            <ScaleTransform x:Name="pScale" ScaleX="1" ScaleY="1"/>
+                            <TransformGroup>
+                                <ScaleTransform x:Name="pScale" ScaleX="1" ScaleY="1"/>
+                                <TranslateTransform x:Name="pLift" Y="0"/>
+                            </TransformGroup>
                         </Border.RenderTransform>
-                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" Margin="{TemplateBinding Padding}"/>
+                        <Grid>
+                            <Border x:Name="pSheen" Background="#24ffffff" CornerRadius="8" Opacity="0" IsHitTestVisible="False"/>
+                            <Border x:Name="pFocus" BorderBrush="#99ffffff" BorderThickness="1" CornerRadius="8" Opacity="0" IsHitTestVisible="False"/>
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" Margin="{TemplateBinding Padding}"/>
+                        </Grid>
                     </Border>
                     <ControlTemplate.Triggers>
                         <EventTrigger RoutedEvent="MouseEnter">
                             <BeginStoryboard>
                                 <Storyboard>
-                                    <DoubleAnimation Storyboard.TargetName="pScale" Storyboard.TargetProperty="ScaleX" To="1.02" Duration="0:0:0.1"/>
-                                    <DoubleAnimation Storyboard.TargetName="pScale" Storyboard.TargetProperty="ScaleY" To="1.02" Duration="0:0:0.1"/>
+                                    <DoubleAnimation Storyboard.TargetName="pSheen" Storyboard.TargetProperty="Opacity" To="1" Duration="0:0:0.14">
+                                        <DoubleAnimation.EasingFunction><CubicEase EasingMode="EaseOut"/></DoubleAnimation.EasingFunction>
+                                    </DoubleAnimation>
+                                    <DoubleAnimation Storyboard.TargetName="pScale" Storyboard.TargetProperty="ScaleX" To="1.03" Duration="0:0:0.14">
+                                        <DoubleAnimation.EasingFunction><CubicEase EasingMode="EaseOut"/></DoubleAnimation.EasingFunction>
+                                    </DoubleAnimation>
+                                    <DoubleAnimation Storyboard.TargetName="pScale" Storyboard.TargetProperty="ScaleY" To="1.03" Duration="0:0:0.14">
+                                        <DoubleAnimation.EasingFunction><CubicEase EasingMode="EaseOut"/></DoubleAnimation.EasingFunction>
+                                    </DoubleAnimation>
+                                    <DoubleAnimation Storyboard.TargetName="pLift" Storyboard.TargetProperty="Y" To="-1.2" Duration="0:0:0.14">
+                                        <DoubleAnimation.EasingFunction><CubicEase EasingMode="EaseOut"/></DoubleAnimation.EasingFunction>
+                                    </DoubleAnimation>
                                 </Storyboard>
                             </BeginStoryboard>
                         </EventTrigger>
                         <EventTrigger RoutedEvent="MouseLeave">
                             <BeginStoryboard>
                                 <Storyboard>
-                                    <DoubleAnimation Storyboard.TargetName="pScale" Storyboard.TargetProperty="ScaleX" To="1.0" Duration="0:0:0.12"/>
-                                    <DoubleAnimation Storyboard.TargetName="pScale" Storyboard.TargetProperty="ScaleY" To="1.0" Duration="0:0:0.12"/>
+                                    <DoubleAnimation Storyboard.TargetName="pSheen" Storyboard.TargetProperty="Opacity" To="0" Duration="0:0:0.18">
+                                        <DoubleAnimation.EasingFunction><CubicEase EasingMode="EaseOut"/></DoubleAnimation.EasingFunction>
+                                    </DoubleAnimation>
+                                    <DoubleAnimation Storyboard.TargetName="pScale" Storyboard.TargetProperty="ScaleX" To="1.0" Duration="0:0:0.18">
+                                        <DoubleAnimation.EasingFunction><CubicEase EasingMode="EaseOut"/></DoubleAnimation.EasingFunction>
+                                    </DoubleAnimation>
+                                    <DoubleAnimation Storyboard.TargetName="pScale" Storyboard.TargetProperty="ScaleY" To="1.0" Duration="0:0:0.18">
+                                        <DoubleAnimation.EasingFunction><CubicEase EasingMode="EaseOut"/></DoubleAnimation.EasingFunction>
+                                    </DoubleAnimation>
+                                    <DoubleAnimation Storyboard.TargetName="pLift" Storyboard.TargetProperty="Y" To="0" Duration="0:0:0.18">
+                                        <DoubleAnimation.EasingFunction><CubicEase EasingMode="EaseOut"/></DoubleAnimation.EasingFunction>
+                                    </DoubleAnimation>
                                 </Storyboard>
                             </BeginStoryboard>
                         </EventTrigger>
-                        <Trigger Property="IsMouseOver" Value="True">
-                            <Setter TargetName="bdr" Property="Background" Value="{DynamicResource BrushAccentLight}"/>
-                            <Setter TargetName="bdr" Property="BorderBrush" Value="{DynamicResource BrushAccentLight}"/>
-                        </Trigger>
                         <Trigger Property="IsPressed" Value="True">
                             <Setter TargetName="bdr" Property="Background" Value="{DynamicResource BrushAccentMuted}"/>
-                            <Setter TargetName="bdr" Property="BorderBrush" Value="{DynamicResource BrushAccentMuted}"/>
                         </Trigger>
                         <Trigger Property="IsKeyboardFocused" Value="True">
-                            <Setter TargetName="bdr" Property="BorderBrush" Value="{DynamicResource BrushTextPrimary}"/>
+                            <Setter TargetName="pFocus" Property="Opacity" Value="0.85"/>
                         </Trigger>
                         <Trigger Property="IsEnabled" Value="False">
                             <Setter Property="Opacity" Value="0.45"/>
@@ -818,32 +947,50 @@
     </Style>
 
     <!-- ===== Bento Tile Grid Buttons (Curved Glass Card + Spring Hover Animation) ===== -->
+    <!-- ===== Sleek Borderless Animated Bento Grid Card ===== -->
     <Style x:Key="BentoTileBtn" TargetType="Button">
-        <Setter Property="Background" Value="{DynamicResource BrushCardBg}"/>
+        <Setter Property="Background" Value="{DynamicResource BrushGlassHeader}"/>
         <Setter Property="Foreground" Value="{DynamicResource BrushTextSecondary}"/>
-        <Setter Property="BorderBrush" Value="{DynamicResource BrushBorderSubtle}"/>
-        <Setter Property="BorderThickness" Value="1"/>
-        <Setter Property="Padding" Value="9,7"/>
+        <Setter Property="BorderBrush" Value="Transparent"/>
+        <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="Padding" Value="10,8"/>
         <Setter Property="Cursor" Value="Hand"/>
         <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
         <Setter Property="SnapsToDevicePixels" Value="True"/>
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="Button">
-                    <Border x:Name="card" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="9" Padding="{TemplateBinding Padding}" RenderTransformOrigin="0.5,0.5">
+                    <Border x:Name="card" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="11" RenderTransformOrigin="0.5,0.5" SnapsToDevicePixels="True">
                         <Border.RenderTransform>
-                            <ScaleTransform x:Name="tileScale" ScaleX="1" ScaleY="1"/>
+                            <TransformGroup>
+                                <ScaleTransform x:Name="tileScale" ScaleX="1" ScaleY="1"/>
+                                <TranslateTransform x:Name="tileLift" Y="0"/>
+                            </TransformGroup>
                         </Border.RenderTransform>
-                        <ContentPresenter HorizontalAlignment="Stretch" VerticalAlignment="Center"/>
+                        <Grid>
+                            <Border x:Name="tileHoverFill" Background="{DynamicResource BrushHoverTint}" CornerRadius="11" Opacity="0" IsHitTestVisible="False"/>
+                            <Border x:Name="tileGlowRim" BorderBrush="{DynamicResource BrushGlassBorderHover}" BorderThickness="1" CornerRadius="11" Opacity="0" IsHitTestVisible="False"/>
+                            <Border x:Name="tileActiveGlow" Background="{DynamicResource BrushPressTint}" CornerRadius="11" Opacity="0" IsHitTestVisible="False"/>
+                            <ContentPresenter Margin="{TemplateBinding Padding}" HorizontalAlignment="Stretch" VerticalAlignment="Center"/>
+                        </Grid>
                     </Border>
                     <ControlTemplate.Triggers>
                         <EventTrigger RoutedEvent="MouseEnter">
                             <BeginStoryboard>
                                 <Storyboard>
-                                    <DoubleAnimation Storyboard.TargetName="tileScale" Storyboard.TargetProperty="ScaleX" To="1.028" Duration="0:0:0.13">
+                                    <DoubleAnimation Storyboard.TargetName="tileHoverFill" Storyboard.TargetProperty="Opacity" To="1" Duration="0:0:0.15">
                                         <DoubleAnimation.EasingFunction><CubicEase EasingMode="EaseOut"/></DoubleAnimation.EasingFunction>
                                     </DoubleAnimation>
-                                    <DoubleAnimation Storyboard.TargetName="tileScale" Storyboard.TargetProperty="ScaleY" To="1.028" Duration="0:0:0.13">
+                                    <DoubleAnimation Storyboard.TargetName="tileGlowRim" Storyboard.TargetProperty="Opacity" To="0.7" Duration="0:0:0.18">
+                                        <DoubleAnimation.EasingFunction><CubicEase EasingMode="EaseOut"/></DoubleAnimation.EasingFunction>
+                                    </DoubleAnimation>
+                                    <DoubleAnimation Storyboard.TargetName="tileScale" Storyboard.TargetProperty="ScaleX" To="1.032" Duration="0:0:0.15">
+                                        <DoubleAnimation.EasingFunction><CubicEase EasingMode="EaseOut"/></DoubleAnimation.EasingFunction>
+                                    </DoubleAnimation>
+                                    <DoubleAnimation Storyboard.TargetName="tileScale" Storyboard.TargetProperty="ScaleY" To="1.032" Duration="0:0:0.15">
+                                        <DoubleAnimation.EasingFunction><CubicEase EasingMode="EaseOut"/></DoubleAnimation.EasingFunction>
+                                    </DoubleAnimation>
+                                    <DoubleAnimation Storyboard.TargetName="tileLift" Storyboard.TargetProperty="Y" To="-1.8" Duration="0:0:0.15">
                                         <DoubleAnimation.EasingFunction><CubicEase EasingMode="EaseOut"/></DoubleAnimation.EasingFunction>
                                     </DoubleAnimation>
                                 </Storyboard>
@@ -852,22 +999,29 @@
                         <EventTrigger RoutedEvent="MouseLeave">
                             <BeginStoryboard>
                                 <Storyboard>
-                                    <DoubleAnimation Storyboard.TargetName="tileScale" Storyboard.TargetProperty="ScaleX" To="1.0" Duration="0:0:0.16">
+                                    <DoubleAnimation Storyboard.TargetName="tileHoverFill" Storyboard.TargetProperty="Opacity" To="0" Duration="0:0:0.2">
                                         <DoubleAnimation.EasingFunction><CubicEase EasingMode="EaseOut"/></DoubleAnimation.EasingFunction>
                                     </DoubleAnimation>
-                                    <DoubleAnimation Storyboard.TargetName="tileScale" Storyboard.TargetProperty="ScaleY" To="1.0" Duration="0:0:0.16">
+                                    <DoubleAnimation Storyboard.TargetName="tileGlowRim" Storyboard.TargetProperty="Opacity" To="0" Duration="0:0:0.2">
+                                        <DoubleAnimation.EasingFunction><CubicEase EasingMode="EaseOut"/></DoubleAnimation.EasingFunction>
+                                    </DoubleAnimation>
+                                    <DoubleAnimation Storyboard.TargetName="tileScale" Storyboard.TargetProperty="ScaleX" To="1.0" Duration="0:0:0.2">
+                                        <DoubleAnimation.EasingFunction><CubicEase EasingMode="EaseOut"/></DoubleAnimation.EasingFunction>
+                                    </DoubleAnimation>
+                                    <DoubleAnimation Storyboard.TargetName="tileScale" Storyboard.TargetProperty="ScaleY" To="1.0" Duration="0:0:0.2">
+                                        <DoubleAnimation.EasingFunction><CubicEase EasingMode="EaseOut"/></DoubleAnimation.EasingFunction>
+                                    </DoubleAnimation>
+                                    <DoubleAnimation Storyboard.TargetName="tileLift" Storyboard.TargetProperty="Y" To="0" Duration="0:0:0.2">
                                         <DoubleAnimation.EasingFunction><CubicEase EasingMode="EaseOut"/></DoubleAnimation.EasingFunction>
                                     </DoubleAnimation>
                                 </Storyboard>
                             </BeginStoryboard>
                         </EventTrigger>
                         <Trigger Property="IsMouseOver" Value="True">
-                            <Setter TargetName="card" Property="Background" Value="{DynamicResource BrushCardInnerBg}"/>
-                            <Setter TargetName="card" Property="BorderBrush" Value="{DynamicResource BrushAccentLight}"/>
                             <Setter Property="Foreground" Value="{DynamicResource BrushTextPrimary}"/>
                         </Trigger>
                         <Trigger Property="IsPressed" Value="True">
-                            <Setter TargetName="card" Property="Background" Value="{DynamicResource BrushBorderSubtle}"/>
+                            <Setter TargetName="tileActiveGlow" Property="Opacity" Value="1"/>
                         </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
@@ -877,17 +1031,23 @@
 
     <Style x:Key="BentoTileBtnActive" TargetType="Button" BasedOn="{StaticResource BentoTileBtn}">
         <Setter Property="Background" Value="{DynamicResource BrushAccentGlow}"/>
-        <Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource BrushGlassBorderHover}"/>
+        <Setter Property="BorderThickness" Value="1"/>
         <Setter Property="Foreground" Value="{DynamicResource BrushTextPrimary}"/>
     </Style>
 
-    <!-- ===== Translucent Glass Panel Container & Sleek Hover Splitter ===== -->
+    <!-- ===== Translucent Floating Glass Container & Sleek Hover Splitter ===== -->
     <Style x:Key="GlassPanelSurface" TargetType="Border">
         <Setter Property="Background" Value="{DynamicResource BrushGlassSurface}"/>
         <Setter Property="BorderBrush" Value="{DynamicResource BrushGlassBorder}"/>
         <Setter Property="BorderThickness" Value="1"/>
-        <Setter Property="CornerRadius" Value="12"/>
+        <Setter Property="CornerRadius" Value="14"/>
         <Setter Property="SnapsToDevicePixels" Value="True"/>
+        <Setter Property="Effect">
+            <Setter.Value>
+                <DropShadowEffect Color="#000000" BlurRadius="24" ShadowDepth="4" Direction="270" Opacity="0.28"/>
+            </Setter.Value>
+        </Setter>
     </Style>
 
     <Style x:Key="IdeSplitterStyle" TargetType="GridSplitter">

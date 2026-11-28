@@ -109,12 +109,14 @@ namespace LlmodelBox.Services
             SetBrush(dict, "BrushWarning", "#f59e0b");
             SetBrush(dict, "BrushWarningGlow", "#451a03");
 
-            // Translucent glassmorphism layer tokens (Midnight Obsidian)
-            SetBrush(dict, "BrushGlassSurface", "#CC0b0e15");
-            SetBrush(dict, "BrushGlassHeader", "#D9101521");
-            SetBrush(dict, "BrushGlassCardHover", "#CC171e2e");
-            SetBrush(dict, "BrushGlassBorder", "#1Fffffff");
-            SetBrush(dict, "BrushGlassBorderHover", "#3D60a5fa");
+            // Translucent glassmorphism layer tokens (Midnight Obsidian - Linear/Raycast tonal hierarchy)
+            SetBrush(dict, "BrushGlassSurface", "#D90a0e17");
+            SetBrush(dict, "BrushGlassHeader", "#E6101624");
+            SetBrush(dict, "BrushGlassCardHover", "#E6182134");
+            SetBrush(dict, "BrushGlassBorder", "#0Affffff");
+            SetBrush(dict, "BrushGlassBorderHover", "#3360a5fa");
+            SetBrush(dict, "BrushHoverTint", "#14ffffff");
+            SetBrush(dict, "BrushPressTint", "#22ffffff");
         }
 
         // Cool blue-gray dark theme (Vercel/Geist slate ramp).
@@ -142,12 +144,14 @@ namespace LlmodelBox.Services
             SetBrush(dict, "BrushWarning", "#fbbf24");
             SetBrush(dict, "BrushWarningGlow", "#451a03");
 
-            // Translucent glassmorphism layer tokens (Slate)
-            SetBrush(dict, "BrushGlassSurface", "#CC101724");
-            SetBrush(dict, "BrushGlassHeader", "#D9151e2e");
-            SetBrush(dict, "BrushGlassCardHover", "#CC1c283d");
-            SetBrush(dict, "BrushGlassBorder", "#22ffffff");
-            SetBrush(dict, "BrushGlassBorderHover", "#4860a5fa");
+            // Translucent glassmorphism layer tokens (Slate - tonal hierarchy)
+            SetBrush(dict, "BrushGlassSurface", "#D90f1522");
+            SetBrush(dict, "BrushGlassHeader", "#E6151e2f");
+            SetBrush(dict, "BrushGlassCardHover", "#E61e2b42");
+            SetBrush(dict, "BrushGlassBorder", "#0Dffffff");
+            SetBrush(dict, "BrushGlassBorderHover", "#3D60a5fa");
+            SetBrush(dict, "BrushHoverTint", "#18ffffff");
+            SetBrush(dict, "BrushPressTint", "#24ffffff");
         }
 
         // True light theme — near-white surfaces, dark text (Geist light).
@@ -179,8 +183,10 @@ namespace LlmodelBox.Services
             SetBrush(dict, "BrushGlassSurface", "#E8ffffff");
             SetBrush(dict, "BrushGlassHeader", "#F2f8fafc");
             SetBrush(dict, "BrushGlassCardHover", "#F2f1f5f9");
-            SetBrush(dict, "BrushGlassBorder", "#1A0f172a");
-            SetBrush(dict, "BrushGlassBorderHover", "#403b82f6");
+            SetBrush(dict, "BrushGlassBorder", "#0D0f172a");
+            SetBrush(dict, "BrushGlassBorderHover", "#3D3b82f6");
+            SetBrush(dict, "BrushHoverTint", "#0D0f172a");
+            SetBrush(dict, "BrushPressTint", "#160f172a");
         }
     }
 }

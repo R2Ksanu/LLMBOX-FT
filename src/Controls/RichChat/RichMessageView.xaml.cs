@@ -2025,10 +2025,10 @@ namespace LlmodelBox.Controls.RichChat
         {
             return new Border
             {
-                Background = ResolveBrush("BrushCardBg", "#111114"),
-                BorderBrush = ResolveBrush("BrushBorder", "#27272a"),
-                BorderThickness = new Thickness(1),
-                CornerRadius = new CornerRadius(8)
+                Background = ResolveBrush("BrushGlassHeader", "#111624"),
+                BorderBrush = Brushes.Transparent,
+                BorderThickness = new Thickness(0),
+                CornerRadius = new CornerRadius(12)
             };
         }
 
@@ -2037,18 +2037,16 @@ namespace LlmodelBox.Controls.RichChat
             Color c = (Color)ColorConverter.ConvertFromString(accentHex);
             var fg = new SolidColorBrush(c);
             fg.Freeze();
-            var bg = new SolidColorBrush(Color.FromArgb(30, c.R, c.G, c.B));
+            var bg = new SolidColorBrush(Color.FromArgb(26, c.R, c.G, c.B));
             bg.Freeze();
-            var bdr = new SolidColorBrush(Color.FromArgb(95, c.R, c.G, c.B));
-            bdr.Freeze();
 
             return new Border
             {
                 Background = bg,
-                BorderBrush = bdr,
-                BorderThickness = new Thickness(1),
-                CornerRadius = new CornerRadius(4),
-                Padding = new Thickness(6, 1, 6, 1),
+                BorderBrush = Brushes.Transparent,
+                BorderThickness = new Thickness(0),
+                CornerRadius = new CornerRadius(999),
+                Padding = new Thickness(7, 1.5, 7, 1.5),
                 Child = new TextBlock
                 {
                     Text = text,
