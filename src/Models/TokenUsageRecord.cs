@@ -25,5 +25,15 @@ namespace LlmodelBox.Models
 
         // True when token count was extracted directly from provider HTTP API response
         public bool IsLiveApi { get; set; } = true;
+
+        // Part 4 Token Intelligence fields (backwards-compatible JSON defaults for older logs)
+        public int CachedTokens { get; set; }
+        public int ReasoningTokens { get; set; }
+        public string SourceLabel { get; set; } = string.Empty;
+        public string ConfidenceLabel { get; set; } = string.Empty; // ProviderReported, ExactBpe, EstimatedFallback
+        public double? InputCostUsd { get; set; }
+        public double? OutputCostUsd { get; set; }
+        public double? EstimatedCostUsd { get; set; }
+        public double? ProviderReportedCostUsd { get; set; }
     }
 }

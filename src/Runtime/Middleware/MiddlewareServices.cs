@@ -10,6 +10,7 @@ using LlmodelBox.Models;
 using LlmodelBox.Models.Ai;
 using LlmodelBox.Runtime.Content;
 using LlmodelBox.Runtime.Intent;
+using LlmodelBox.Runtime.Tokens;
 using LlmodelBox.Runtime.Tools.Builtin;
 
 namespace LlmodelBox.Runtime.Middleware
@@ -81,36 +82,76 @@ namespace LlmodelBox.Runtime.Middleware
 
     public sealed class TokenIntelligenceEngine : ITokenIntelligenceEngine
     {
-        public int EstimateTokens(string? text)
-            => string.IsNullOrEmpty(text) ? 0 : TokenHelper.CountTokens(text);
+        private readonly ITokenizerRegistry _registry;
+        private readonly TokenBudgetManager _budgetManager;
+
+        public TokenIntelligenceEngine() : this(TokenizerRegistry.Default, new TokenBudgetManager()) { }
+
+        public TokenIntelligenceEngine(ITokenizerRegistry registry, TokenBudgetManager? budgetManager = null)
+        {
+            _registry = registry ?? TokenizerRegistry.Default;
+            _budgetManager = budgetManager ?? new TokenBudgetManager();
+        }
+
+        public int EstimateTokens(string? text, ModelItem? model = null)
+            => string.IsNullOrEmpty(text) ? 0 : ResolveCounter(model).CountTokens(text);
+
+        public TokenCountResult CountWithConfidence(string? text, ModelItem? model = null)
+            => ResolveCounter(model).Count(text);
+
+        public IModelTokenCounter ResolveCounter(ModelItem? model)
+            => _registry.Resolve(model);
+
+        public TokenBudgetReport AllocateBudget(TokenBudgetRequest request)
+            => _budgetManager.Allocate(request, ResolveCounter(request.Model));
 
         public TokenReconciliationReport Reconcile(
             string? promptText,
             string? responseText,
             TokenUsageRecord? liveUsage,
-            int contextPromptEstimate = 0)
+            int contextPromptEstimate = 0,
+            ModelItem? model = null)
         {
+            var counter = ResolveCounter(model);
+            int estimatedPrompt = contextPromptEstimate > 0 ? contextPromptEstimate : counter.CountTokens(promptText);
+
             if (liveUsage != null && liveUsage.TotalTokens > 0)
             {
+                var breakdown = TokenHelper.CalculateCostBreakdown(
+                    liveUsage.PromptTokens,
+                    liveUsage.CompletionTokens,
+                    model?.Pricing,
+                    liveUsage.CachedTokens);
+
                 return new TokenReconciliationReport
                 {
                     PromptTokens = liveUsage.PromptTokens,
                     CompletionTokens = liveUsage.CompletionTokens,
                     TotalTokens = liveUsage.TotalTokens,
+                    CachedTokens = liveUsage.CachedTokens,
+                    ReasoningTokens = liveUsage.ReasoningTokens,
+                    EstimatedPromptTokens = estimatedPrompt,
                     IsProviderAuthoritative = true,
-                    SourceLabel = "Provider Usage"
+                    Confidence = TokenCountConfidence.ProviderReported,
+                    SourceLabel = "Provider API Reported",
+                    CostBreakdown = breakdown
                 };
             }
 
-            int p = contextPromptEstimate > 0 ? contextPromptEstimate : EstimateTokens(promptText);
-            int c = EstimateTokens(responseText);
+            int p = estimatedPrompt;
+            int c = counter.CountTokens(responseText);
+            var localBreakdown = TokenHelper.CalculateCostBreakdown(p, c, model?.Pricing);
+
             return new TokenReconciliationReport
             {
                 PromptTokens = p,
                 CompletionTokens = c,
                 TotalTokens = p + c,
+                EstimatedPromptTokens = estimatedPrompt,
                 IsProviderAuthoritative = false,
-                SourceLabel = "Estimated (BPE heuristic)"
+                Confidence = counter.Confidence,
+                SourceLabel = counter.SourceLabel,
+                CostBreakdown = localBreakdown
             };
         }
     }

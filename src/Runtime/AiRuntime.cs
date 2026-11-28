@@ -164,13 +164,14 @@ namespace LlmodelBox.Runtime
             var provider = _router.Select(probe);
             var caps = SafeCapabilities(provider, request);
 
-            var built = _contextEngine.Build(request, caps);
-
-            // Phase 5: advertise tools and drive the agent loop only when the model can call them and
-            // at least one tool is registered. Phase 7 additionally suppresses tools for turns the
-            // Intent Engine judged tool-free (e.g. small talk / pure questions).
             var toolDefs = _tools.Definitions();
             bool useTools = caps.ToolCalling && toolDefs.Count > 0 && wantsTools;
+            if (useTools && request.ToolSchemas.Count == 0)
+            {
+                request.ToolSchemas = new List<AiToolDefinition>(toolDefs);
+            }
+
+            var built = _contextEngine.Build(request, caps);
 
             AiResponse response;
             if (useTools)
@@ -278,10 +279,13 @@ namespace LlmodelBox.Runtime
 
             var provider = _router.Select(probe);
             var caps = SafeCapabilities(provider, request);
-            var built = _contextEngine.Build(request, caps);
-
             var toolDefs = _tools.Definitions();
             bool useTools = caps.ToolCalling && toolDefs.Count > 0 && wantsTools;
+            if (useTools && request.ToolSchemas.Count == 0)
+            {
+                request.ToolSchemas = new List<AiToolDefinition>(toolDefs);
+            }
+            var built = _contextEngine.Build(request, caps);
 
             onProgress?.Invoke(new RuntimeProgressEvent
             {

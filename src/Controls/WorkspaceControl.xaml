@@ -629,8 +629,12 @@
                                                         <TextBlock x:Name="TxtInfoChatTurns" Text="0 messages" Foreground="{DynamicResource BrushTextSecondary}" FontSize="11" FontFamily="Consolas" HorizontalAlignment="Right"/>
                                                     </Grid>
                                                     <Grid Margin="0,2.5">
+                                                        <TextBlock Text="Tokenizer" Foreground="{DynamicResource BrushTextMuted}" FontSize="11"/>
+                                                        <TextBlock x:Name="TxtInfoTokenizerSource" Text="Estimated" Foreground="{DynamicResource BrushAccentLight}" FontSize="10" FontWeight="SemiBold" FontFamily="Consolas" HorizontalAlignment="Right"/>
+                                                    </Grid>
+                                                    <Grid Margin="0,2.5">
                                                         <TextBlock Text="Est. Query Cost" Foreground="{DynamicResource BrushTextMuted}" FontSize="11"/>
-                                                        <TextBlock x:Name="TxtInfoEstCost" Text="$0.0000" Foreground="{DynamicResource BrushWarning}" FontSize="11" FontWeight="SemiBold" FontFamily="Consolas" HorizontalAlignment="Right"/>
+                                                        <TextBlock x:Name="TxtInfoEstCost" Text="$0.00" Foreground="{DynamicResource BrushWarning}" FontSize="11" FontWeight="SemiBold" FontFamily="Consolas" HorizontalAlignment="Right"/>
                                                     </Grid>
                                                     <Border Height="1" Background="{DynamicResource BrushBorderSubtle}" Margin="0,6,0,6"/>
                                                     <Grid Margin="0,1">

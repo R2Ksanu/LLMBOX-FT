@@ -28,7 +28,7 @@ namespace LlmodelBox.Runtime.Tools
         private readonly int _maxIterations;
         private readonly IToolExecutor _executor;
 
-        public AgentLoop(IToolExecutor executor, int maxIterations = 8)
+        public AgentLoop(IToolExecutor executor, int maxIterations = 24)
         {
             _executor = executor ?? throw new ArgumentNullException(nameof(executor));
             _maxIterations = maxIterations < 1 ? 1 : maxIterations;

@@ -47,6 +47,8 @@ namespace LlmodelBox.Controls.RichChat
         private RichTextBox? _streamingTrailingRtb;
         private DispatcherTimer? _animTimer;
         private int _animTick = 0;
+        private bool _timelineExpanded = false;
+        private bool _userToggledTimeline = false;
 
         public RichMessageView()
         {
@@ -110,6 +112,8 @@ namespace LlmodelBox.Controls.RichChat
             _renderedMessageId = string.Empty;
             _renderedRevision = -1;
             _streamingTrailingRtb = null;
+            _userToggledTimeline = false;
+            _timelineExpanded = false;
 
             if (_boundMessage != null)
             {
@@ -222,14 +226,28 @@ namespace LlmodelBox.Controls.RichChat
             _animTick++;
             if (ThreeDotsPanel.Visibility == Visibility.Visible)
             {
-                int phase = _animTick % 4;
-                Dot1.Opacity = phase == 0 ? 1.0 : 0.3;
-                Dot2.Opacity = phase == 1 ? 1.0 : 0.3;
-                Dot3.Opacity = phase == 2 ? 1.0 : 0.3;
+                double wave = _animTick * 0.65;
+                Dot1.Opacity = 0.35 + 0.65 * Math.Max(0, Math.Sin(wave));
+                Dot2.Opacity = 0.35 + 0.65 * Math.Max(0, Math.Sin(wave - 1.0));
+                Dot3.Opacity = 0.35 + 0.65 * Math.Max(0, Math.Sin(wave - 2.0));
             }
             if (SpinnerPanel.Visibility == Visibility.Visible)
             {
                 SpinnerRotateTransform.Angle = (_animTick * 30) % 360;
+            }
+            if (SonarBeacon.Visibility == Visibility.Visible)
+            {
+                double p = (_animTick % 10) / 10.0;
+                double s = 1.0 + (p * 0.55);
+                SonarScale.ScaleX = s;
+                SonarScale.ScaleY = s;
+                SonarRing.Opacity = Math.Max(0.1, 0.85 * (1.0 - p));
+            }
+            if (ActivityShimmerTrack.Visibility == Visibility.Visible)
+            {
+                double trackW = Math.Max(220, ActivityHeaderBorder.ActualWidth);
+                double pos = ((_animTick * 38) % (trackW + 140)) - 140;
+                ShimmerTranslate.X = pos;
             }
         }
 
@@ -277,8 +295,15 @@ namespace LlmodelBox.Controls.RichChat
 
             bool useSpinner = msg.ActivityState == MessageActivityState.ExecutingTool ||
                               msg.ActivityState == MessageActivityState.EditingFiles;
+            SonarBeacon.Visibility = msg.IsActiveInProgress ? Visibility.Visible : Visibility.Collapsed;
+            ActivityShimmerTrack.Visibility = msg.IsActiveInProgress ? Visibility.Visible : Visibility.Collapsed;
             ThreeDotsPanel.Visibility = (!useSpinner && msg.IsActiveInProgress) ? Visibility.Visible : Visibility.Collapsed;
             SpinnerPanel.Visibility = (useSpinner && msg.IsActiveInProgress) ? Visibility.Visible : Visibility.Collapsed;
+
+            if (!msg.IsActiveInProgress && msg.ToolSteps.Count > 0)
+            {
+                UpdateToolTrace();
+            }
 
             if (!string.IsNullOrWhiteSpace(msg.ActiveFilePath))
             {
@@ -358,27 +383,157 @@ namespace LlmodelBox.Controls.RichChat
         {
             if (_boundMessage == null || _boundMessage.ToolSteps == null || _boundMessage.ToolSteps.Count == 0)
             {
-                ToolTraceExpander.Visibility = Visibility.Collapsed;
+                ToolTimelineContainer.Visibility = Visibility.Collapsed;
                 ToolTraceList.Children.Clear();
                 return;
             }
 
-            ToolTraceExpander.Visibility = Visibility.Visible;
-            TxtToolTraceHeader.Text = $"Execution steps ({_boundMessage.ToolSteps.Count})";
+            ToolTimelineContainer.Visibility = Visibility.Visible;
+            bool inProgress = _boundMessage.IsActiveInProgress;
+            int count = _boundMessage.ToolSteps.Count;
+
+            if (!_userToggledTimeline)
+            {
+                _timelineExpanded = inProgress;
+            }
+            ApplyTimelineExpansionVisuals();
+
+            TxtToolTraceHeader.Text = inProgress
+                ? $"Working on step {count}…"
+                : $"Completed {count} step{(count == 1 ? "" : "s")}";
+            TxtToolTraceActionSummary.Text = inProgress ? "LIVE" : $"{count} OPS";
+            TimelineStatusDot.Fill = inProgress
+                ? ResolveBrush("BrushAccentLight", "#60a5fa")
+                : _boundMessage.IsError
+                    ? ResolveBrush("BrushDanger", "#f43f5e")
+                    : ResolveBrush("BrushSuccess", "#22c55e");
+
             ToolTraceList.Children.Clear();
 
-            foreach (var step in _boundMessage.ToolSteps)
+            for (int i = 0; i < count; i++)
             {
-                ToolTraceList.Children.Add(new TextBlock
+                string step = _boundMessage.ToolSteps[i];
+                bool isCurrentActive = inProgress && (i == count - 1);
+                ToolTraceList.Children.Add(BuildTimelineStepRow(step, isCurrentActive, i == count - 1));
+            }
+        }
+
+        private void BtnToggleToolTimeline_Click(object sender, RoutedEventArgs e)
+        {
+            _userToggledTimeline = true;
+            _timelineExpanded = !_timelineExpanded;
+            ApplyTimelineExpansionVisuals();
+        }
+
+        private void ApplyTimelineExpansionVisuals()
+        {
+            ToolTimelineBody.Visibility = _timelineExpanded ? Visibility.Visible : Visibility.Collapsed;
+            var anim = new System.Windows.Media.Animation.DoubleAnimation
+            {
+                To = _timelineExpanded ? 90 : 0,
+                Duration = TimeSpan.FromMilliseconds(160),
+                EasingFunction = new System.Windows.Media.Animation.CubicEase { EasingMode = System.Windows.Media.Animation.EasingMode.EaseOut }
+            };
+            TimelineChevronRotate.BeginAnimation(RotateTransform.AngleProperty, anim);
+        }
+
+        private UIElement BuildTimelineStepRow(string stepText, bool isActive, bool isLast)
+        {
+            var (verb, verbHex, target) = ParseStepVerbAndTarget(stepText);
+
+            var rowGrid = new Grid { Margin = new Thickness(0, 0, 0, isLast ? 0 : 4) };
+            rowGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(18) });
+            rowGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+
+            // Left timeline connector + status node
+            var trackGrid = new Grid();
+            if (!isLast)
+            {
+                trackGrid.Children.Add(new Border
                 {
-                    Text = $"• {step}",
-                    FontFamily = new FontFamily("Consolas"),
-                    FontSize = 11,
-                    Foreground = ResolveBrush("BrushTextSecondary", "#a1a1aa"),
-                    TextWrapping = TextWrapping.Wrap,
-                    Margin = new Thickness(0, 1, 0, 1)
+                    Width = 1.5,
+                    Background = ResolveBrush("BrushBorder", "#27272a"),
+                    HorizontalAlignment = HorizontalAlignment.Center,
+                    Margin = new Thickness(0, 12, 0, -6)
                 });
             }
+
+            var nodeDot = new Border
+            {
+                Width = 14,
+                Height = 14,
+                CornerRadius = new CornerRadius(7),
+                Background = isActive ? ResolveBrush("BrushAccentGlow", "#172554") : ResolveBrush("BrushSuccessGlow", "#052e16"),
+                BorderBrush = isActive ? ResolveBrush("BrushAccentLight", "#60a5fa") : ResolveBrush("BrushSuccess", "#22c55e"),
+                BorderThickness = new Thickness(1),
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Top,
+                Margin = new Thickness(0, 3, 0, 0),
+                Child = new TextBlock
+                {
+                    Text = isActive ? "●" : "✓",
+                    FontSize = isActive ? 7 : 8.5,
+                    FontWeight = FontWeights.Bold,
+                    Foreground = isActive ? ResolveBrush("BrushAccentLight", "#60a5fa") : ResolveBrush("BrushSuccess", "#22c55e"),
+                    HorizontalAlignment = HorizontalAlignment.Center,
+                    VerticalAlignment = VerticalAlignment.Center
+                }
+            };
+            trackGrid.Children.Add(nodeDot);
+            Grid.SetColumn(trackGrid, 0);
+            rowGrid.Children.Add(trackGrid);
+
+            // Right compact Claude/Codex step pill card
+            var stepCard = new Border
+            {
+                Background = isActive ? ResolveBrush("BrushCardBg", "#141923") : Brushes.Transparent,
+                BorderBrush = isActive ? ResolveBrush("BrushAccentMuted", "#1e3a8a") : Brushes.Transparent,
+                BorderThickness = new Thickness(1),
+                CornerRadius = new CornerRadius(6),
+                Padding = new Thickness(6, 2.5, 8, 2.5),
+                Margin = new Thickness(4, 0, 0, 0)
+            };
+
+            var contentWrap = new WrapPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
+            contentWrap.Children.Add(CreatePill(verb, verbHex));
+
+            if (!string.IsNullOrWhiteSpace(target))
+            {
+                contentWrap.Children.Add(new Border
+                {
+                    Background = ResolveBrush("BrushCardBg", "#11141a"),
+                    BorderBrush = ResolveBrush("BrushBorderSubtle", "#1f2937"),
+                    BorderThickness = new Thickness(1),
+                    CornerRadius = new CornerRadius(4),
+                    Padding = new Thickness(6, 1, 6, 1),
+                    Margin = new Thickness(7, 0, 0, 0),
+                    Child = new TextBlock
+                    {
+                        Text = target,
+                        FontFamily = new FontFamily("Cascadia Code, Consolas"),
+                        FontSize = 10.5,
+                        Foreground = isActive ? ResolveBrush("BrushTextPrimary", "#f8fafc") : ResolveBrush("BrushTextSecondary", "#a1a1aa"),
+                        TextTrimming = TextTrimming.CharacterEllipsis
+                    }
+                });
+            }
+
+            stepCard.Child = contentWrap;
+            Grid.SetColumn(stepCard, 1);
+            rowGrid.Children.Add(stepCard);
+            return rowGrid;
+        }
+
+        private static (string Verb, string Hex, string Target) ParseStepVerbAndTarget(string raw)
+        {
+            string s = (raw ?? string.Empty).Trim();
+            if (s.StartsWith("Reading ", StringComparison.OrdinalIgnoreCase)) return ("READ", "#38bdf8", s.Substring(8).Trim());
+            if (s.StartsWith("Writing ", StringComparison.OrdinalIgnoreCase)) return ("WRITE", "#22c55e", s.Substring(8).Trim());
+            if (s.StartsWith("Editing ", StringComparison.OrdinalIgnoreCase)) return ("EDIT", "#f59e0b", s.Substring(8).Trim());
+            if (s.StartsWith("Listing ", StringComparison.OrdinalIgnoreCase)) return ("LIST", "#a78bfa", s.Substring(8).Trim());
+            if (s.StartsWith("Searching ", StringComparison.OrdinalIgnoreCase)) return ("SEARCH", "#60a5fa", s.Substring(10).Trim());
+            if (s.StartsWith("Running ", StringComparison.OrdinalIgnoreCase)) return ("RUN", "#c084fc", s.Substring(8).Trim());
+            return ("STEP", "#94a3b8", s);
         }
 
         private void UpdateStreamingContentInPlace()
@@ -1715,28 +1870,34 @@ namespace LlmodelBox.Controls.RichChat
             card.Child = root;
 
             var hdr = new Grid();
+            hdr.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
             hdr.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
             hdr.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
 
-            var left = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
-            left.Children.Add(CreatePill("ERROR", "#ef4444"));
-            left.Children.Add(new TextBlock
+            var pill = CreatePill("ERROR", "#ef4444");
+            pill.VerticalAlignment = VerticalAlignment.Center;
+            Grid.SetColumn(pill, 0);
+            hdr.Children.Add(pill);
+
+            var titleTb = new TextBlock
             {
                 Text = string.IsNullOrWhiteSpace(err.Title) ? "Error" : err.Title,
                 FontSize = 12,
                 FontWeight = FontWeights.Bold,
                 Foreground = new SolidColorBrush(Color.FromRgb(0xf8, 0x71, 0x71)),
-                Margin = new Thickness(8, 0, 0, 0),
-                VerticalAlignment = VerticalAlignment.Center
-            });
-            Grid.SetColumn(left, 0);
-            hdr.Children.Add(left);
+                Margin = new Thickness(8, 0, 12, 0),
+                VerticalAlignment = VerticalAlignment.Center,
+                TextTrimming = TextTrimming.CharacterEllipsis
+            };
+            Grid.SetColumn(titleTb, 1);
+            hdr.Children.Add(titleTb);
 
             if (err.CanRetry && _boundMessage != null)
             {
                 var retryBtn = CreateMiniButton("Retry");
+                retryBtn.VerticalAlignment = VerticalAlignment.Center;
                 retryBtn.Click += (_, _) => RetryRequested?.Invoke(this, _boundMessage);
-                Grid.SetColumn(retryBtn, 1);
+                Grid.SetColumn(retryBtn, 2);
                 hdr.Children.Add(retryBtn);
             }
             root.Children.Add(hdr);
@@ -1901,18 +2062,26 @@ namespace LlmodelBox.Controls.RichChat
 
         private Button CreateMiniButton(string text, bool accent = false)
         {
-            return new Button
+            var btn = new Button
             {
                 Content = text,
                 FontSize = 10.5,
                 FontWeight = FontWeights.SemiBold,
-                Padding = new Thickness(8, 3, 8, 3),
-                Cursor = Cursors.Hand,
-                Foreground = accent ? Brushes.White : ResolveBrush("BrushTextSecondary", "#d4d4d8"),
-                Background = accent ? ResolveBrush("BrushAccent", "#2563eb") : ResolveBrush("BrushCardBg", "#18181b"),
-                BorderBrush = accent ? ResolveBrush("BrushAccent", "#3b82f6") : ResolveBrush("BrushBorder", "#3f3f46"),
-                BorderThickness = new Thickness(1)
+                Padding = new Thickness(9, 4, 9, 4),
+                Cursor = Cursors.Hand
             };
+            if (TryFindResource(accent ? "PrimaryActionBtn" : "BlackBoxActionBtn") is Style s)
+            {
+                btn.Style = s;
+            }
+            else
+            {
+                btn.Foreground = accent ? Brushes.White : ResolveBrush("BrushTextSecondary", "#d4d4d8");
+                btn.Background = accent ? ResolveBrush("BrushAccent", "#2563eb") : ResolveBrush("BrushCardBg", "#18181b");
+                btn.BorderBrush = accent ? ResolveBrush("BrushAccent", "#3b82f6") : ResolveBrush("BrushBorder", "#3f3f46");
+                btn.BorderThickness = new Thickness(1);
+            }
+            return btn;
         }
 
         private void CopyTextWithFeedback(string text, Button btn)

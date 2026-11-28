@@ -34,7 +34,13 @@ namespace LlmodelBox.Services
         public double PromptShare { get; set; }         // prompt / total, 0..1
         public double CompletionShare { get; set; }     // completion / total, 0..1
         public int LiveCallCount { get; set; }          // usage taken from provider response
-        public int EstimatedCallCount { get; set; }     // BPE-estimated fallback
+        public int EstimatedCallCount { get; set; }     // local tokenizer/heuristic fallback
+        public long TotalCachedTokens { get; set; }
+        public long TotalReasoningTokens { get; set; }
+        public double TotalInputCostUsd { get; set; }
+        public double TotalOutputCostUsd { get; set; }
+        public double TotalEstimatedCostUsd { get; set; }
+        public bool HasCostData => TotalEstimatedCostUsd > 0 || TotalInputCostUsd > 0 || TotalOutputCostUsd > 0;
         public double PeakTokensPerSecond { get; set; }
         public long TokensToday { get; set; }
         public long Tokens7Days { get; set; }

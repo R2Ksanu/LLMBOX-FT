@@ -37,10 +37,12 @@ namespace LlmodelBox.Runtime.Context
         // the live turn. The Context Engine reserves budget for it and prepends it to the user turn.
         public string? MemoryPreamble { get; set; }
 
-        // Optional retrieval-augmented knowledge block (relevant project excerpts) supplied by the
-        // Knowledge Engine. Like the memory preamble, the Context Engine reserves budget for it and
-        // prepends it to the live turn — but it is trimmed AFTER history if the budget is tight.
+        // Knowledge Engine snippets and Memory Engine facts.
         public string? KnowledgeBlock { get; set; }
+
+        // Optional summary of compressed earlier turns & advertised tool schemas for budget tracking.
+        public string? ConversationSummary { get; set; }
+        public List<AiToolDefinition> ToolSchemas { get; set; } = new();
 
         public string? SessionId { get; set; }
         public string? TaskId { get; set; }

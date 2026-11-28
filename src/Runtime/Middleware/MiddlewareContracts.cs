@@ -6,6 +6,7 @@ using LlmodelBox.Models;
 using LlmodelBox.Models.Ai;
 using LlmodelBox.Runtime.Context;
 using LlmodelBox.Runtime.Intent;
+using LlmodelBox.Runtime.Tokens;
 
 namespace LlmodelBox.Runtime.Middleware
 {
@@ -47,14 +48,28 @@ namespace LlmodelBox.Runtime.Middleware
         public int PromptTokens { get; init; }
         public int CompletionTokens { get; init; }
         public int TotalTokens { get; init; }
+        public int CachedTokens { get; init; }
+        public int ReasoningTokens { get; init; }
+        public int EstimatedPromptTokens { get; init; }
+        public int ReconciliationDeltaTokens => PromptTokens - EstimatedPromptTokens;
         public bool IsProviderAuthoritative { get; init; }
+        public TokenCountConfidence Confidence { get; init; }
         public string SourceLabel { get; init; } = "Estimated";
+        public TokenCostBreakdown? CostBreakdown { get; init; }
     }
 
     public interface ITokenIntelligenceEngine
     {
-        int EstimateTokens(string? text);
-        TokenReconciliationReport Reconcile(string? promptText, string? responseText, TokenUsageRecord? liveUsage, int contextPromptEstimate = 0);
+        int EstimateTokens(string? text, ModelItem? model = null);
+        TokenCountResult CountWithConfidence(string? text, ModelItem? model = null);
+        IModelTokenCounter ResolveCounter(ModelItem? model);
+        TokenBudgetReport AllocateBudget(TokenBudgetRequest request);
+        TokenReconciliationReport Reconcile(
+            string? promptText,
+            string? responseText,
+            TokenUsageRecord? liveUsage,
+            int contextPromptEstimate = 0,
+            ModelItem? model = null);
     }
 
     // 8. Context Compression Engine

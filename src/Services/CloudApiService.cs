@@ -28,29 +28,45 @@ namespace LlmodelBox.Services
             _httpClient = httpClient ?? new HttpClient { Timeout = TimeSpan.FromSeconds(60) };
         }
 
-        // Parses the token-usage block from a response (OpenAI, Anthropic, Gemini, Cohere, Cloudflare)
-        // and raises UsageRecorded. Best-effort: silent if the provider omits usage.
+        // Parses the token-usage block from a response (OpenAI, OpenRouter, Anthropic, Gemini, Cohere, Cloudflare)
+        // including cached/reasoning token details and provider cost, and raises UsageRecorded.
         private void EmitUsage(JsonElement root, ModelItem model, long elapsedMs = 0)
         {
             try
             {
-                int prompt = 0, completion = 0, total = 0;
+                int prompt = 0, completion = 0, total = 0, cached = 0, reasoning = 0;
+                double? providerCost = null;
 
                 if (root.TryGetProperty("usage", out var usage) && usage.ValueKind == JsonValueKind.Object)
                 {
-                    // OpenAI-compatible, Groq, OpenRouter, DeepSeek, Mistral, NVIDIA NIM, SambaNova, Zhipu
+                    // OpenAI Chat Completions & OpenRouter / Groq / DeepSeek / Mistral / NVIDIA NIM
                     if (usage.TryGetProperty("prompt_tokens", out var pt) && pt.ValueKind == JsonValueKind.Number) prompt = pt.GetInt32();
                     if (usage.TryGetProperty("completion_tokens", out var ct) && ct.ValueKind == JsonValueKind.Number) completion = ct.GetInt32();
                     if (usage.TryGetProperty("total_tokens", out var tt) && tt.ValueKind == JsonValueKind.Number) total = tt.GetInt32();
-                    // Anthropic
+                    // OpenAI Responses API & Anthropic Messages API
                     if (usage.TryGetProperty("input_tokens", out var it) && it.ValueKind == JsonValueKind.Number) prompt = it.GetInt32();
                     if (usage.TryGetProperty("output_tokens", out var ot) && ot.ValueKind == JsonValueKind.Number) completion = ot.GetInt32();
+                    // Anthropic prompt cache metrics
+                    if (usage.TryGetProperty("cache_read_input_tokens", out var cr) && cr.ValueKind == JsonValueKind.Number) cached = cr.GetInt32();
+                    // OpenAI prompt/completion breakdowns
+                    if (usage.TryGetProperty("prompt_tokens_details", out var ptd) && ptd.ValueKind == JsonValueKind.Object &&
+                        ptd.TryGetProperty("cached_tokens", out var ptc) && ptc.ValueKind == JsonValueKind.Number) cached = ptc.GetInt32();
+                    if (usage.TryGetProperty("input_tokens_details", out var itd) && itd.ValueKind == JsonValueKind.Object &&
+                        itd.TryGetProperty("cached_tokens", out var itc) && itc.ValueKind == JsonValueKind.Number) cached = itc.GetInt32();
+                    if (usage.TryGetProperty("completion_tokens_details", out var ctd) && ctd.ValueKind == JsonValueKind.Object &&
+                        ctd.TryGetProperty("reasoning_tokens", out var rtk) && rtk.ValueKind == JsonValueKind.Number) reasoning = rtk.GetInt32();
+                    if (usage.TryGetProperty("output_tokens_details", out var otd) && otd.ValueKind == JsonValueKind.Object &&
+                        otd.TryGetProperty("reasoning_tokens", out var ortk) && ortk.ValueKind == JsonValueKind.Number) reasoning = ortk.GetInt32();
+                    // OpenRouter credit cost
+                    if (usage.TryGetProperty("cost", out var uc) && uc.ValueKind == JsonValueKind.Number) providerCost = uc.GetDouble();
                 }
                 else if (root.TryGetProperty("usageMetadata", out var meta) && meta.ValueKind == JsonValueKind.Object)
                 {
-                    // Google Gemini
+                    // Google Gemini usageMetadata
                     if (meta.TryGetProperty("promptTokenCount", out var pt) && pt.ValueKind == JsonValueKind.Number) prompt = pt.GetInt32();
                     if (meta.TryGetProperty("candidatesTokenCount", out var ct) && ct.ValueKind == JsonValueKind.Number) completion = ct.GetInt32();
+                    if (meta.TryGetProperty("cachedContentTokenCount", out var cct) && cct.ValueKind == JsonValueKind.Number) cached = cct.GetInt32();
+                    if (meta.TryGetProperty("thoughtsTokenCount", out var ttc) && ttc.ValueKind == JsonValueKind.Number) reasoning = ttc.GetInt32();
                     if (meta.TryGetProperty("totalTokenCount", out var tt) && tt.ValueKind == JsonValueKind.Number) total = tt.GetInt32();
                 }
                 else if (root.TryGetProperty("result", out var cfResult) && cfResult.ValueKind == JsonValueKind.Object &&
@@ -79,6 +95,8 @@ namespace LlmodelBox.Services
                 if (total <= 0) total = prompt + completion;
                 if (total <= 0) return;
 
+                var costBreakdown = TokenHelper.CalculateCostBreakdown(prompt, completion, model.Pricing, cached);
+
                 var rec = new Models.TokenUsageRecord
                 {
                     TimestampUtc = DateTime.UtcNow,
@@ -88,8 +106,16 @@ namespace LlmodelBox.Services
                     PromptTokens = prompt,
                     CompletionTokens = completion,
                     TotalTokens = total,
+                    CachedTokens = cached,
+                    ReasoningTokens = reasoning,
                     LatencyMs = elapsedMs,
-                    IsLiveApi = true
+                    IsLiveApi = true,
+                    ConfidenceLabel = nameof(LlmodelBox.Runtime.Tokens.TokenCountConfidence.ProviderReported),
+                    SourceLabel = "Provider API Reported",
+                    InputCostUsd = costBreakdown.HasKnownPricing ? costBreakdown.InputCostUsd : null,
+                    OutputCostUsd = costBreakdown.HasKnownPricing ? costBreakdown.OutputCostUsd : null,
+                    EstimatedCostUsd = providerCost ?? (costBreakdown.HasKnownPricing ? costBreakdown.TotalCostUsd : null),
+                    ProviderReportedCostUsd = providerCost
                 };
 
                 LastLiveUsage = rec;

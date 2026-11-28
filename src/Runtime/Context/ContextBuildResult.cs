@@ -1,4 +1,5 @@
 using LlmodelBox.Models.Ai;
+using LlmodelBox.Runtime.Tokens;
 
 namespace LlmodelBox.Runtime.Context
 {
@@ -18,5 +19,8 @@ namespace LlmodelBox.Runtime.Context
         public int DroppedHistoryTurns { get; set; }
         public bool OpenFileIncluded { get; set; }
         public bool OpenFileTruncated { get; set; }
+
+        // Part 4 Token Budget breakdown & confidence metadata.
+        public TokenBudgetReport? BudgetReport { get; set; }
     }
 }

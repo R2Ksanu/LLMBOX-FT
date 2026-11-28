@@ -140,9 +140,14 @@ namespace LlmodelBox.Tests
                 Assert.Single(mgr.Sessions);
 
                 await mgr.SendInputAsync(s1.Id, "echo %LLMODELBOX_TEST_VAR%");
-                await Task.Delay(500);
-
+                var deadline = DateTime.UtcNow.AddSeconds(4);
                 string transcript = mgr.GetTranscript(s1.Id);
+                while (!transcript.Contains("PART2_OK", StringComparison.Ordinal) && DateTime.UtcNow < deadline)
+                {
+                    await Task.Delay(50);
+                    transcript = mgr.GetTranscript(s1.Id);
+                }
+
                 Assert.Contains("PART2_OK", transcript);
                 Assert.Single(s1.CommandHistory);
 

@@ -672,12 +672,18 @@ namespace LlmodelBox.Controls
         {
             try
             {
+                var counter = LlmodelBox.Runtime.Tokens.TokenizerRegistry.Default.Resolve(m);
                 string activeText = CodeEditor?.ActiveText ?? string.Empty;
                 int editorChars = activeText.Length;
-                int editorTokens = TokenHelper.EstimateTokens(activeText);
-                int chatTokens = _chatMessages.Sum(c => TokenHelper.EstimateTokens(c.Content ?? ""));
+                int editorTokens = counter.CountTokens(activeText);
+                int chatTokens = _chatMessages.Sum(c => counter.CountTokens(c.Content ?? ""));
                 int totalActiveTokens = editorTokens + chatTokens;
                 int contextLimit = TokenHelper.ParseContextWindowTokens(m?.Context);
+
+                if (TxtInfoTokenizerSource != null)
+                {
+                    TxtInfoTokenizerSource.Text = counter.SourceLabel;
+                }
 
                 if (PbContextGauge != null && contextLimit > 0)
                 {
@@ -710,10 +716,10 @@ namespace LlmodelBox.Controls
                     TxtInfoChatTurns.Text = $"{_chatMessages.Count} messages";
                 }
 
-                double estCost = TokenHelper.CalculateCost(totalActiveTokens, 0, m?.Pricing);
+                var costBreakdown = TokenHelper.CalculateCostBreakdown(totalActiveTokens, 0, m?.Pricing);
                 if (TxtInfoEstCost != null)
                 {
-                    TxtInfoEstCost.Text = TokenHelper.FormatCost(estCost);
+                    TxtInfoEstCost.Text = TokenHelper.FormatCostOrUnknown(costBreakdown);
                 }
 
                 var summary = _tokenUsageService.GetSummary();
@@ -1657,8 +1663,10 @@ namespace LlmodelBox.Controls
                 }
                 else
                 {
-                    int promptTokens = promptTokenEstimate > 0 ? promptTokenEstimate : TokenHelper.CountTokens(prompt);
-                    int completionTokens = TokenHelper.CountTokens(response);
+                    var counter = LlmodelBox.Runtime.Tokens.TokenizerRegistry.Default.Resolve(requestModel);
+                    int promptTokens = promptTokenEstimate > 0 ? promptTokenEstimate : counter.CountTokens(prompt);
+                    int completionTokens = counter.CountTokens(response);
+                    var costBreakdown = TokenHelper.CalculateCostBreakdown(promptTokens, completionTokens, requestModel.Pricing);
                     _tokenUsageService.Record(new Models.TokenUsageRecord
                     {
                         TimestampUtc = DateTime.UtcNow,
@@ -1669,10 +1677,15 @@ namespace LlmodelBox.Controls
                         CompletionTokens = completionTokens,
                         TotalTokens = promptTokens + completionTokens,
                         LatencyMs = sw.ElapsedMilliseconds,
-                        IsLiveApi = false
+                        IsLiveApi = false,
+                        ConfidenceLabel = counter.Confidence.ToString(),
+                        SourceLabel = counter.SourceLabel,
+                        InputCostUsd = costBreakdown.HasKnownPricing ? costBreakdown.InputCostUsd : null,
+                        OutputCostUsd = costBreakdown.HasKnownPricing ? costBreakdown.OutputCostUsd : null,
+                        EstimatedCostUsd = costBreakdown.HasKnownPricing ? costBreakdown.TotalCostUsd : null
                     });
-                    AppendLog($"[BPE ESTIMATE] Count: {promptTokens} in + {completionTokens} out = {promptTokens + completionTokens} total ({sw.ElapsedMilliseconds}ms)");
-                    AgentActivityBus.Emit(AgentNode.Tokens, $"BPE estimate · {promptTokens:N0} in + {completionTokens:N0} out", "info", promptTokens + completionTokens);
+                    AppendLog($"[{counter.SourceLabel}] Count: {promptTokens} in + {completionTokens} out = {promptTokens + completionTokens} total ({sw.ElapsedMilliseconds}ms)");
+                    AgentActivityBus.Emit(AgentNode.Tokens, $"{counter.SourceLabel} · {promptTokens:N0} in + {completionTokens:N0} out", "info", promptTokens + completionTokens);
                 }
                 UpdateContextAndTokenTelemetry(requestModel);
                 AgentActivityBus.Emit(AgentNode.Response, $"{requestModel.Name} replied ({response.Length:N0} chars, {sw.ElapsedMilliseconds:N0}ms)");

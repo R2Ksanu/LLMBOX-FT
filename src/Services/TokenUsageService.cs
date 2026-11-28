@@ -146,6 +146,11 @@ namespace LlmodelBox.Services
                 s.CompletionShare = s.TotalTokens > 0 ? (double)s.CompletionTokens / s.TotalTokens : 0.0;
                 s.LiveCallCount = _records.Count(r => r.IsLiveApi);
                 s.EstimatedCallCount = _records.Count(r => !r.IsLiveApi);
+                s.TotalCachedTokens = _records.Sum(r => (long)r.CachedTokens);
+                s.TotalReasoningTokens = _records.Sum(r => (long)r.ReasoningTokens);
+                s.TotalInputCostUsd = _records.Sum(r => r.InputCostUsd ?? 0.0);
+                s.TotalOutputCostUsd = _records.Sum(r => r.OutputCostUsd ?? 0.0);
+                s.TotalEstimatedCostUsd = _records.Sum(r => r.EstimatedCostUsd ?? 0.0);
                 s.PeakTokensPerSecond = allTimed.Count > 0 ? allTimed.Max(r => r.TokensPerSecond) : 0.0;
 
                 var weekAgo = today.AddDays(-6);

@@ -1857,15 +1857,60 @@ namespace LlmodelBox.Controls.UtilityPanel
             string? openPath = _getOpenFilePath?.Invoke();
             string editorText = _getOpenEditorText?.Invoke() ?? string.Empty;
             var model = _getActiveModel?.Invoke();
-            int bufTokens = TokenHelper.CountTokens(editorText);
-            int sysTokens = _settings.SystemInstructionEnabled ? TokenHelper.CountTokens(_settings.SystemInstruction) : 0;
+            var counter = LlmodelBox.Runtime.Tokens.TokenizerRegistry.Default.Resolve(model);
+            var caps = LlmodelBox.Providers.ModelCapabilityResolver.Resolve(model);
+            string memText = string.Empty;
+            if (!string.IsNullOrWhiteSpace(_workspaceRoot))
+            {
+                var mem = _memoryStore.Load(_workspaceRoot);
+                if (!string.IsNullOrWhiteSpace(mem.SessionGoal) || mem.Facts.Count > 0)
+                    memText = $"Goal: {mem.SessionGoal}\n" + string.Join("\n", mem.Facts);
+            }
 
-            var grid = new System.Windows.Controls.Primitives.UniformGrid { Rows = 2, Columns = 2 };
-            grid.Children.Add(CreateMetricBentoCard("MODEL", model?.Name ?? "None", model?.Context ?? "?", new Thickness(0, 0, 6, 6)));
-            grid.Children.Add(CreateMetricBentoCard("OPEN BUFFER", $"{bufTokens:N0} tok", Path.GetFileName(openPath ?? "(none)"), new Thickness(0, 0, 0, 6)));
-            grid.Children.Add(CreateMetricBentoCard("SYSTEM PROMPT", $"{sysTokens:N0} tok", _settings.SystemInstructionEnabled ? "Enabled" : "Disabled", new Thickness(0, 0, 6, 0)));
-            grid.Children.Add(CreateMetricBentoCard("FILES", _workspaceFiles.Count.ToString(), "Workspace index", new Thickness(0)));
-            UtilityContentHost.Children.Add(grid);
+            var report = new LlmodelBox.Runtime.Tokens.TokenBudgetManager().Allocate(new LlmodelBox.Runtime.Tokens.TokenBudgetRequest
+            {
+                Model = model,
+                Capabilities = caps,
+                SystemInstructions = _settings.SystemInstructionEnabled ? _settings.SystemInstruction : null,
+                UserPrompt = string.Empty,
+                OpenFilePath = openPath,
+                OpenFileText = editorText,
+                ToolSchemas = _toolRegistry?.Definitions() ?? Array.Empty<LlmodelBox.Models.Ai.AiToolDefinition>(),
+                Memory = memText
+            }, counter);
+
+            var topGrid = new System.Windows.Controls.Primitives.UniformGrid { Rows = 2, Columns = 2, Margin = new Thickness(0, 0, 0, 8) };
+            topGrid.Children.Add(CreateMetricBentoCard("MODEL", model?.Name ?? "None", model?.Context ?? "?", new Thickness(0, 0, 6, 6)));
+            topGrid.Children.Add(CreateMetricBentoCard("TOKENIZER", report.SourceLabel, report.TruncationMethod, new Thickness(0, 0, 0, 6)));
+            topGrid.Children.Add(CreateMetricBentoCard("ALLOCATED INPUT", $"{report.TotalInputAllocatedTokens:N0} tok", $"Budget {report.EffectiveInputBudget:N0} ({report.ContextUtilizationPercent:0.0}%)", new Thickness(0, 0, 6, 0)));
+            topGrid.Children.Add(CreateMetricBentoCard("EST. INPUT COST", TokenHelper.FormatCostOrUnknown(report.EstimatedCost), model?.Pricing ?? "Unknown", new Thickness(0)));
+            UtilityContentHost.Children.Add(topGrid);
+
+            // 10-Bucket Token Budget Manager breakdown
+            var buckets = new (string Label, int Tokens)[]
+            {
+                ("System Instructions", report.SystemInstructionsTokens),
+                ("Recent History", report.RecentHistoryTokens),
+                ("Conversation Summaries", report.ConversationSummariesTokens),
+                ("Current User Prompt", report.CurrentUserPromptTokens),
+                ("Open Files", report.OpenFilesTokens),
+                ("Retrieved Code Snippets", report.RetrievedCodeSnippetsTokens),
+                ("Attachments", report.AttachmentsTokens),
+                ("Tool Schemas", report.ToolSchemasTokens),
+                ("Memory", report.MemoryTokens),
+                ("Output Reserve", report.OutputReserveTokens)
+            };
+
+            var bGrid = new System.Windows.Controls.Primitives.UniformGrid { Columns = 2 };
+            for (int i = 0; i < buckets.Length; i++)
+            {
+                bGrid.Children.Add(CreateMetricBentoCard(
+                    buckets[i].Label.ToUpperInvariant(),
+                    $"{buckets[i].Tokens:N0} tok",
+                    i == 9 ? "Reserved completion headroom" : (report.OpenFileTruncated && i == 4 ? "Token-truncated to fit" : "Allocated"),
+                    new Thickness(i % 2 == 0 ? 0 : 3, 0, i % 2 == 0 ? 3 : 0, 5)));
+            }
+            UtilityContentHost.Children.Add(bGrid);
         }
 
         private void BuildActivityView()
@@ -1886,10 +1931,13 @@ namespace LlmodelBox.Controls.UtilityPanel
         {
             if (_tokenUsageService == null) return;
             var summary = _tokenUsageService.GetSummary();
-            var kpiGrid = new System.Windows.Controls.Primitives.UniformGrid { Rows = 1, Columns = 3, Margin = new Thickness(0, 0, 0, 8) };
-            kpiGrid.Children.Add(CreateMetricBentoCard("TOTAL", summary.TotalTokens.ToString("N0"), $"{summary.CallCount} calls", new Thickness(0, 0, 5, 0)));
-            kpiGrid.Children.Add(CreateMetricBentoCard("INPUT", summary.PromptTokens.ToString("N0"), "Prompt tokens", new Thickness(0, 0, 5, 0)));
-            kpiGrid.Children.Add(CreateMetricBentoCard("OUTPUT", summary.CompletionTokens.ToString("N0"), "Completion", new Thickness(0)));
+            var kpiGrid = new System.Windows.Controls.Primitives.UniformGrid { Rows = 2, Columns = 3, Margin = new Thickness(0, 0, 0, 8) };
+            kpiGrid.Children.Add(CreateMetricBentoCard("TOTAL", summary.TotalTokens.ToString("N0"), $"{summary.CallCount} calls", new Thickness(0, 0, 5, 5)));
+            kpiGrid.Children.Add(CreateMetricBentoCard("INPUT", summary.PromptTokens.ToString("N0"), $"In Cost {TokenHelper.FormatCost(summary.TotalInputCostUsd)}", new Thickness(0, 0, 5, 5)));
+            kpiGrid.Children.Add(CreateMetricBentoCard("OUTPUT", summary.CompletionTokens.ToString("N0"), $"Out Cost {TokenHelper.FormatCost(summary.TotalOutputCostUsd)}", new Thickness(0, 0, 0, 5)));
+            kpiGrid.Children.Add(CreateMetricBentoCard("API REPORTED", summary.LiveCallCount.ToString(), $"{summary.EstimatedCallCount} estimated", new Thickness(0, 0, 5, 0)));
+            kpiGrid.Children.Add(CreateMetricBentoCard("CACHED / THINK", $"{summary.TotalCachedTokens:N0}", $"{summary.TotalReasoningTokens:N0} reasoning", new Thickness(0, 0, 5, 0)));
+            kpiGrid.Children.Add(CreateMetricBentoCard("RECORDED COST", summary.HasCostData ? TokenHelper.FormatCost(summary.TotalEstimatedCostUsd) : "Unknown/Free", $"{summary.AvgTokensPerSecond:F0} tok/s", new Thickness(0)));
             UtilityContentHost.Children.Add(kpiGrid);
 
             foreach (var r in summary.TopModels)
