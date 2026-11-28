@@ -42,9 +42,9 @@ namespace LlmodelBox.Infrastructure.Editor
 
             string fileName = Path.GetFileName(filePath);
             if (fileName.Equals("Dockerfile", StringComparison.OrdinalIgnoreCase))
-                return new EditorLanguageInfo("shell", "Dockerfile", "DCK", "PowerShell", EditorFoldingKind.Indent);
+                return new EditorLanguageInfo("shell", "Dockerfile", "DOCKER", "PowerShell", EditorFoldingKind.Indent);
             if (fileName.Equals("Makefile", StringComparison.OrdinalIgnoreCase))
-                return new EditorLanguageInfo("shell", "Makefile", "MK", "PowerShell", EditorFoldingKind.Indent);
+                return new EditorLanguageInfo("shell", "Makefile", "MAKE", "PowerShell", EditorFoldingKind.Indent);
 
             string ext = Path.GetExtension(filePath).ToLowerInvariant();
             return ext switch
@@ -56,20 +56,20 @@ namespace LlmodelBox.Infrastructure.Editor
                 ".jsx" => new("javascript", "React JSX", "JSX", "JavaScript", EditorFoldingKind.Brace),
                 ".ts" => new("typescript", "TypeScript", "TS", "JavaScript", EditorFoldingKind.Brace),
                 ".tsx" => new("typescript", "React TSX", "TSX", "JavaScript", EditorFoldingKind.Brace),
-                ".json" or ".jsonc" => new("json", "JSON", "{}", "JSON", EditorFoldingKind.Brace),
-                ".xaml" => new("xaml", "XAML", "XML", "XML", EditorFoldingKind.Xml),
+                ".json" or ".jsonc" => new("json", "JSON", "JSON", "JSON", EditorFoldingKind.Brace),
+                ".xaml" => new("xaml", "XAML", "XAML", "XML", EditorFoldingKind.Xml),
                 ".xml" or ".csproj" or ".props" or ".targets" or ".svg" or ".config" or ".xshd"
                     => new("xml", "XML", "XML", "XML", EditorFoldingKind.Xml),
-                ".html" or ".htm" => new("html", "HTML", "HTM", "HTML", EditorFoldingKind.Xml),
+                ".html" or ".htm" => new("html", "HTML", "HTML", "HTML", EditorFoldingKind.Xml),
                 ".css" or ".scss" or ".less" => new("css", "CSS", "CSS", "CSS", EditorFoldingKind.Brace),
                 ".md" or ".markdown" => new("markdown", "Markdown", "MD", "MarkDown", EditorFoldingKind.Indent),
-                ".ps1" or ".psm1" => new("powershell", "PowerShell", "PS", "PowerShell", EditorFoldingKind.Brace),
+                ".ps1" or ".psm1" => new("powershell", "PowerShell", "PS1", "PowerShell", EditorFoldingKind.Brace),
                 ".bat" or ".cmd" or ".sh" or ".bash" => new("shell", "Shell", "SH", "PowerShell", EditorFoldingKind.Indent),
                 ".sql" => new("sql", "SQL", "SQL", "TSQL", EditorFoldingKind.None),
-                ".cpp" or ".c" or ".h" or ".hpp" => new("cpp", "C/C++", "C++", "C++", EditorFoldingKind.Brace),
-                ".java" => new("java", "Java", "JV", "Java", EditorFoldingKind.Brace),
+                ".cpp" or ".c" or ".h" or ".hpp" => new("cpp", "C/C++", "CPP", "C++", EditorFoldingKind.Brace),
+                ".java" => new("java", "Java", "JAVA", "Java", EditorFoldingKind.Brace),
                 ".php" => new("php", "PHP", "PHP", "PHP", EditorFoldingKind.Brace),
-                ".yml" or ".yaml" => new("yaml", "YAML", "YML", "JSON", EditorFoldingKind.Indent),
+                ".yml" or ".yaml" => new("yaml", "YAML", "YAML", "JSON", EditorFoldingKind.Indent),
                 ".png" or ".jpg" or ".jpeg" or ".gif" or ".webp" or ".ico" => new("image", "Image", "IMG", string.Empty, EditorFoldingKind.None),
                 _ => new("plaintext", "Plain Text", FormatFallbackBadge(ext), string.Empty, EditorFoldingKind.None)
             };
