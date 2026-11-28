@@ -42,9 +42,9 @@ namespace LlmodelBox.Infrastructure.Editor
 
             string fileName = Path.GetFileName(filePath);
             if (fileName.Equals("Dockerfile", StringComparison.OrdinalIgnoreCase))
-                return new EditorLanguageInfo("shell", "Dockerfile", "DOCKER", "PowerShell", EditorFoldingKind.Indent);
+                return new EditorLanguageInfo("shell", "Dockerfile", "DCK", "PowerShell", EditorFoldingKind.Indent);
             if (fileName.Equals("Makefile", StringComparison.OrdinalIgnoreCase))
-                return new EditorLanguageInfo("shell", "Makefile", "MAKE", "PowerShell", EditorFoldingKind.Indent);
+                return new EditorLanguageInfo("shell", "Makefile", "MK", "PowerShell", EditorFoldingKind.Indent);
 
             string ext = Path.GetExtension(filePath).ToLowerInvariant();
             return ext switch
@@ -56,21 +56,53 @@ namespace LlmodelBox.Infrastructure.Editor
                 ".jsx" => new("javascript", "React JSX", "JSX", "JavaScript", EditorFoldingKind.Brace),
                 ".ts" => new("typescript", "TypeScript", "TS", "JavaScript", EditorFoldingKind.Brace),
                 ".tsx" => new("typescript", "React TSX", "TSX", "JavaScript", EditorFoldingKind.Brace),
-                ".json" or ".jsonc" => new("json", "JSON", "JSON", "JSON", EditorFoldingKind.Brace),
-                ".xaml" => new("xaml", "XAML", "XAML", "XML", EditorFoldingKind.Xml),
+                ".json" or ".jsonc" => new("json", "JSON", "{}", "JSON", EditorFoldingKind.Brace),
+                ".xaml" => new("xaml", "XAML", "XML", "XML", EditorFoldingKind.Xml),
                 ".xml" or ".csproj" or ".props" or ".targets" or ".svg" or ".config" or ".xshd"
                     => new("xml", "XML", "XML", "XML", EditorFoldingKind.Xml),
-                ".html" or ".htm" => new("html", "HTML", "HTML", "HTML", EditorFoldingKind.Xml),
+                ".html" or ".htm" => new("html", "HTML", "HTM", "HTML", EditorFoldingKind.Xml),
                 ".css" or ".scss" or ".less" => new("css", "CSS", "CSS", "CSS", EditorFoldingKind.Brace),
                 ".md" or ".markdown" => new("markdown", "Markdown", "MD", "MarkDown", EditorFoldingKind.Indent),
-                ".ps1" or ".psm1" => new("powershell", "PowerShell", "PS1", "PowerShell", EditorFoldingKind.Brace),
+                ".ps1" or ".psm1" => new("powershell", "PowerShell", "PS", "PowerShell", EditorFoldingKind.Brace),
                 ".bat" or ".cmd" or ".sh" or ".bash" => new("shell", "Shell", "SH", "PowerShell", EditorFoldingKind.Indent),
                 ".sql" => new("sql", "SQL", "SQL", "TSQL", EditorFoldingKind.None),
-                ".cpp" or ".c" or ".h" or ".hpp" => new("cpp", "C/C++", "CPP", "C++", EditorFoldingKind.Brace),
-                ".java" => new("java", "Java", "JAVA", "Java", EditorFoldingKind.Brace),
+                ".cpp" or ".c" or ".h" or ".hpp" => new("cpp", "C/C++", "C++", "C++", EditorFoldingKind.Brace),
+                ".java" => new("java", "Java", "JV", "Java", EditorFoldingKind.Brace),
                 ".php" => new("php", "PHP", "PHP", "PHP", EditorFoldingKind.Brace),
-                ".yml" or ".yaml" => new("yaml", "YAML", "YAML", "JSON", EditorFoldingKind.Indent),
-                _ => new("plaintext", "Plain Text", string.IsNullOrEmpty(ext) ? "TXT" : ext.TrimStart('.').ToUpperInvariant(), string.Empty, EditorFoldingKind.None)
+                ".yml" or ".yaml" => new("yaml", "YAML", "YML", "JSON", EditorFoldingKind.Indent),
+                ".png" or ".jpg" or ".jpeg" or ".gif" or ".webp" or ".ico" => new("image", "Image", "IMG", string.Empty, EditorFoldingKind.None),
+                _ => new("plaintext", "Plain Text", FormatFallbackBadge(ext), string.Empty, EditorFoldingKind.None)
+            };
+        }
+
+        private static string FormatFallbackBadge(string ext)
+        {
+            string trimmed = (ext ?? string.Empty).TrimStart('.').ToUpperInvariant();
+            if (string.IsNullOrEmpty(trimmed)) return "TXT";
+            return trimmed.Length <= 3 ? trimmed : trimmed[..3];
+        }
+
+        /// <summary>
+        /// Returns crisp, pastel-toned (Foreground, Translucent Background, Subtle Border) hex palette
+        /// matched to each auto-detected programming language for Explorer tree rows and Editor tabs.
+        /// </summary>
+        public static (string FgHex, string BgHex, string BorderHex) GetBadgePalette(string languageId)
+        {
+            return (languageId ?? string.Empty).ToLowerInvariant() switch
+            {
+                "csharp" => ("#60a5fa", "#1E1e3a8a", "#4D3b82f6"),
+                "python" => ("#4ade80", "#1E052e16", "#4D22c55e"),
+                "javascript" => ("#facc15", "#1E422006", "#4Deab308"),
+                "typescript" => ("#38bdf8", "#1E082f49", "#4D0ea5e9"),
+                "json" => ("#c084fc", "#1E3b0764", "#4Da855f7"),
+                "xaml" or "xml" => ("#fb923c", "#1E431407", "#4Df97316"),
+                "html" => ("#f87171", "#1E450a0a", "#4Def4444"),
+                "css" => ("#22d3ee", "#1E083344", "#4D06b6d4"),
+                "markdown" => ("#94a3b8", "#1E1e293b", "#4D64748b"),
+                "powershell" or "shell" => ("#2dd4bf", "#1E042f2e", "#4D14b8a6"),
+                "yaml" => ("#f472b6", "#1E500724", "#4Dec4899"),
+                "image" => ("#f472b6", "#1E500724", "#4Dec4899"),
+                _ => ("#cbd5e1", "#1E1e293b", "#3394a3b8")
             };
         }
 

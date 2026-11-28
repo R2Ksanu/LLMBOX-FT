@@ -881,6 +881,97 @@
         <Setter Property="Foreground" Value="{DynamicResource BrushTextPrimary}"/>
     </Style>
 
+    <!-- ===== Translucent Glass Panel Container & Sleek Hover Splitter ===== -->
+    <Style x:Key="GlassPanelSurface" TargetType="Border">
+        <Setter Property="Background" Value="{DynamicResource BrushGlassSurface}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource BrushGlassBorder}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="CornerRadius" Value="12"/>
+        <Setter Property="SnapsToDevicePixels" Value="True"/>
+    </Style>
+
+    <Style x:Key="IdeSplitterStyle" TargetType="GridSplitter">
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="Focusable" Value="False"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="GridSplitter">
+                    <Grid Background="Transparent">
+                        <Border x:Name="pill" Width="2" Height="36" CornerRadius="1"
+                                Background="{DynamicResource BrushGlassBorder}"
+                                HorizontalAlignment="Center" VerticalAlignment="Center" Opacity="0.65"/>
+                    </Grid>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="pill" Property="Background" Value="{DynamicResource BrushAccent}"/>
+                            <Setter TargetName="pill" Property="Opacity" Value="1"/>
+                            <Setter TargetName="pill" Property="Height" Value="56"/>
+                        </Trigger>
+                        <Trigger Property="IsDragging" Value="True">
+                            <Setter TargetName="pill" Property="Background" Value="{DynamicResource BrushAccentLight}"/>
+                            <Setter TargetName="pill" Property="Opacity" Value="1"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+        <Style.Triggers>
+            <Trigger Property="HorizontalAlignment" Value="Stretch">
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="GridSplitter">
+                            <Grid Background="Transparent">
+                                <Border x:Name="pillH" Height="2" Width="44" CornerRadius="1"
+                                        Background="{DynamicResource BrushGlassBorder}"
+                                        HorizontalAlignment="Center" VerticalAlignment="Center" Opacity="0.65"/>
+                            </Grid>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="pillH" Property="Background" Value="{DynamicResource BrushAccent}"/>
+                                    <Setter TargetName="pillH" Property="Opacity" Value="1"/>
+                                    <Setter TargetName="pillH" Property="Width" Value="72"/>
+                                </Trigger>
+                                <Trigger Property="IsDragging" Value="True">
+                                    <Setter TargetName="pillH" Property="Background" Value="{DynamicResource BrushAccentLight}"/>
+                                    <Setter TargetName="pillH" Property="Opacity" Value="1"/>
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Trigger>
+        </Style.Triggers>
+    </Style>
+
+    <!-- ===== Sleek Dark Pill ToggleButton (For Find Regex/Case/Word toggles) ===== -->
+    <Style TargetType="ToggleButton">
+        <Setter Property="Background" Value="{DynamicResource BrushCardInnerBg}"/>
+        <Setter Property="Foreground" Value="{DynamicResource BrushTextSecondary}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource BrushGlassBorder}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ToggleButton">
+                    <Border x:Name="tb" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="5" Padding="{TemplateBinding Padding}">
+                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="tb" Property="BorderBrush" Value="{DynamicResource BrushAccentLight}"/>
+                            <Setter Property="Foreground" Value="{DynamicResource BrushTextPrimary}"/>
+                        </Trigger>
+                        <Trigger Property="IsChecked" Value="True">
+                            <Setter TargetName="tb" Property="Background" Value="{DynamicResource BrushAccentGlow}"/>
+                            <Setter TargetName="tb" Property="BorderBrush" Value="{DynamicResource BrushAccent}"/>
+                            <Setter Property="Foreground" Value="{DynamicResource BrushAccentLight}"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
     <!-- ===== Global Theme-Aware Dark CheckBox ===== -->
     <Style TargetType="CheckBox">
         <Setter Property="Foreground" Value="{DynamicResource BrushTextPrimary}"/>

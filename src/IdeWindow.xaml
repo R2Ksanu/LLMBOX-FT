@@ -25,14 +25,33 @@
 
     <Border x:Name="RootBorder" Background="{DynamicResource BrushWindowBg}">
         <Grid>
-            <Grid.RowDefinitions>
-                <RowDefinition Height="42"/>
-                <RowDefinition Height="*"/>
-                <RowDefinition Height="26"/>
-            </Grid.RowDefinitions>
+            <!-- Subtle Atmospheric Depth Glow behind Translucent Glass Panels -->
+            <Border IsHitTestVisible="False" Opacity="0.32">
+                <Border.Background>
+                    <RadialGradientBrush Center="0.82,0.12" GradientOrigin="0.82,0.12" RadiusX="0.7" RadiusY="0.65">
+                        <GradientStop Color="#1d4ed8" Offset="0"/>
+                        <GradientStop Color="#0f172a" Offset="0.45"/>
+                        <GradientStop Color="#00000000" Offset="1"/>
+                    </RadialGradientBrush>
+                </Border.Background>
+            </Border>
+            <Border IsHitTestVisible="False" Opacity="0.22">
+                <Border.Background>
+                    <RadialGradientBrush Center="0.14,0.86" GradientOrigin="0.14,0.86" RadiusX="0.6" RadiusY="0.55">
+                        <GradientStop Color="#7c3aed" Offset="0"/>
+                        <GradientStop Color="#00000000" Offset="1"/>
+                    </RadialGradientBrush>
+                </Border.Background>
+            </Border>
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="42"/>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="26"/>
+                </Grid.RowDefinitions>
 
-            <!-- ================= TITLE BAR ================= -->
-            <Border Grid.Row="0" Background="{DynamicResource BrushTitleBarBg}" BorderBrush="{DynamicResource BrushBorder}" BorderThickness="0,0,0,1">
+                <!-- ================= TITLE BAR ================= -->
+                <Border Grid.Row="0" Background="{DynamicResource BrushGlassHeader}" BorderBrush="{DynamicResource BrushGlassBorder}" BorderThickness="0,0,0,1">
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto"/>
@@ -66,21 +85,22 @@
             <!-- ================= WORKSPACE HOST ================= -->
             <ContentControl Grid.Row="1" x:Name="WorkspaceHost"/>
 
-            <!-- ================= STATUS BAR ================= -->
-            <Border Grid.Row="2" Background="{DynamicResource BrushTitleBarBg}" BorderBrush="{DynamicResource BrushBorder}" BorderThickness="0,1,0,0">
-                <Grid Margin="12,0">
-                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                        <TextBlock Text="●" FontSize="10" Foreground="{DynamicResource BrushSuccess}" VerticalAlignment="Center"/>
-                        <TextBlock x:Name="TxtStatusConnection" Text="Ready" FontSize="10.5" Foreground="{DynamicResource BrushTextMuted}" FontFamily="Consolas" VerticalAlignment="Center" Margin="6,0,0,0"/>
-                    </StackPanel>
-                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
-                        <TextBlock Text="Model:" FontSize="10.5" Foreground="{DynamicResource BrushTextDim}" FontFamily="Consolas" VerticalAlignment="Center"/>
-                        <TextBlock x:Name="TxtStatusModel" Text="—" FontSize="10.5" Foreground="{DynamicResource BrushTextSecondary}" FontFamily="Consolas" VerticalAlignment="Center" Margin="5,0,16,0"/>
-                        <TextBlock Text="Session Tokens:" FontSize="10.5" Foreground="{DynamicResource BrushTextDim}" FontFamily="Consolas" VerticalAlignment="Center"/>
-                        <TextBlock x:Name="TxtStatusTokens" Text="0" FontSize="10.5" Foreground="{DynamicResource BrushTextSecondary}" FontFamily="Consolas" VerticalAlignment="Center" Margin="5,0,0,0"/>
-                    </StackPanel>
-                </Grid>
-            </Border>
+                <!-- ================= STATUS BAR ================= -->
+                <Border Grid.Row="2" Background="{DynamicResource BrushGlassHeader}" BorderBrush="{DynamicResource BrushGlassBorder}" BorderThickness="0,1,0,0">
+                    <Grid Margin="12,0">
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <TextBlock Text="●" FontSize="10" Foreground="{DynamicResource BrushSuccess}" VerticalAlignment="Center"/>
+                            <TextBlock x:Name="TxtStatusConnection" Text="Ready" FontSize="10.5" Foreground="{DynamicResource BrushTextMuted}" FontFamily="Consolas" VerticalAlignment="Center" Margin="6,0,0,0"/>
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                            <TextBlock Text="Model:" FontSize="10.5" Foreground="{DynamicResource BrushTextDim}" FontFamily="Consolas" VerticalAlignment="Center"/>
+                            <TextBlock x:Name="TxtStatusModel" Text="—" FontSize="10.5" Foreground="{DynamicResource BrushTextSecondary}" FontFamily="Consolas" VerticalAlignment="Center" Margin="5,0,16,0"/>
+                            <TextBlock Text="Session Tokens:" FontSize="10.5" Foreground="{DynamicResource BrushTextDim}" FontFamily="Consolas" VerticalAlignment="Center"/>
+                            <TextBlock x:Name="TxtStatusTokens" Text="0" FontSize="10.5" Foreground="{DynamicResource BrushTextSecondary}" FontFamily="Consolas" VerticalAlignment="Center" Margin="5,0,0,0"/>
+                        </StackPanel>
+                    </Grid>
+                </Border>
+            </Grid>
         </Grid>
     </Border>
 </Window>

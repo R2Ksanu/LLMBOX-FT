@@ -16,15 +16,15 @@
         </Grid.RowDefinitions>
 
         <!-- ================= ROW 0: MULTI-TAB STRIP + ACTION TOOLBAR ================= -->
-        <Border Grid.Row="0" Background="{DynamicResource BrushCardBg}" BorderBrush="{DynamicResource BrushBorderSubtle}" BorderThickness="0,0,0,1">
+        <Border Grid.Row="0" Background="{DynamicResource BrushGlassHeader}" BorderBrush="{DynamicResource BrushGlassBorder}" BorderThickness="0,0,0,1">
             <Grid>
                 <Grid.RowDefinitions>
-                    <RowDefinition Height="34"/>
-                    <RowDefinition Height="32"/>
+                    <RowDefinition Height="36"/>
+                    <RowDefinition Height="33"/>
                 </Grid.RowDefinitions>
 
                 <!-- Tab Strip -->
-                <Grid Grid.Row="0" Background="{DynamicResource BrushTitleBarBg}" Margin="6,3,6,0">
+                <Grid Grid.Row="0" Background="Transparent" Margin="8,3,8,0">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="Auto"/>
@@ -35,7 +35,7 @@
                     </ScrollViewer>
 
                     <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="6,0,0,0">
-                        <Border x:Name="DirtyStatusPill" Background="{DynamicResource BrushSuccessGlow}" BorderBrush="{DynamicResource BrushBorderSubtle}" BorderThickness="1" CornerRadius="999" Padding="8,2" Margin="0,0,6,0">
+                        <Border x:Name="DirtyStatusPill" Background="{DynamicResource BrushSuccessGlow}" BorderBrush="{DynamicResource BrushGlassBorder}" BorderThickness="1" CornerRadius="999" Padding="8,2" Margin="0,0,4,0">
                             <TextBlock x:Name="TxtEditorStatus" Text="✓ Saved" Foreground="{DynamicResource BrushSuccess}" FontSize="9.5" FontWeight="SemiBold" FontFamily="Consolas"/>
                         </Border>
                         <TextBlock x:Name="TxtActiveFileName" Text="(no file)" Visibility="Collapsed"/>
@@ -43,7 +43,7 @@
                 </Grid>
 
                 <!-- Action Toolbar -->
-                <Border Grid.Row="1" BorderBrush="{DynamicResource BrushBorderSubtle}" BorderThickness="0,1,0,0" Padding="8,0">
+                <Border Grid.Row="1" BorderBrush="{DynamicResource BrushGlassBorder}" BorderThickness="0,1,0,0" Padding="8,0">
                     <Grid VerticalAlignment="Center">
                         <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                             <Button Style="{StaticResource PrimaryActionBtn}" Padding="9,3" Margin="0,0,5,0" FontSize="10" Click="BtnSave_Click" ToolTip="Save Active File (Ctrl+S)">
@@ -103,7 +103,7 @@
         <Grid Grid.Row="2">
             <!-- Do NOT wrap AvalonEdit inside ScrollViewer so native line virtualization stays fast -->
             <avalon:TextEditor x:Name="AvalonEditor"
-                               Background="{DynamicResource BrushWindowBg}"
+                               Background="Transparent"
                                Foreground="{DynamicResource BrushTextPrimary}"
                                LineNumbersForeground="{DynamicResource BrushTextDim}"
                                FontFamily="Cascadia Code, Consolas, Courier New"
@@ -200,7 +200,7 @@
         </Grid>
 
         <!-- ================= ROW 3: EDITOR TELEMETRY & DIAGNOSTICS BAR ================= -->
-        <Border Grid.Row="3" Background="{DynamicResource BrushCardBg}" BorderBrush="{DynamicResource BrushBorderSubtle}" BorderThickness="0,1,0,0" Padding="10,4">
+        <Border Grid.Row="3" Background="{DynamicResource BrushGlassHeader}" BorderBrush="{DynamicResource BrushGlassBorder}" BorderThickness="0,1,0,0" Padding="10,5">
             <Grid>
                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                     <Button x:Name="BtnDiagnosticsBadge" Background="Transparent" BorderThickness="0" Padding="4,1" Cursor="Hand" Click="BtnDiagnosticsBadge_Click" ToolTip="Click to jump to next diagnostic">
@@ -209,7 +209,7 @@
                             <TextBlock x:Name="TxtDiagnosticsSummary" Text="0 Errors · 0 Warnings" FontFamily="Consolas" FontSize="9.5" Foreground="{DynamicResource BrushTextSecondary}"/>
                         </StackPanel>
                     </Button>
-                    <Border Background="{DynamicResource BrushBorderSubtle}" Width="1" Height="11" Margin="8,0"/>
+                    <Border Background="{DynamicResource BrushGlassBorder}" Width="1" Height="11" Margin="8,0"/>
                     <TextBlock x:Name="TxtLargeFileNotice" Visibility="Collapsed" Text="Large File Safe Mode" FontFamily="Consolas" FontSize="9.5" Foreground="{DynamicResource BrushWarning}" Margin="0,0,8,0"/>
                     <TextBlock x:Name="TxtDiagnosticActiveMsg" Text="" FontSize="9.5" Foreground="{DynamicResource BrushTextDim}" TextTrimming="CharacterEllipsis" MaxWidth="360"/>
                 </StackPanel>
@@ -218,10 +218,10 @@
                     <Button Background="Transparent" BorderThickness="0" Padding="4,1" Cursor="Hand" Click="BtnToggleGoToLine_Click" ToolTip="Click to Go to Line (Ctrl+G)">
                         <TextBlock x:Name="TxtCursorPosition" Text="Ln 1, Col 1" FontFamily="Consolas" FontSize="9.5" Foreground="{DynamicResource BrushTextSecondary}"/>
                     </Button>
-                    <Border Background="{DynamicResource BrushBorderSubtle}" Width="1" Height="11" Margin="8,0"/>
+                    <Border Background="{DynamicResource BrushGlassBorder}" Width="1" Height="11" Margin="8,0"/>
                     <TextBlock x:Name="TxtEditorEncoding" Text="UTF-8" FontFamily="Consolas" FontSize="9.5" Foreground="{DynamicResource BrushTextDim}" VerticalAlignment="Center"/>
-                    <Border Background="{DynamicResource BrushBorderSubtle}" Width="1" Height="11" Margin="8,0"/>
-                    <Border Background="{DynamicResource BrushCardInnerBg}" BorderBrush="{DynamicResource BrushBorderSubtle}" BorderThickness="1" CornerRadius="4" Padding="6,1">
+                    <Border Background="{DynamicResource BrushGlassBorder}" Width="1" Height="11" Margin="8,0"/>
+                    <Border x:Name="EditorLanguagePill" Background="{DynamicResource BrushCardInnerBg}" BorderBrush="{DynamicResource BrushGlassBorder}" BorderThickness="1" CornerRadius="5" Padding="7,1.5">
                         <TextBlock x:Name="TxtEditorLanguage" Text="Plain Text" FontFamily="Consolas" FontSize="9.5" FontWeight="SemiBold" Foreground="{DynamicResource BrushAccentLight}"/>
                     </Border>
                 </StackPanel>

@@ -115,8 +115,29 @@ namespace LlmodelBox.Controls.Editor
                 isDarkTheme ? Color.FromArgb(75, 59, 130, 246) : Color.FromArgb(55, 37, 99, 235),
                 isDarkTheme ? Color.FromArgb(180, 96, 165, 250) : Color.FromArgb(170, 37, 99, 235));
 
+            ApplyFoldingMarginTheme();
             ApplySyntaxHighlightingForActiveTab();
             AvalonEditor.TextArea.TextView.InvalidateLayer(ICSharpCode.AvalonEdit.Rendering.KnownLayer.Background);
+        }
+
+        private void ApplyFoldingMarginTheme()
+        {
+            var markerBg = new SolidColorBrush(_isDarkTheme ? Color.FromRgb(20, 27, 41) : Color.FromRgb(241, 245, 249));
+            var markerFg = new SolidColorBrush(_isDarkTheme ? Color.FromRgb(100, 116, 139) : Color.FromRgb(100, 116, 139));
+            var selBg = new SolidColorBrush(_isDarkTheme ? Color.FromRgb(30, 41, 59) : Color.FromRgb(219, 234, 254));
+            var selFg = new SolidColorBrush(_isDarkTheme ? Color.FromRgb(96, 165, 250) : Color.FromRgb(37, 99, 235));
+            markerBg.Freeze(); markerFg.Freeze(); selBg.Freeze(); selFg.Freeze();
+
+            foreach (var margin in AvalonEditor.TextArea.LeftMargins)
+            {
+                if (margin is FoldingMargin fm)
+                {
+                    fm.SetValue(FoldingMargin.FoldingMarkerBackgroundBrushProperty, markerBg);
+                    fm.SetValue(FoldingMargin.FoldingMarkerBrushProperty, markerFg);
+                    fm.SetValue(FoldingMargin.SelectedFoldingMarkerBackgroundBrushProperty, selBg);
+                    fm.SetValue(FoldingMargin.SelectedFoldingMarkerBrushProperty, selFg);
+                }
+            }
         }
 
         public void SetWelcomeState(string welcomeText)
@@ -228,6 +249,7 @@ namespace LlmodelBox.Controls.Editor
                 _markerService.SetDocument(tab.Document);
 
                 _foldingManager = FoldingManager.Install(AvalonEditor.TextArea);
+                ApplyFoldingMarginTheme();
 
                 tab.Document.TextChanged -= ActiveDocument_TextChanged;
                 tab.Document.TextChanged += ActiveDocument_TextChanged;
@@ -247,6 +269,10 @@ namespace LlmodelBox.Controls.Editor
             TxtActiveFileName.Text = tab.FileName;
             TxtEditorEncoding.Text = tab.EncodingName;
             TxtEditorLanguage.Text = tab.Language.DisplayName;
+            var (langFg, langBg, langBdr) = EditorLanguageService.GetBadgePalette(tab.Language.Id);
+            TxtEditorLanguage.Foreground = BrushFromHex(langFg, "#60a5fa");
+            EditorLanguagePill.Background = BrushFromHex(langBg, "#1E1e293b");
+            EditorLanguagePill.BorderBrush = BrushFromHex(langBdr, "#3394a3b8");
             TxtLargeFileNotice.Visibility = (tab.IsLargeTruncated || tab.Document.TextLength > LargeSyntaxThresholdChars)
                 ? Visibility.Visible
                 : Visibility.Collapsed;
@@ -527,54 +553,71 @@ namespace LlmodelBox.Controls.Editor
             foreach (var tab in _tabs)
             {
                 bool isActive = tab == _activeTab;
+                var (fgHex, bgHex, bdrHex) = EditorLanguageService.GetBadgePalette(tab.Language.Id);
+
                 var tabBorder = new Border
                 {
-                    Background = isActive ? Brush("BrushCardBg", "#111721") : Brushes.Transparent,
-                    BorderBrush = isActive ? Brush("BrushAccent", "#3b82f6") : Brush("BrushBorderSubtle", "#1a2230"),
+                    Background = isActive ? Brush("BrushGlassSurface", "#CC111721") : Brushes.Transparent,
+                    BorderBrush = isActive ? Brush("BrushAccent", "#3b82f6") : Brush("BrushGlassBorder", "#1Fffffff"),
                     BorderThickness = new Thickness(1),
-                    CornerRadius = new CornerRadius(7),
+                    CornerRadius = new CornerRadius(8),
                     Margin = new Thickness(0, 2, 5, 2),
-                    Padding = new Thickness(8, 3, 6, 3),
-                    ToolTip = tab.FilePath
+                    Padding = new Thickness(8, 3.5, 6, 3.5),
+                    ToolTip = tab.FilePath,
+                    RenderTransformOrigin = new Point(0.5, 0.5),
+                    RenderTransform = new ScaleTransform(1, 1)
+                };
+
+                tabBorder.MouseEnter += (_, _) =>
+                {
+                    if (!isActive) tabBorder.Background = Brush("BrushGlassCardHover", "#CC171e2e");
+                };
+                tabBorder.MouseLeave += (_, _) =>
+                {
+                    if (!isActive) tabBorder.Background = Brushes.Transparent;
                 };
 
                 var sp = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
                 var badge = new Border
                 {
-                    Background = Brush("BrushCardInnerBg", "#18202e"),
-                    CornerRadius = new CornerRadius(3),
-                    Padding = new Thickness(4, 0, 4, 0),
-                    Margin = new Thickness(0, 0, 6, 0),
+                    Background = BrushFromHex(bgHex, "#1E1e293b"),
+                    BorderBrush = BrushFromHex(bdrHex, "#3394a3b8"),
+                    BorderThickness = new Thickness(1),
+                    CornerRadius = new CornerRadius(4),
+                    Padding = new Thickness(5, 0.5, 5, 0.5),
+                    Margin = new Thickness(0, 0, 7, 0),
                     Child = new TextBlock
                     {
                         Text = tab.Language.Badge,
                         FontFamily = new FontFamily("Consolas"),
                         FontSize = 8.5,
                         FontWeight = FontWeights.Bold,
-                        Foreground = Brush("BrushAccentLight", "#60a5fa")
+                        Foreground = BrushFromHex(fgHex, "#60a5fa")
                     }
                 };
                 var captured = tab;
+                // Wrap label in TextBlock so WPF never strips '_' underscores as keyboard access keys!
                 var titleBtn = new Button
                 {
-                    Content = tab.FileName + (tab.IsDirty ? " ●" : ""),
+                    Content = new TextBlock
+                    {
+                        Text = tab.FileName + (tab.IsDirty ? " ●" : ""),
+                        Foreground = isActive ? Brush("BrushTextPrimary", "#f8fafc") : Brush("BrushTextSecondary", "#9ca3af"),
+                        FontWeight = isActive ? FontWeights.SemiBold : FontWeights.Normal,
+                        FontSize = 11
+                    },
                     Background = Brushes.Transparent,
                     BorderThickness = new Thickness(0),
-                    Foreground = isActive ? Brush("BrushTextPrimary", "#f8fafc") : Brush("BrushTextSecondary", "#9ca3af"),
-                    FontWeight = isActive ? FontWeights.SemiBold : FontWeights.Normal,
-                    FontSize = 11,
                     Cursor = Cursors.Hand
                 };
                 titleBtn.Click += (_, _) => ActivateTab(captured, addIfMissing: false);
 
                 var closeBtn = new Button
                 {
-                    Content = "✕",
+                    Content = new TextBlock { Text = "✕", FontSize = 9.5, Foreground = Brush("BrushTextDim", "#71717a") },
                     Background = Brushes.Transparent,
                     BorderThickness = new Thickness(0),
-                    Foreground = Brush("BrushTextDim", "#71717a"),
-                    FontSize = 9.5,
-                    Margin = new Thickness(6, 0, 0, 0),
+                    Margin = new Thickness(7, 0, 0, 0),
                     Cursor = Cursors.Hand
                 };
                 closeBtn.Click += (_, _) => CloseTab(captured);
@@ -876,6 +919,17 @@ namespace LlmodelBox.Controls.Editor
             _activeTab.AiProposal = null;
             RefreshAiProposalOverlay();
             SaveActiveFile();
+        }
+
+        private static Brush BrushFromHex(string hex, string fallbackHex)
+        {
+            try
+            {
+                var sb = new SolidColorBrush((Color)ColorConverter.ConvertFromString(string.IsNullOrWhiteSpace(hex) ? fallbackHex : hex));
+                sb.Freeze();
+                return sb;
+            }
+            catch { return Brushes.Gray; }
         }
 
         private Brush Brush(string key, string fallback)

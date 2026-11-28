@@ -1,8 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
-using System.IO;
 using System.Windows;
+using LlmodelBox.Infrastructure.Editor;
 
 namespace LlmodelBox.Models
 {
@@ -22,7 +22,6 @@ namespace LlmodelBox.Models
         public string LastModifiedFormatted => LastModified.ToString("yyyy-MM-dd HH:mm");
         public List<ProjectFileItem> Children { get; set; } = new();
 
-        // Tree depth (0 = project root level). Drives indentation in the explorer.
         private int _depth;
         public int Depth
         {
@@ -30,7 +29,6 @@ namespace LlmodelBox.Models
             set { _depth = value; Raise(nameof(Depth)); Raise(nameof(IndentThickness)); }
         }
 
-        // Left indent = depth * step, plus a small gutter so the chevron column lines up.
         public Thickness IndentThickness => new Thickness(_depth * 14, 0, 0, 0);
 
         private bool _isExpanded = true;
@@ -47,52 +45,28 @@ namespace LlmodelBox.Models
             set { _isSelected = value; Raise(nameof(IsSelected)); }
         }
 
-        // ▾ expanded folder, ▸ collapsed folder, blank for files (keeps the chevron column width).
         public string Chevron => IsDirectory ? (IsExpanded ? "\u25BE" : "\u25B8") : "";
         public bool HasChevron => IsDirectory;
+        public Visibility FolderVisibility => IsDirectory ? Visibility.Visible : Visibility.Collapsed;
+        public Visibility FileBadgeVisibility => IsDirectory ? Visibility.Collapsed : Visibility.Visible;
 
-        public string Icon
-        {
-            get
-            {
-                if (IsDirectory) return IsExpanded ? "📂" : "📁";
-                string ext = Extension.ToLowerInvariant();
-                return ext switch
-                {
-                    ".cs" => "🔷",
-                    ".py" => "🐍",
-                    ".js" or ".ts" or ".jsx" or ".tsx" => "🟨",
-                    ".html" or ".htm" => "🌐",
-                    ".css" or ".scss" or ".sass" => "🎨",
-                    ".json" or ".yaml" or ".yml" or ".toml" => "⚙️",
-                    ".md" or ".markdown" or ".txt" => "📄",
-                    ".png" or ".jpg" or ".jpeg" or ".gif" or ".webp" or ".svg" or ".ico" => "🖼️",
-                    ".dll" or ".exe" or ".bin" => "📦",
-                    ".xml" or ".xaml" or ".csproj" => "📑",
-                    ".bat" or ".sh" or ".ps1" or ".cmd" => "⚡",
-                    _ => "📄"
-                };
-            }
-        }
+        private EditorLanguageInfo DetectedLanguage => EditorLanguageService.DetectLanguage(string.IsNullOrEmpty(Name) ? Extension : Name);
+
+        public string LanguageBadge => IsDirectory ? string.Empty : DetectedLanguage.Badge;
+        public string LanguageDisplayName => IsDirectory ? "Folder" : DetectedLanguage.DisplayName;
+
+        public string Icon => LanguageBadge;
 
         public string IconColor
         {
             get
             {
-                if (IsDirectory) return "#f59e0b"; // amber folder
-                string ext = Extension.ToLowerInvariant();
-                return ext switch
-                {
-                    ".cs" => "#38bdf8",     // blue
-                    ".py" => "#22c55e",     // green
-                    ".js" or ".ts" => "#eab308", // yellow
-                    ".json" => "#a855f7",   // purple
-                    ".png" or ".jpg" or ".jpeg" or ".webp" => "#ec4899", // pink
-                    ".md" or ".txt" => "#94a3b8", // slate
-                    ".bat" or ".ps1" => "#06b6d4", // cyan
-                    _ => "#cbd5e1"
-                };
+                if (IsDirectory) return "#f59e0b";
+                return EditorLanguageService.GetBadgePalette(DetectedLanguage.Id).FgHex;
             }
         }
+
+        public string BadgeBgHex => IsDirectory ? "#1E78350f" : EditorLanguageService.GetBadgePalette(DetectedLanguage.Id).BgHex;
+        public string BadgeBorderHex => IsDirectory ? "#4Df59e0b" : EditorLanguageService.GetBadgePalette(DetectedLanguage.Id).BorderHex;
     }
 }

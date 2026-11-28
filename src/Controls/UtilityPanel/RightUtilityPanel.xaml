@@ -5,12 +5,12 @@
              xmlns:rich="clr-namespace:LlmodelBox.Controls.RichChat"
              SnapsToDevicePixels="True">
     <Grid>
-        <!-- ================= EXPANDED UTILITY PANEL (CURVED BENTO & OMNIBOX) ================= -->
+        <!-- ================= EXPANDED UTILITY PANEL (TRANSLUCENT GLASS BENTO) ================= -->
         <Border x:Name="ExpandedRoot"
-                Background="{DynamicResource BrushWindowBg}"
-                BorderBrush="{DynamicResource BrushBorder}"
+                Background="{DynamicResource BrushGlassSurface}"
+                BorderBrush="{DynamicResource BrushGlassBorder}"
                 BorderThickness="1"
-                CornerRadius="10"
+                CornerRadius="12"
                 ClipToBounds="True">
             <Grid>
                 <Grid.RowDefinitions>
@@ -20,7 +20,7 @@
                 </Grid.RowDefinitions>
 
                 <!-- Row 0: Raycast/Cursor-Style Omnibox Pill + Collapse / Hide -->
-                <Border Grid.Row="0" Background="{DynamicResource BrushWindowBg}" Padding="10,9,10,6">
+                <Border Grid.Row="0" Background="{DynamicResource BrushGlassHeader}" Padding="10,9,10,6">
                     <Grid>
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*"/>
@@ -731,14 +731,14 @@
             </Grid>
         </Border>
 
-        <!-- ================= COLLAPSED ICON RAIL (44px CURVED BENTO) ================= -->
+        <!-- ================= COLLAPSED ICON RAIL (44px TRANSLUCENT GLASS BENTO) ================= -->
         <Border x:Name="IconRailRoot"
                 Visibility="Collapsed"
                 Width="44"
-                Background="{DynamicResource BrushWindowBg}"
-                BorderBrush="{DynamicResource BrushBorder}"
+                Background="{DynamicResource BrushGlassSurface}"
+                BorderBrush="{DynamicResource BrushGlassBorder}"
                 BorderThickness="1"
-                CornerRadius="10"
+                CornerRadius="12"
                 Padding="4,7">
             <Grid>
                 <Grid.RowDefinitions>
